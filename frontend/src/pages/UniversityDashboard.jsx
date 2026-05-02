@@ -29,7 +29,7 @@ function buildSlug(name) {
 }
 
 export default function UniversityDashboard() {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [search, setSearch] = useState('');
 
   const filteredUniversities = useMemo(() => {
@@ -37,25 +37,41 @@ export default function UniversityDashboard() {
   }, [search]);
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
-      <aside className="rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-xl shadow-slate-950/50">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm uppercase tracking-[0.35em] text-sky-400">University System</p>
-            <h1 className="mt-3 text-3xl font-semibold text-white">University Dashboard</h1>
-          </div>
-          <button
-            type="button"
-            onClick={() => setMenuOpen((current) => !current)}
-            className="rounded-full bg-slate-800 p-3 text-xl text-slate-300 transition hover:bg-slate-700"
-            aria-label="Browse Universities"
-          >
-            ⋮
-          </button>
-        </div>
+    <div className="min-h-screen bg-slate-950">
+      {/* HAMBURGER MENU BUTTON - Top Left Corner */}
+      <button
+        type="button"
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="fixed top-6 left-6 z-50 rounded-lg bg-slate-800 p-3 text-2xl text-white shadow-lg transition hover:bg-slate-700 lg:hidden"
+        aria-label="Toggle menu"
+      >
+        ☰
+      </button>
 
-        {menuOpen ? (
-          <div className="mt-6 rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
+      {/* SIDEBAR - Fixed positioning, slides from left */}
+      <aside className={`fixed left-0 top-0 z-40 h-full w-80 transform bg-slate-900 shadow-2xl transition-transform duration-300 ease-in-out lg:translate-x-0 lg:shadow-none ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
+        <div className="flex h-full flex-col p-6">
+          {/* Sidebar Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.35em] text-sky-400">University System</p>
+              <h1 className="mt-3 text-2xl font-semibold text-white">University Dashboard</h1>
+            </div>
+            {/* Close button for mobile */}
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(false)}
+              className="rounded-full bg-slate-800 p-2 text-xl text-slate-300 transition hover:bg-slate-700 lg:hidden"
+              aria-label="Close menu"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Browse Universities Section */}
+          <div className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
             <h2 className="text-sm font-semibold uppercase tracking-[0.35em] text-slate-400">Browse Universities</h2>
             <div className="mt-4 flex items-center gap-3 rounded-3xl border border-slate-800 bg-slate-900 px-4 py-3">
               <span className="text-slate-500">🔍</span>
@@ -73,6 +89,7 @@ export default function UniversityDashboard() {
                     key={university}
                     to={`/university/${buildSlug(university)}`}
                     className="block rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-slate-200 transition hover:border-sky-500 hover:bg-slate-800"
+                    onClick={() => setSidebarOpen(false)} // Close sidebar on mobile after selection
                   >
                     {university}
                   </Link>
@@ -82,18 +99,29 @@ export default function UniversityDashboard() {
               )}
             </div>
           </div>
-        ) : null}
 
-        <div className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/80 p-5">
-          <h2 className="text-lg font-semibold text-white">How it works</h2>
-          <p className="mt-3 text-sm leading-6 text-slate-400">
-            Search and select a university, then choose your academic path and level to view course materials.
-          </p>
+          {/* How it works section */}
+          <div className="mt-8 rounded-3xl border border-slate-800 bg-slate-950/80 p-5">
+            <h2 className="text-lg font-semibold text-white">How it works</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-400">
+              Search and select a university, then choose your academic path and level to view course materials.
+            </p>
+          </div>
         </div>
       </aside>
 
-      <section className="space-y-6">
-        <div className="rounded-3xl border border-slate-800 bg-slate-900 p-10 shadow-xl shadow-slate-950/40">
+      {/* OVERLAY for mobile */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* MAIN CONTENT */}
+      <main className="lg:ml-80 pr-0 mt-0">
+        <section className="space-y-6 pt-6 pr-0 pb-6 pl-6 lg:pt-8 lg:pr-0 lg:pb-8 lg:pl-8">
+        <div className="rounded-3xl border border-slate-800 bg-slate-900 pr-0 shadow-xl shadow-slate-950/40">
           <h2 className="text-3xl font-semibold text-white">Browse Ethiopian Universities</h2>
           <p className="mt-3 text-slate-400">Tap any university to continue to the academic selection and course list.</p>
           <div className="mt-6 flex flex-wrap gap-3">
@@ -120,6 +148,7 @@ export default function UniversityDashboard() {
           ))}
         </div>
       </section>
+    </main>
     </div>
   );
 }

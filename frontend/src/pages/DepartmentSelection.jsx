@@ -12,8 +12,8 @@ export default function DepartmentSelection() {
   }, []);
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-xl shadow-slate-950/50">
+    <div className="space-y-6 pr-0 mt-0">
+      <div className="rounded-3xl border border-slate-800 bg-slate-900 shadow-xl shadow-slate-950/50">
         <h1 className="text-3xl font-semibold text-white">Choose Your Department</h1>
         <p className="mt-2 text-slate-400">Select the department that matches your university program.</p>
       </div>

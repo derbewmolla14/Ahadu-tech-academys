@@ -26,6 +26,8 @@ import CourseContent from './pages/CourseContent';
 import CodingPage from './pages/CodingPage';
 import DepartmentBrowser from './pages/DepartmentBrowser';
 import CourseDetail from './pages/CourseDetail';
+import AdminDashboard from './pages/AdminDashboard';
+import AddCourse from './pages/AddCourse';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useContext(AuthContext);
@@ -53,8 +55,8 @@ export default function App() {
             {/* LOGO SECTION */}
         <div className="flex items-center gap-8">
           <Link to="/" className="flex items-center gap-3">
-            <div className="border-2 border-[#0f1b3d] p-1 flex items-center justify-center w-12 h-12">
-              <span className="text-2xl font-bold text-[#0f1b3d]">A</span>
+            <div className="border-2 border-[#0f1b3d] p-1 flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-blue-50 to-blue-100">
+              <span className="text-2xl">🎓</span>
             </div>
             <div className="flex flex-col leading-tight">
               <span className="text-xl font-bold text-[#0f1b3d] tracking-tighter">AHADU</span>
@@ -120,6 +122,8 @@ export default function App() {
             <Route path="/university/:departmentId/:yearId" element={<PrivateRoute><CourseList /></PrivateRoute>} />
             <Route path="/university/:departmentId/:yearId/:courseId" element={<PrivateRoute><CourseContent /></PrivateRoute>} />
             <Route path="/coding" element={<CodingPage />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/add-course" element={<AddCourse />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
