@@ -12,15 +12,6 @@ function parsePositiveInt(raw, fallback) {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
-async function disconnectIfNeeded() {
-  if (mongoose.connection.readyState === 0) return;
-  try {
-    await mongoose.disconnect();
-  } catch (e) {
-    console.warn('[MongoDB] Pre-retry disconnect note:', e.message);
-  }
-}
-
 async function migrateLegacyRoles() {
   try {
     const r = await mongoose.connection.collection('users').updateMany(
@@ -93,8 +84,6 @@ async function connectMongoose() {
       console.error(`[MongoDB] FAILURE on attempt ${attempt}/${maxAttempts}:`, err.message);
       if (err.code) console.error('[MongoDB] Error code:', err.code);
       if (err.reason) console.error('[MongoDB] Detail:', String(err.reason));
-
-      await disconnectIfNeeded();
 
       if (attempt === maxAttempts) {
         console.error(

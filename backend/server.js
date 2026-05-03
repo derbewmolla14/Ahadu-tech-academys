@@ -149,7 +149,7 @@ app.use((err, req, res, _next) => {
 });
 
 async function gracefulShutdown(signal) {
-  console.log(`[Server] ${signal} received — closing HTTP and Mongo connections…`);
+  console.log(`[Server] ${signal} received — closing HTTP listener…`);
 
   await new Promise((resolve) => {
     if (!serverRef) return resolve();
@@ -159,15 +159,6 @@ async function gracefulShutdown(signal) {
       resolve();
     });
   });
-
-  try {
-    if (mongoose.connection.readyState !== 0) {
-      await mongoose.disconnect();
-      console.log('[Server] Mongoose disconnected.');
-    }
-  } catch (e) {
-    console.error('[Server] Mongoose disconnect error:', e.message);
-  }
 
   process.exit(0);
 }
