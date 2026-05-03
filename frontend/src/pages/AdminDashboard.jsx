@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { apiFetch } from '../api/api';
 
 export default function AdminDashboard() {
   const [courses, setCourses] = useState([]);
@@ -12,7 +13,7 @@ export default function AdminDashboard() {
 
   const fetchCourses = async () => {
     try {
-      const response = await fetch('/api/content/admin/all');
+      const response = await apiFetch('content/admin/all');
       const data = await response.json();
 
       if (data.success) {
@@ -30,7 +31,7 @@ export default function AdminDashboard() {
 
   const toggleCourseStatus = async (courseId, currentStatus) => {
     try {
-      const response = await fetch(`/api/content/${courseId}/toggle-status`, {
+      const response = await apiFetch(`content/${courseId}/toggle-status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -61,7 +62,7 @@ export default function AdminDashboard() {
     }
 
     try {
-      const response = await fetch(`/api/content/${courseId}`, {
+      const response = await apiFetch(`content/${courseId}`, {
         method: 'DELETE',
       });
 

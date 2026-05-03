@@ -7,7 +7,7 @@ const Department = require('../models/Department');
 const UniversityYear = require('../models/UniversityYear');
 
 exports.getUsers = async (req, res) => {
-  const users = await User.find().select('email role approved createdAt');
+  const users = await User.find().select('fullName email phone profilePhoto role approved createdAt');
   res.json(users);
 };
 

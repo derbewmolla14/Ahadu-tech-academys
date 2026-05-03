@@ -1,26 +1,44 @@
-import { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/api';
 
 export default function ResetPassword() {
-  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [email, setEmail] = useState(location.state?.email || '');
-  const [token, setToken] = useState(location.state?.resetToken || '');
+  const qpEmail = useMemo(() => {
+    const e = searchParams.get('email') || '';
+    try {
+      return decodeURIComponent(e);
+    } catch {
+      return e;
+    }
+  }, [searchParams]);
+  const qpToken = searchParams.get('token') || '';
+
+  const [email, setEmail] = useState(qpEmail || '');
+  const [token] = useState(qpToken);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (location.state?.email) setEmail(location.state.email);
-    if (location.state?.resetToken) setToken(location.state.resetToken);
-  }, [location.state]);
+    setEmail(qpEmail || '');
+  }, [qpEmail]);
+
+  useEffect(() => {
+    if (!qpToken.trim()) setError('This page needs a reset token from your email link.');
+  }, [qpToken]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
     setMessage('');
+
+    if (!token.trim()) {
+      setError('Missing reset token. Open this page from your email.');
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
@@ -28,70 +46,85 @@ export default function ResetPassword() {
     }
 
     try {
-      await api.post('/auth/reset-password', { email, token, password });
-      setMessage('Password reset successfully. Redirecting to login...');
-      setTimeout(() => navigate('/login', { replace: true }), 2000);
+      await api.post('/auth/reset-password', {
+        email: email.trim().toLowerCase(),
+        token: token.trim(),
+        password,
+      });
+      setMessage('Password reset successfully. Redirecting to login…');
+      setTimeout(() => navigate('/login', { replace: true }), 1800);
     } catch (err) {
       setError(err.response?.data?.message || 'Reset failed');
     }
   };
 
+  const tokenMasked = qpToken.length > 8 ? `${qpToken.slice(0, 6)}…` : qpToken ? '••••••••' : '—';
+
   return (
-    <div className="min-h-screen bg-slate-950 px-4 py-12 text-white sm:px-6">
+    <div className="min-h-[70vh] text-white">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
-        <div className="rounded-3xl border border-slate-800 bg-slate-900 px-8 py-6 shadow-xl shadow-slate-950/50">
-          <p className="text-sm uppercase tracking-[0.35em] text-sky-400">Ahadu Tech Academy</p>
-          <h1 className="mt-4 text-4xl font-semibold text-white">Reset Password</h1>
-          <p className="mt-3 max-w-xl text-slate-400">Enter your email, reset token, and new password below.</p>
+        <div className="rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/30 px-8 py-6 shadow-xl">
+          <p className="text-sm uppercase tracking-[0.35em] text-sky-400">Secure reset</p>
+          <h1 className="mt-4 text-4xl font-semibold text-white">Choose a new password</h1>
+          <p className="mt-3 text-slate-400">
+            Tokens are stored hashed and invalidated after success. Tokens expire automatically after sixty minutes for security.
+          </p>
         </div>
-        <div className="rounded-3xl border border-slate-800 bg-slate-900 px-8 py-10 shadow-xl shadow-slate-950/50">
-          {message ? <div className="mb-6 rounded-2xl bg-emerald-500/10 px-4 py-3 text-emerald-200">{message}</div> : null}
-          {error ? <div className="mb-6 rounded-2xl bg-red-500/10 px-4 py-3 text-red-200">{error}</div> : null}
+
+        <div className="rounded-3xl border border-slate-800 bg-slate-950/70 px-8 py-10 shadow-xl backdrop-blur">
+          {message ? <div className="mb-8 rounded-2xl border border-emerald-500/35 bg-emerald-500/10 px-5 py-4 text-emerald-100">{message}</div> : null}
+          {error ? <div className="mb-8 rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-red-200">{error}</div> : null}
+
           <form onSubmit={handleSubmit} className="space-y-5">
             <label className="block">
               <span className="text-slate-200">Email</span>
               <input
                 type="email"
+                required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-2 w-full rounded-3xl border border-slate-700 bg-slate-950 px-4 py-4 text-white outline-none transition focus:border-sky-500"
-                required
+                className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-4 text-white outline-none transition focus:border-sky-500"
               />
             </label>
+
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/50 px-4 py-4 text-sm">
+              <p className="font-semibold text-slate-200">Secure token reference</p>
+              <p className="mt-2 text-xs text-slate-500">
+                Token loaded from reset link (<span className="font-mono text-slate-300">{tokenMasked}</span>). Paste a full link above if blank.
+              </p>
+            </div>
+
             <label className="block">
-              <span className="text-slate-200">Reset Token</span>
-              <input
-                type="text"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                className="mt-2 w-full rounded-3xl border border-slate-700 bg-slate-950 px-4 py-4 text-white outline-none transition focus:border-sky-500"
-                required
-              />
-            </label>
-            <label className="block">
-              <span className="text-slate-200">New Password</span>
+              <span className="text-slate-200">New password</span>
               <input
                 type="password"
+                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-2 w-full rounded-3xl border border-slate-700 bg-slate-950 px-4 py-4 text-white outline-none transition focus:border-sky-500"
-                required
+                minLength={8}
+                className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-4 text-white outline-none transition focus:border-sky-500"
               />
             </label>
+
             <label className="block">
-              <span className="text-slate-200">Confirm Password</span>
+              <span className="text-slate-200">Confirm password</span>
               <input
                 type="password"
+                required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="mt-2 w-full rounded-3xl border border-slate-700 bg-slate-950 px-4 py-4 text-white outline-none transition focus:border-sky-500"
-                required
+                className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-4 text-white outline-none transition focus:border-sky-500"
               />
             </label>
-            <button className="w-full rounded-3xl bg-sky-500 px-6 py-4 text-lg font-semibold text-slate-950 transition hover:bg-sky-400">
-              Reset Password
+
+            <button className="w-full rounded-2xl bg-sky-500 px-6 py-4 text-lg font-bold text-slate-950 transition hover:bg-sky-400">
+              Update password
             </button>
           </form>
+
+          <Link to="/login" className="mt-10 block text-center text-sm font-medium text-slate-400 hover:text-white">
+            Back to login
+          </Link>
         </div>
       </div>
     </div>

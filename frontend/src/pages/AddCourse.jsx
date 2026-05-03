@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { apiFetch } from '../api/api';
 
 export default function AddCourse() {
   const navigate = useNavigate();
@@ -82,9 +83,9 @@ export default function AddCourse() {
         if (ppt.file) submitData.append('files', ppt.file);
       });
 
-      const response = await fetch('/api/content/upload', {
+      const response = await apiFetch('content/upload', {
         method: 'POST',
-        body: submitData
+        body: submitData,
       });
 
       const data = await response.json();

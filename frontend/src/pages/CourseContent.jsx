@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { apiFetch } from '../api/api';
 
 export default function CourseContent() {
   const { name } = useParams();
@@ -27,7 +28,12 @@ export default function CourseContent() {
   const fetchCourseData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/content?university=${encodeURIComponent(name)}&department=${encodeURIComponent(department)}&year=${encodeURIComponent(year)}`);
+      const params = new URLSearchParams({
+        university: name,
+        department,
+        year,
+      });
+      const response = await apiFetch(`content?${params.toString()}`);
       const data = await response.json();
 
       if (data.success && data.data.length > 0) {
