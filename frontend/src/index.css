@@ -1,30 +1,235 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* =========================================
+   1. GLOBAL THEME VARIABLES
+========================================= */
+
 :root {
   color-scheme: dark;
+
+  --app-brightness: 1;
+
+  --app-bg: #080f1f;
+  --app-sidebar: #101a2e;
+  --app-card: #111c30;
+  --app-border: #26344c;
+  --app-text: #f1f5f9;
+  --app-muted: #94a3b8;
+
+  --app-accent: #38bdf8;
 }
 
-body {
-  margin: 0;/*
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #26499b; */
-  /* Replace 'your-image-url.jpg' with your actual file path or URL */
-  background-image: linear-gradient(rgba(215, 180, 180, 0.75), rgba(240, 223, 223, 0.75)), 
-                    url('/background-pattern.jpg') !important;
-  background-size: cover !important;
-  background-position: center !important;
-  background-repeat: no-repeat !important;
-  background-attachment: fixed !important;
-  min-height: 100vh !important;
-  margin: 0;
+/* =========================================
+   2. LIGHT THEME
+========================================= */
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --app-bg: #f1f5f9;
+  --app-sidebar: #ffffff;
+  --app-card: #ffffff;
+  --app-border: #dbe3ef;
+  --app-text: #172033;
+  --app-muted: #64748b;
+
+  --app-accent: #0284c7;
 }
 
-button, input, textarea {
-  font: inherit;
-}
+/* =========================================
+   3. GLOBAL RESET
+========================================= */
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--app-bg);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  background-color: var(--app-bg);
+  color: var(--app-text);
+
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+/* =========================================
+   4. ROOT APPLICATION
+========================================= */
+
+#root {
+  min-height: 100vh;
+  filter: brightness(var(--app-brightness));
+}
+
+/* =========================================
+   5. APPLICATION SHELL
+========================================= */
+
+.app-shell {
+  min-height: 100vh;
+  background: var(--app-bg);
+  color: var(--app-text);
+}
+
+/* =========================================
+   6. SIDEBAR
+========================================= */
+
+.app-sidebar {
+  background: var(--app-sidebar);
+  border-color: var(--app-border);
+  color: var(--app-text);
+}
+
+/* =========================================
+   7. CARDS
+========================================= */
+
+.app-card {
+  background: var(--app-card);
+  border: 1px solid var(--app-border);
+  color: var(--app-text);
+}
+
+/* =========================================
+   8. TEXT
+========================================= */
+
+.app-muted {
+  color: var(--app-muted);
+}
+
+/* =========================================
+   9. THEME TRANSITIONS
+========================================= */
+
+.app-shell,
+.app-sidebar,
+.app-card {
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease;
+}
+
+/* =========================================
+   10. INPUTS
+========================================= */
+
+input,
+textarea,
+select {
+  background-color: var(--app-card);
+  color: var(--app-text);
+  border-color: var(--app-border);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--app-muted);
+}
+
+/* =========================================
+   11. SCROLLBAR
+========================================= */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #475569 transparent;
+}
+
+
+
+
+/* =====================================
+   GLOBAL LIGHT MODE OVERRIDES
+===================================== */
+
+html[data-theme="light"],
+html[data-theme="light"] body {
+  background: #f1f5f9 !important;
+  color: #172033 !important;
+}
+
+html[data-theme="light"] #root {
+  background: #f1f5f9;
+  color: #172033;
+}
+
+/* Main dashboard */
+html[data-theme="light"] .app-shell,
+html[data-theme="light"] main {
+  background-color: #f1f5f9 !important;
+  color: #172033 !important;
+}
+
+/* Sidebar */
+html[data-theme="light"] .app-sidebar {
+  background-color: #ffffff !important;
+  border-color: #dbe3ef !important;
+  color: #172033 !important;
+}
+
+/* Cards */
+html[data-theme="light"] .app-card {
+  background-color: #ffffff !important;
+  border-color: #dbe3ef !important;
+  color: #172033 !important;
+}
+
+/* Common Tailwind backgrounds */
+html[data-theme="light"] .bg-slate-950,
+html[data-theme="light"] .bg-slate-900,
+html[data-theme="light"] .bg-slate-800 {
+  background-color: #ffffff !important;
+}
+
+/* Text */
+html[data-theme="light"] .text-white,
+html[data-theme="light"] .text-slate-100,
+html[data-theme="light"] .text-slate-200 {
+  color: #172033 !important;
+}
+
+/* Borders */
+html[data-theme="light"] .border-slate-800,
+html[data-theme="light"] .border-slate-700 {
+  border-color: #dbe3ef !important;
+}
+
+/* Inputs */
+html[data-theme="light"] input,
+html[data-theme="light"] textarea,
+html[data-theme="light"] select {
+  background-color: #ffffff;
+  color: #172033;
+  border-color: #cbd5e1;
 }

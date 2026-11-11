@@ -27,18 +27,34 @@ async function migrateLegacyRoles() {
 }
 
 /** Register Mongoose lifecycle logs once — safe across retries */
+
 function wireConnectionEvents() {
-  if (mongoose.connection.listenerCount('error') === 0) {
-    mongoose.connection.on('error', (err) => {
-      console.error('[MongoDB] Runtime connection error:', err.message);
-    });
-  }
-  if (mongoose.connection.listenerCount('disconnected') === 0) {
-    mongoose.connection.on('disconnected', () => {
-      console.warn('[MongoDB] Mongoose disconnected from cluster.');
-    });
-  }
+  const connection = mongoose.connection;
+
+  connection.on("connected", () => {
+    console.log("[MongoDB] Event: connected");
+  });
+
+  connection.on("disconnected", () => {
+    console.warn(
+      "[MongoDB] Event: disconnected. Ready state:",
+      connection.readyState
+    );
+  });
+
+  connection.on("reconnected", () => {
+    console.log("[MongoDB] Event: reconnected");
+  });
+
+  connection.on("close", () => {
+    console.warn("[MongoDB] Event: close");
+  });
+
+  connection.on("error", (err) => {
+    console.error("[MongoDB] Runtime error:", err);
+  });
 }
+
 
 /**
  * Connect to MongoDB Atlas using MONGO_URI only (no localhost Mongo fallback).

@@ -31,23 +31,90 @@ exports.getCategories = async (req, res) => {
   res.json(categories);
 };
 
+
 exports.createCourse = async (req, res) => {
-  const { title, level, grade, department, year, departmentId, yearId, description, isLocked } = req.body;
-  if (!title || !level) return res.status(400).json({ message: 'Title and level required' });
-  const course = await Course.create({
-    title,
-    level,
-    grade,
-    department,
-    year,
-    departmentRef: departmentId,
-    yearRef: yearId,
-    description,
-    locked: isLocked !== undefined ? isLocked : true,
-    isLocked: isLocked !== undefined ? isLocked : true,
-  });
-  res.status(201).json(course);
+  try {
+    const {
+      title,
+      level,
+      university,
+      grade,
+      subject,
+      department,
+      year,
+      technology,
+      description,
+      isActive,
+      isLocked,
+    } = req.body;
+
+    const allowedLevels = [
+      'elementary',
+      'highschool',
+      'university',
+      'coding',
+    ];
+
+    if (!title?.trim() || !allowedLevels.includes(level)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid course title and category are required.',
+      });
+    }
+
+    if (level === 'university' &&
+        (!university?.trim() || !department?.trim() || !year?.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'University, department and year are required.',
+      });
+    }
+
+    if (level === 'elementary' || level === 'highschool') {
+      if (!grade) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please select a grade.',
+        });
+      }
+    }
+
+    const locked = isLocked === undefined
+      ? true
+      : isLocked === true || isLocked === 'true';
+
+    const course = await Course.create({
+      title: title.trim(),
+      level,
+      university: university || '',
+      grade: grade || '',
+      subject: subject || '',
+      department: department || '',
+      year: year || '',
+      technology: technology || '',
+      description: description || '',
+      isActive: isActive !== false && isActive !== 'false',
+      locked,
+      isLocked: locked,
+      createdBy: req.user._id,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Course created successfully.',
+      course,
+    });
+
+  } catch (error) {
+    console.error('Create course error:', error);
+
+    return res.status(500).json({
+      success: false,
+      message: 'Unable to create course.',
+    });
+  }
 };
+
 
 exports.unlockCourseForUser = async (req, res) => {
   const { userId } = req.body;

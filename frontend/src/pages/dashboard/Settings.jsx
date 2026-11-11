@@ -1,136 +1,517 @@
-import { useContext, useEffect, useState } from 'react';
-import { AuthContext } from '../../context/AuthContext';
 
-export default function Settings() {
-  const { user, updateProfile } = useContext(AuthContext);
-  const [fullName, setFullName] = useState(user?.fullName || '');
-  const [phone, setPhone] = useState(user?.phone || '');
-  const [photo, setPhoto] = useState(null);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
+import { useRef, useState } from "react";
+import {
+  User,
+  Mail,
+  Lock,
+  Camera,
+  Sun,
+  Moon,
+  Eye,
+  EyeOff,
+  Save,
+  ShieldCheck,
+} from "lucide-react";
+import {
+  applyTheme,
+  getSavedTheme,
+} from "../../utils/theme";
+const rawApiUrl = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 
-  useEffect(() => {
-    setFullName(user?.fullName || '');
-    setPhone(user?.phone || '');
-  }, [user]);
+const API = rawApiUrl.endsWith("/api")
+  ? rawApiUrl
+  : `${rawApiUrl}/api`;
+  
+const API_BASE = (
+  rawApiUrl.replace(/\/+$/, "").endsWith("/api")
+    ? rawApiUrl.replace(/\/+$/, "")
+    : `${rawApiUrl.replace(/\/+$/, "")}/api`
+) || "/api";
 
-  const preview = photo ? URL.createObjectURL(photo) : user?.profilePhotoUrl || '';
+const card =
+  "rounded-xl border border-slate-800 bg-[#111c30] p-5 md:p-6";
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setMessage('');
-    setSaving(true);
-    try {
-      const form = new FormData();
-      if (fullName.trim()) form.append('fullName', fullName.trim());
-      form.append('phone', phone.trim());
-      if (photo) form.append('profilePhoto', photo);
-      await updateProfile(form);
-      setMessage('Profile saved successfully.');
-      setPhoto(null);
-    } catch (err) {
-      setError(err.response?.data?.message || err.response?.data?.errors?.[0]?.msg || 'Update failed.');
-    } finally {
-      setSaving(false);
+const field =
+  "mt-2 w-full rounded-lg border border-slate-700 bg-[#0b1425] px-4 py-3 text-sm text-white outline-none transition focus:border-sky-400";
+
+export default function SettingsPage() {
+  const fileRef = useRef(null);
+
+  const [profile, setProfile] = useState({
+    name: "",
+    email: "",
+    photo: "",
+  });
+
+  const [photoFile, setPhotoFile] = useState(null);
+  const [preview, setPreview] = useState("");
+
+  const [email, setEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const [theme, setTheme] = useState(
+    localStorage.getItem("theme") || "dark"
+  );
+
+  const [brightness, setBrightness] = useState(
+    Number(localStorage.getItem("brightness") || 100)
+  );
+
+  // Apply theme and brightness
+  function updateAppearance(nextTheme, nextBrightness) {
+    setTheme(nextTheme);
+    setBrightness(nextBrightness);
+
+    localStorage.setItem("theme", nextTheme);
+    localStorage.setItem("brightness", nextBrightness);
+
+    document.documentElement.dataset.theme = nextTheme;
+    document.documentElement.style.setProperty(
+      "--app-brightness",
+      nextBrightness / 100
+    );
+  }
+
+  // Profile image preview
+  function handlePhotoChange(event) {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setMessage("Please select an image file.");
+      return;
     }
-  };
+
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage("Image must be smaller than 5 MB.");
+      return;
+    }
+
+    setPhotoFile(file);
+    setPreview(URL.createObjectURL(file));
+    setMessage("");
+  }
+
+  // Change profile details
+  async function saveProfile(event) {
+    event.preventDefault();
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const body = new FormData();
+      body.append("name", profile.name);
+
+      if (photoFile) {
+        body.append("photo", photoFile);
+      }
+const response = await fetch(`${API_BASE}/users/me/profile`, {
+  method: "PATCH",
+  credentials: "include",
+  body,
+});
+
+      if (!response.ok) {
+        throw new Error("Unable to update profile.");
+      }
+
+      setMessage("Profile updated successfully.");
+      setPhotoFile(null);
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Change email
+  async function saveEmail(event) {
+    event.preventDefault();
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const response = await fetch(`${API}/api/users/me/email`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Unable to update email.");
+      }
+
+      setMessage("Email update requested. Check your inbox to verify it.");
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Change password
+  async function savePassword(event) {
+    event.preventDefault();
+    setMessage("");
+
+    if (newPassword.length < 8) {
+      setMessage("Password must contain at least 8 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setMessage("Passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API}/api/users/me/password`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Unable to change password.");
+      }
+
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setMessage("Password changed successfully.");
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <div className="space-y-10">
-      <div>
-        <h1 className="text-3xl font-bold text-white">Settings</h1>
-        <p className="mt-3 text-slate-400">
-          Refresh your identity on the academy platform. Uploaded images are resized by the browser for best compatibility (JPEG / PNG / WebP / GIF, max 5MB).
+    <div className="space-y-6 text-slate-100">
+
+      {/* PAGE HEADER */}
+      <div className="rounded-2xl border border-slate-800 bg-gradient-to-r from-[#111c30] to-[#10152c] p-6 md:p-8">
+        <p className="text-xs font-bold tracking-[3px] text-sky-400">
+          ACCOUNT PREFERENCES
+        </p>
+
+        <h1 className="mt-3 text-2xl font-bold md:text-3xl">
+          Settings
+        </h1>
+
+        <p className="mt-2 text-sm text-slate-400">
+          Manage your profile, password, email and display preferences.
         </p>
       </div>
 
-      {message ? <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-emerald-200">{message}</div> : null}
-      {error ? <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-200">{error}</div> : null}
+      {message && (
+        <div
+          role="status"
+          className="rounded-lg border border-sky-500/30 bg-sky-500/10 p-4 text-sm text-sky-300"
+        >
+          {message}
+        </div>
+      )}
 
-      <form onSubmit={handleSubmit} className="space-y-8 rounded-3xl border border-slate-800 bg-slate-900/70 p-8 shadow-xl">
-        <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
-          <div className="h-28 w-28 overflow-hidden rounded-2xl border border-slate-700 bg-slate-800">
-            {preview ? (
-              <img src={preview} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-3xl font-bold text-slate-600">?</div>
-            )}
-          </div>
+      {/* PROFILE SETTINGS */}
+      <section className={card}>
+        <div className="mb-6 flex items-center gap-3">
+          <User className="text-sky-400" />
           <div>
-            <label className="block text-sm font-medium text-slate-300">
-              Profile photo
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                className="mt-2 block w-full text-sm text-slate-400 file:mr-4 file:rounded-xl file:border-0 file:bg-sky-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-sky-500"
-                onChange={(ev) => {
-                  setPhoto(ev.target.files?.[0] || null);
-                  setMessage('');
-                }}
-              />
-            </label>
+            <h2 className="font-semibold">Profile Information</h2>
+            <p className="text-xs text-slate-400">
+              Manage your personal information and photo.
+            </p>
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <label className="block">
-            <span className="text-sm font-medium text-slate-300">Full name</span>
+        <form onSubmit={saveProfile} className="space-y-5">
+          <div className="flex flex-wrap items-center gap-5">
+            <div className="relative">
+              <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-sky-500/50 bg-slate-800 text-2xl font-bold">
+                {preview || profile.photo ? (
+                  <img
+                    src={preview || profile.photo}
+                    alt="Profile"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  "AD"
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="absolute bottom-0 right-0 rounded-full bg-sky-500 p-2 text-white hover:bg-sky-600"
+              >
+                <Camera size={16} />
+              </button>
+            </div>
+
+            <div>
+              <h3 className="font-semibold">Profile Photo</h3>
+              <p className="mt-1 text-xs text-slate-400">
+                JPG, PNG or WEBP. Maximum 5 MB.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="mt-3 text-sm font-medium text-sky-400"
+              >
+                Upload new photo
+              </button>
+
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                hidden
+                onChange={handlePhotoChange}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm text-slate-300">
+              Full name
+            </label>
             <input
-              type="text"
-              value={fullName}
-              onChange={(ev) => setFullName(ev.target.value)}
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-sky-500"
-              placeholder="Jane Doe"
+              className={field}
+              value={profile.name}
+              onChange={(e) =>
+                setProfile({ ...profile, name: e.target.value })
+              }
+              placeholder="Enter your full name"
             />
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium text-slate-300">Phone</span>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(ev) => setPhone(ev.target.value)}
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-sky-500"
-              placeholder="+251 ..."
-            />
-          </label>
+          </div>
+
+          <button
+            disabled={loading}
+            className="flex items-center gap-2 rounded-lg bg-sky-500 px-5 py-3 text-sm font-semibold text-white hover:bg-sky-600 disabled:opacity-50"
+          >
+            <Save size={16} />
+            Save Profile
+          </button>
+        </form>
+      </section>
+
+      {/* EMAIL SETTINGS */}
+      <section className={card}>
+        <div className="mb-5 flex items-center gap-3">
+          <Mail className="text-sky-400" />
+          <div>
+            <h2 className="font-semibold">Email Address</h2>
+            <p className="text-xs text-slate-400">
+              Change the email associated with your account.
+            </p>
+          </div>
         </div>
 
-        <label className="block">
-          <span className="text-sm font-medium text-slate-300">Email</span>
+        <form onSubmit={saveEmail}>
+          <label className="text-sm text-slate-300">
+            New email address
+          </label>
+
           <input
             type="email"
-            value={user?.email || ''}
-            disabled
-            className="mt-2 w-full cursor-not-allowed rounded-2xl border border-slate-800 bg-slate-950/50 px-4 py-3 text-slate-500"
+            required
+            className={field}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter new email address"
           />
-          <span className="mt-2 block text-xs text-slate-500">Contact support if you need to change your login email.</span>
-        </label>
 
-        <div className="flex flex-wrap gap-4 pt-4">
           <button
-            type="submit"
-            disabled={saving}
-            className="rounded-2xl bg-sky-500 px-10 py-3.5 font-bold text-slate-950 transition hover:bg-sky-400 disabled:opacity-60"
+            disabled={loading}
+            className="mt-4 rounded-lg bg-sky-500 px-5 py-3 text-sm font-semibold text-white hover:bg-sky-600"
           >
-            {saving ? 'Saving…' : 'Save changes'}
+            Update Email
           </button>
+        </form>
+      </section>
+
+      {/* PASSWORD SETTINGS */}
+      <section className={card}>
+        <div className="mb-5 flex items-center gap-3">
+          <Lock className="text-sky-400" />
+          <div>
+            <h2 className="font-semibold">Change Password</h2>
+            <p className="text-xs text-slate-400">
+              Keep your administrator account secure.
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={savePassword} className="space-y-4">
+          <div>
+            <label className="text-sm text-slate-300">
+              Current password
+            </label>
+            <input
+              type="password"
+              required
+              className={field}
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              autoComplete="current-password"
+              placeholder="Enter current password"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm text-slate-300">
+              New password
+            </label>
+            <input
+              type={showPassword ? "text" : "password"}
+              required
+              className={field}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoComplete="new-password"
+              placeholder="Enter new password"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm text-slate-300">
+              Confirm new password
+            </label>
+            <input
+              type={showPassword ? "text" : "password"}
+              required
+              className={field}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
+              placeholder="Confirm new password"
+            />
+          </div>
+
+          <label className="flex items-center gap-2 text-xs text-slate-400">
+            <input
+              type="checkbox"
+              checked={showPassword}
+              onChange={(e) => setShowPassword(e.target.checked)}
+            />
+            Show passwords
+          </label>
+
+          <button
+            disabled={loading}
+            className="rounded-lg bg-sky-500 px-5 py-3 text-sm font-semibold text-white hover:bg-sky-600"
+          >
+            Update Password
+          </button>
+        </form>
+      </section>
+
+      {/* APPEARANCE SETTINGS */}
+      <section className={card}>
+        <div className="mb-5 flex items-center gap-3">
+          <Sun className="text-sky-400" />
+          <div>
+            <h2 className="font-semibold">Appearance & Brightness</h2>
+            <p className="text-xs text-slate-400">
+              Customize your dashboard display.
+            </p>
+          </div>
+        </div>
+
+        <div className="mb-6 flex flex-wrap gap-3">
           <button
             type="button"
-            onClick={() => {
-              setFullName(user?.fullName || '');
-              setPhone(user?.phone || '');
-              setPhoto(null);
-              setMessage('');
-              setError('');
-            }}
-            className="rounded-2xl border border-slate-700 px-6 py-3.5 font-semibold text-slate-300 hover:bg-slate-800"
+            onClick={() => updateAppearance("dark", brightness)}
+            className={`flex items-center gap-2 rounded-lg border px-5 py-3 text-sm ${
+              theme === "dark"
+                ? "border-sky-400 bg-sky-500/15 text-sky-300"
+                : "border-slate-700 text-slate-400"
+            }`}
           >
-            Reset form
+            <Moon size={17} />
+            Dark Mode
           </button>
+
+          <button
+  type="button"
+  onClick={() => {
+    console.log("LIGHT MODE BUTTON CLICKED");
+
+    document.documentElement.setAttribute(
+      "data-theme",
+      "light"
+    );
+
+    document.documentElement.style.colorScheme = "light";
+
+    localStorage.setItem("theme", "light");
+  }}
+  className="rounded-xl border border-sky-400 bg-sky-500 px-6 py-4 text-white"
+>
+  Light Mode
+</button>
         </div>
-      </form>
+
+        <div>
+          <div className="mb-3 flex items-center justify-between">
+            <label className="text-sm text-slate-300">
+              Screen brightness
+            </label>
+            <span className="text-sm font-semibold text-sky-400">
+              {brightness}%
+            </span>
+          </div>
+
+          <input
+            type="range"
+            min="60"
+            max="120"
+            step="5"
+            value={brightness}
+            onChange={(e) =>
+              updateAppearance(theme, Number(e.target.value))
+            }
+            className="w-full accent-sky-500"
+          />
+
+          <div className="mt-2 flex justify-between text-xs text-slate-500">
+            <span>Dim</span>
+            <span>Normal</span>
+            <span>Bright</span>
+          </div>
+        </div>
+      </section>
+
+      {/* SECURITY */}
+      <section className={card}>
+        <div className="flex items-center gap-3">
+          <ShieldCheck className="text-emerald-400" />
+          <div>
+            <h2 className="font-semibold">Account Security</h2>
+            <p className="mt-1 text-xs text-slate-400">
+              Password changes should require your current password.
+              Email changes should be verified before taking effect.
+            </p>
+          </div>
+        </div>
+      </section>
+
     </div>
   );
 }
