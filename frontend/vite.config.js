@@ -12,11 +12,7 @@ export default defineConfig({
       '/api': {
         target: 'http://127.0.0.1:5002',
         changeOrigin: true,
-<<<<<<< HEAD
-        // Removes /api before forwarding if your backend uses /auth
         rewrite: (path) => path.replace(/^\/api/, ''),
-=======
->>>>>>> origin/main
       },
       '/uploads': {
         target: 'http://127.0.0.1:5002',
