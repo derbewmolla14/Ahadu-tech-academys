@@ -27,6 +27,7 @@ async function migrateLegacyRoles() {
 }
 
 /** Register Mongoose lifecycle logs once — safe across retries */
+
 function wireConnectionEvents() {
   const connection = mongoose.connection;
 
@@ -53,6 +54,7 @@ function wireConnectionEvents() {
     console.error("[MongoDB] Runtime error:", err);
   });
 }
+
 
 /**
  * Connect to MongoDB Atlas using MONGO_URI only.
