@@ -28,20 +28,34 @@ async function migrateLegacyRoles() {
 
 /** Register Mongoose lifecycle logs once — safe across retries */
 function wireConnectionEvents() {
-  if (mongoose.connection.listenerCount('error') === 0) {
-    mongoose.connection.on('error', (err) => {
-      console.error('[MongoDB] Runtime connection error:', err.message);
-    });
-  }
-  if (mongoose.connection.listenerCount('disconnected') === 0) {
-    mongoose.connection.on('disconnected', () => {
-      console.warn('[MongoDB] Mongoose disconnected from cluster.');
-    });
-  }
+  const connection = mongoose.connection;
+
+  connection.on("connected", () => {
+    console.log("[MongoDB] Event: connected");
+  });
+
+  connection.on("disconnected", () => {
+    console.warn(
+      "[MongoDB] Event: disconnected. Ready state:",
+      connection.readyState
+    );
+  });
+
+  connection.on("reconnected", () => {
+    console.log("[MongoDB] Event: reconnected");
+  });
+
+  connection.on("close", () => {
+    console.warn("[MongoDB] Event: close");
+  });
+
+  connection.on("error", (err) => {
+    console.error("[MongoDB] Runtime error:", err);
+  });
 }
 
 /**
- * Connect to MongoDB Atlas using MONGO_URI only (no localhost Mongo fallback).
+ * Connect to MongoDB Atlas using MONGO_URI only.
  * Retries transient failures suitable for Render cold starts / Atlas warmup.
  *
  * @returns {Promise<boolean>} true if connected, false otherwise
@@ -64,8 +78,11 @@ async function connectMongoose() {
 
   console.log('[MongoDB] Using mongoose.connect(process.env.MONGO_URI.trim())');
 
+  // 🛠️ የተስተካከለው እና የተጨመረው የጊዜ ገደብ (Options) ለኔትወርክ መረጋጋት
   const options = {
-    serverSelectionTimeoutMS: parsePositiveInt(process.env.MONGO_SERVER_SELECTION_MS, 15000),
+    serverSelectionTimeoutMS: parsePositiveInt(process.env.MONGO_SERVER_SELECTION_MS, 30000), // ወደ 30 ሰከንድ ከፍ ብሏል
+    socketTimeoutMS: 45000,          // ሶኬቱ እንዳይቋረጥ የማቆያ ጊዜ
+    connectTimeoutMS: 30000,         // የመጀመሪያው ግንኙነት የሰዓት ገደብ
   };
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {

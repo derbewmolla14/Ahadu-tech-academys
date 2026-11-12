@@ -1,10 +1,21 @@
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+
 import App from './App';
 import './index.css';
-import { AuthProvider } from './context/AuthContext';
+// import { initializeTheme } from './utils/theme';
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+
+import { AuthProvider } from './context/AuthContext';
+import { initializeTheme } from './utils/theme';
+
+// Apply saved theme before React renders
+initializeTheme();
+
+ReactDOM.createRoot(
+  document.getElementById('root')
+).render(
   <React.StrictMode>
     <AuthProvider>
       <App />
