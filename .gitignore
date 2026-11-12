@@ -2,7 +2,10 @@ node_modules
 .DS_Store
 dist
 build
-.env
+# .env
 backend/uploads
 frontend/node_modules
 backend/node_modules
+.env
+.env.*
+!.env.example
