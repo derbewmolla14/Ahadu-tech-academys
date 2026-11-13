@@ -81,7 +81,8 @@ const uploadContent = async (req, res) => {
 const getContent = async (req, res) => {
   try {
     const { category, university, academicLevel, department, year, grade, semester, course, search, page = 1, limit = 12 } = req.query;
-    const query = { isActive: true, status: 'published' };
+    // Keep pre-existing active records visible while treating newly saved records as published by default.
+    const query = { isActive: true, $or: [{ status: 'published' }, { status: { $exists: false } }] };
     for (const [key, value] of Object.entries({ category, university, academicLevel, department, year, grade, semester, course })) if (value) query[key] = value;
     if (search) query.course = { $regex: String(search).replace(/[.*+?^$()|[\]\\]/g, '\\$&'), $options: 'i' };
     const pageNumber = Math.max(1, Number(page) || 1);
