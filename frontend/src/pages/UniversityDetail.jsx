@@ -26,7 +26,7 @@ export default function UniversityDetail() {
   const onLevelSelect = (level) => {
     if (selectedCategory === 'Natural' || selectedCategory === 'Social') {
       if (level === 'Senior') {
-        navigate(`/university/${name}/department?faculty=${encodeURIComponent(selectedCategory)}`);
+        navigate(`/university/${name}/department?faculty=${encodeURIComponent(selectedCategory)}&level=${encodeURIComponent('Senior Undergraduate')}`);
       } else {
         // Freshman or Remedial
         navigate(`/university/${name}/courses?faculty=${encodeURIComponent(selectedCategory)}&level=${encodeURIComponent(level)}`);
