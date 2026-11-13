@@ -2,335 +2,153 @@ const CourseContent = require('../models/CourseContent');
 const multer = require('multer');
 const path = require('path');
 
-// Configure multer for file uploads
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../uploads'));
-  },
-  filename: (req, file, cb) => {
-    // Generate unique filename with timestamp
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
+  destination: (req, file, cb) => cb(null, path.join(__dirname, '../uploads')),
+  filename: (req, file, cb) => cb(null, file.fieldname + '-' + Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname))
+});
+const allowedMimes = ['application/pdf', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'];
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => allowedMimes.includes(file.mimetype) ? cb(null, true) : cb(new Error('Only PDF and PowerPoint files are allowed.'), false),
+  limits: { fileSize: 10 * 1024 * 1024 }
 });
 
-// File filter to allow PDF and PPT files
-const fileFilter = (req, file, cb) => {
-  const allowedMimes = [
-    'application/pdf',
-    'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation'
-  ];
-
-  if (allowedMimes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only PDF and PPT files are allowed!'), false);
-  }
+const parseArray = (value, label) => {
+  if (!value) return [];
+  const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+  if (!Array.isArray(parsed)) throw new Error(label + ' must be an array.');
+  return parsed;
 };
 
-const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
-  }
-});
-
-// Upload course content (create or update)
 const uploadContent = async (req, res) => {
   try {
-    const { university, department, year, course, description, notes, videos, ppts, questions, isActive } = req.body;
+    const {
+      category = 'university', academicLevel = '', university = '', department = '', year = '',
+      grade = '', stream = '', semester = '', courseCode = '', course, description = '',
+      notes, videos, ppts, questions, isActive, status = 'published', skillCategory = '',
+      skillLevel = '', duration = '', instructor = '', creditHours = ''
+    } = req.body;
 
-    // Validate required fields
-    if (!university || !department || !year || !course) {
-      return res.status(400).json({
-        success: false,
-        message: 'University, department, year, and course are required'
-      });
-    }
+    if (!course || !String(course).trim()) return res.status(400).json({ success: false, message: 'Course name is required.' });
+    if (!['elementary', 'highschool', 'university', 'skills'].includes(category)) return res.status(400).json({ success: false, message: 'Invalid education category.' });
+    if (category === 'university' && (!university || !academicLevel || !department || !year)) return res.status(400).json({ success: false, message: 'University, academic level, department and year are required.' });
+    if ((category === 'elementary' || category === 'highschool') && !grade) return res.status(400).json({ success: false, message: 'Please select a grade.' });
+    if (category === 'skills' && (!skillCategory || !skillLevel)) return res.status(400).json({ success: false, message: 'Skill category and skill level are required.' });
 
-    // Parse JSON strings if they come as strings
-    let parsedNotes = [];
-    let parsedVideos = [];
-    let parsedPpts = [];
-    let parsedQuestions = [];
-
+    let parsedNotes, parsedVideos, parsedPpts, parsedQuestions;
     try {
-      parsedNotes = notes ? (typeof notes === 'string' ? JSON.parse(notes) : notes) : [];
-      parsedVideos = videos ? (typeof videos === 'string' ? JSON.parse(videos) : videos) : [];
-      parsedPpts = ppts ? (typeof ppts === 'string' ? JSON.parse(ppts) : ppts) : [];
-      parsedQuestions = questions ? (typeof questions === 'string' ? JSON.parse(questions) : questions) : [];
-    } catch (parseError) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid JSON format in notes, videos, ppts, or questions'
-      });
+      parsedNotes = parseArray(notes, 'Notes');
+      parsedVideos = parseArray(videos, 'Videos');
+      parsedPpts = parseArray(ppts, 'PowerPoints');
+      parsedQuestions = parseArray(questions, 'Questions');
+    } catch (error) {
+      return res.status(400).json({ success: false, message: error.message || 'Invalid material data.' });
     }
 
-    // Handle file uploads for notes and ppts
-    if (req.files && req.files.length > 0) {
-      req.files.forEach((file, index) => {
-        // Determine if this is a note or ppt based on file type
-        const isPpt = file.mimetype.includes('powerpoint') || file.mimetype.includes('presentation');
-        if (isPpt && parsedPpts[index - parsedNotes.length]) {
-          parsedPpts[index - parsedNotes.length].fileUrl = `/uploads/${file.filename}`;
-        } else if (parsedNotes[index]) {
-          parsedNotes[index].fileUrl = `/uploads/${file.filename}`;
-        }
-      });
-    }
-
-    // Find existing content or create new
-    const existingContent = await CourseContent.findOne({
-      university,
-      department,
-      year,
-      course
+    const noteFiles = [];
+    const pptFiles = [];
+    (req.files || []).forEach(file => {
+      const url = '/uploads/' + file.filename;
+      if (file.mimetype === 'application/pdf') noteFiles.push(url);
+      else pptFiles.push(url);
     });
+    let noteIndex = 0;
+    parsedNotes = parsedNotes.map(item => ({ ...item, fileUrl: item.fileUrl || noteFiles[noteIndex++] })).filter(item => item.title && item.fileUrl);
+    let pptIndex = 0;
+    parsedPpts = parsedPpts.map(item => ({ ...item, fileUrl: item.fileUrl || pptFiles[pptIndex++] })).filter(item => item.title && item.fileUrl);
 
-    let content;
-    if (existingContent) {
-      // Update existing content
-      existingContent.description = description !== undefined ? description : existingContent.description;
-      existingContent.notes = parsedNotes.length > 0 ? parsedNotes : existingContent.notes;
-      existingContent.videos = parsedVideos.length > 0 ? parsedVideos : existingContent.videos;
-      existingContent.ppts = parsedPpts.length > 0 ? parsedPpts : existingContent.ppts;
-      existingContent.questions = parsedQuestions.length > 0 ? parsedQuestions : existingContent.questions;
-      existingContent.isActive = isActive !== undefined ? isActive : existingContent.isActive;
-      content = await existingContent.save();
-    } else {
-      // Create new content
-      content = new CourseContent({
-        university,
-        department,
-        year,
-        course,
-        description: description || '',
-        notes: parsedNotes,
-        videos: parsedVideos,
-        ppts: parsedPpts,
-        questions: parsedQuestions,
-        isActive: isActive !== undefined ? isActive : true
-      });
-      await content.save();
-    }
-
-    res.status(200).json({
-      success: true,
-      message: existingContent ? 'Course content updated successfully' : 'Course content created successfully',
-      data: content
-    });
-
+    const normalizedUniversity = category === 'university' ? university.trim() : category === 'skills' ? 'Professional Skills' : category === 'elementary' ? 'Elementary' : 'High School';
+    const normalizedDepartment = category === 'university' ? department.trim() : category === 'skills' ? skillCategory.trim() : (stream || 'General').trim();
+    const normalizedYear = category === 'university' ? year.trim() : (grade || skillLevel || 'General').trim();
+    const filter = { category, university: normalizedUniversity, academicLevel, department: normalizedDepartment, year: normalizedYear, semester: semester || '', course: course.trim() };
+    const update = {
+      ...filter, grade, stream, courseCode, description, notes: parsedNotes, videos: parsedVideos, ppts: parsedPpts,
+      questions: parsedQuestions, status: status === 'draft' ? 'draft' : 'published',
+      isActive: isActive === undefined ? true : String(isActive) !== 'false',
+      skillCategory, skillLevel, duration, instructor,
+      creditHours: creditHours === '' ? null : Number(creditHours),
+      createdBy: req.user?._id || null
+    };
+    const content = await CourseContent.findOneAndUpdate(filter, { $set: update }, { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true });
+    res.status(200).json({ success: true, message: status === 'draft' ? 'Course draft saved successfully.' : 'Course published successfully.', data: content });
   } catch (error) {
-    console.error('Upload content error:', error);
-    if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: 'Course content already exists for this combination'
-      });
-    }
-    res.status(500).json({
-      success: false,
-      message: 'Server error while uploading content',
-      error: error.message
-    });
+    console.error('[CourseContent] Upload error:', error);
+    if (error.code === 11000) return res.status(409).json({ success: false, message: 'A course with this academic classification already exists.' });
+    res.status(500).json({ success: false, message: 'Server error while saving course content.' });
   }
 };
 
-// Get course content (public - only active courses)
 const getContent = async (req, res) => {
   try {
-    const { university, department, year, course } = req.query;
-
-    // Build query object - only active courses for public access
-    const query = { isActive: true };
-    if (university) query.university = university;
-    if (department) query.department = department;
-    if (year) query.year = year;
-    if (course) query.course = course;
-
-    const content = await CourseContent.find(query);
-
-    res.status(200).json({
-      success: true,
-      data: content,
-      count: content.length
-    });
-
+    const { category, university, academicLevel, department, year, grade, semester, course, search, page = 1, limit = 12 } = req.query;
+    const query = { isActive: true, status: 'published' };
+    for (const [key, value] of Object.entries({ category, university, academicLevel, department, year, grade, semester, course })) if (value) query[key] = value;
+    if (search) query.course = { $regex: String(search).replace(/[.*+?^$()|[\]\\]/g, '\\$&'), $options: 'i' };
+    const pageNumber = Math.max(1, Number(page) || 1);
+    const pageSize = Math.min(50, Math.max(1, Number(limit) || 12));
+    const [items, total] = await Promise.all([
+      CourseContent.find(query).sort({ createdAt: -1 }).skip((pageNumber - 1) * pageSize).limit(pageSize).lean(),
+      CourseContent.countDocuments(query)
+    ]);
+    res.json({ success: true, data: items, count: total, page: pageNumber, pages: Math.ceil(total / pageSize) });
   } catch (error) {
-    console.error('Get content error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while fetching content',
-      error: error.message
-    });
+    console.error('[CourseContent] Get content error:', error);
+    res.status(500).json({ success: false, message: 'Server error while fetching courses.' });
   }
 };
 
-// Get single course content by ID
 const getContentById = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const content = await CourseContent.findById(id);
-
-    if (!content) {
-      return res.status(404).json({
-        success: false,
-        message: 'Course content not found'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: content
-    });
-
+    const content = await CourseContent.findById(req.params.id);
+    if (!content || ((!content.isActive || content.status !== 'published') && req.user?.role !== 'admin')) return res.status(404).json({ success: false, message: 'Course not found.' });
+    res.json({ success: true, data: content });
   } catch (error) {
-    console.error('Get content by ID error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while fetching content',
-      error: error.message
-    });
+    res.status(400).json({ success: false, message: 'Invalid course ID.' });
   }
 };
 
-// Delete course content
 const deleteContent = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const deletedContent = await CourseContent.findByIdAndDelete(id);
-
-    if (!deletedContent) {
-      return res.status(404).json({
-        success: false,
-        message: 'Course content not found'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Course content deleted successfully'
-    });
-
+    const deleted = await CourseContent.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ success: false, message: 'Course not found.' });
+    res.json({ success: true, message: 'Course deleted.' });
   } catch (error) {
-    console.error('Delete content error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while deleting content',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: 'Could not delete course.' });
   }
 };
 
-// Get all courses for admin (including inactive)
 const getAllCourses = async (req, res) => {
   try {
-    const courses = await CourseContent.find({})
-      .sort({ createdAt: -1 });
-
-    res.status(200).json({
-      success: true,
-      data: courses,
-      count: courses.length
-    });
-
+    const courses = await CourseContent.find({}).sort({ createdAt: -1 }).lean();
+    res.json({ success: true, data: courses, count: courses.length });
   } catch (error) {
-    console.error('Get all courses error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while fetching courses',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: 'Could not retrieve courses.' });
   }
 };
 
-// Toggle course active status
 const toggleCourseStatus = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const course = await CourseContent.findById(id);
-
-    if (!course) {
-      return res.status(404).json({
-        success: false,
-        message: 'Course not found'
-      });
-    }
-
+    const course = await CourseContent.findById(req.params.id);
+    if (!course) return res.status(404).json({ success: false, message: 'Course not found.' });
     course.isActive = !course.isActive;
     await course.save();
-
-    res.status(200).json({
-      success: true,
-      message: `Course ${course.isActive ? 'activated' : 'deactivated'} successfully`,
-      data: course
-    });
-
+    res.json({ success: true, data: course });
   } catch (error) {
-    console.error('Toggle course status error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while toggling course status',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: 'Could not update course status.' });
   }
 };
 
-// Update course details
 const updateCourse = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { course, description, notes, videos, ppts, questions, isActive } = req.body;
-
-    const updatedCourse = await CourseContent.findByIdAndUpdate(
-      id,
-      {
-        ...(course && { course }),
-        ...(description !== undefined && { description }),
-        ...(notes && { notes }),
-        ...(videos && { videos }),
-        ...(ppts && { ppts }),
-        ...(questions && { questions }),
-        ...(isActive !== undefined && { isActive })
-      },
-      { new: true }
-    );
-
-    if (!updatedCourse) {
-      return res.status(404).json({
-        success: false,
-        message: 'Course not found'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Course updated successfully',
-      data: updatedCourse
-    });
-
+    const allowed = ['course', 'courseCode', 'description', 'notes', 'videos', 'ppts', 'questions', 'isActive', 'status', 'semester'];
+    const update = {};
+    for (const key of allowed) if (req.body[key] !== undefined) update[key] = req.body[key];
+    const course = await CourseContent.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
+    if (!course) return res.status(404).json({ success: false, message: 'Course not found.' });
+    res.json({ success: true, data: course });
   } catch (error) {
-    console.error('Update course error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while updating course',
-      error: error.message
-    });
+    res.status(400).json({ success: false, message: 'Could not update course.' });
   }
 };
 
-module.exports = {
-  upload,
-  uploadContent,
-  getContent,
-  getContentById,
-  deleteContent,
-  getAllCourses,
-  toggleCourseStatus,
-  updateCourse
-};
+module.exports = { upload, uploadContent, getContent, getContentById, deleteContent, getAllCourses, toggleCourseStatus, updateCourse };
