@@ -26,6 +26,7 @@ export default function DepartmentBrowser() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const faculty = searchParams.get('faculty') || 'Natural';
+  const academicLevel = searchParams.get('level') || 'Senior Undergraduate';
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [search, setSearch] = useState('');
@@ -43,7 +44,7 @@ export default function DepartmentBrowser() {
 
   const onContinue = () => {
     if (selectedDepartment) {
-      navigate(`/university/${name}/years?faculty=${encodeURIComponent(faculty)}&department=${encodeURIComponent(selectedDepartment)}`);
+      navigate(`/university/${name}/years?faculty=${encodeURIComponent(faculty)}&level=${encodeURIComponent(academicLevel)}&department=${encodeURIComponent(selectedDepartment)}`);
     }
   };
 
