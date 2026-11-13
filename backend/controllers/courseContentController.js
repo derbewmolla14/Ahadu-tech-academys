@@ -1,6 +1,10 @@
 const CourseContent = require('../models/CourseContent');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
+
+const uploadsDirectory = uploadsDirectory;
+fs.mkdirSync(uploadsDirectory, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, path.join(__dirname, '../uploads')),
