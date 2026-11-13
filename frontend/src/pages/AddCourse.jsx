@@ -80,8 +80,8 @@ export default function AddCourse() {
   function nextFromAcademic() {
     if (form.category === 'university') {
       if (!form.academicLevel) return setError('Select an academic level.');
-      if (form.academicLevel === 'Senior Undergraduate' || form.academicLevel === "Master's Degree" || form.academicLevel === 'PhD') {
-        if (!form.university || !form.department || !form.year) return setError('Select university, department and academic year.');
+      if (!form.university || !form.department || !form.year) {
+        return setError('Select a university, department and academic year for every university course.');
       }
     } else if ((form.category === 'elementary' || form.category === 'highschool') && !form.grade) {
       return setError('Select a grade.');
