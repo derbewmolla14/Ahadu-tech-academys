@@ -16,6 +16,7 @@ export default function CourseContent() {
   const year = searchParams.get('year') || '';
   const [courses, setCourses] = useState([]);
   const [search, setSearch] = useState('');
+  const [semester, setSemester] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -37,6 +38,7 @@ export default function CourseContent() {
           department,
           year
         });
+        if (semester) params.set('semester', semester);
         const response = await apiFetch('content?' + params.toString());
         const result = await response.json();
         if (!response.ok || !result.success) throw new Error(result.message || 'Unable to load course materials.');
@@ -49,7 +51,7 @@ export default function CourseContent() {
     }
     load();
     return () => { cancelled = true; };
-  }, [name, academicLevel, department, year]);
+  }, [name, academicLevel, department, year, semester]);
 
   const visible = courses.filter(course => [course.course, course.courseCode, course.description].some(value => String(value || '').toLowerCase().includes(search.toLowerCase())));
 
@@ -62,7 +64,21 @@ export default function CourseContent() {
         <p className="mt-1 text-sm text-slate-500">Choose a course to open its notes, videos, PowerPoint presentations and questions.</p>
       </header>
 
-      <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search courses..." className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-sky-500" />
+      <section className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-4 sm:grid-cols-[1fr_220px]">
+        <label className="block">
+          <span className="mb-2 block text-sm font-medium text-slate-300">Search courses</span>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by course name or code..." className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-sky-500" />
+        </label>
+        <label className="block">
+          <span className="mb-2 block text-sm font-medium text-slate-300">Semester</span>
+          <select value={semester} onChange={e => setSemester(e.target.value)} className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-sky-500">
+            <option value="">All semesters</option>
+            <option value="Semester 1">Semester 1</option>
+            <option value="Semester 2">Semester 2</option>
+            <option value="Summer">Summer</option>
+          </select>
+        </label>
+      </section>
 
       {loading && <p className="py-12 text-center text-slate-400">Loading courses…</p>}
       {error && <div role="alert" className="rounded-xl border border-red-800 bg-red-950/50 p-5 text-red-200">{error}</div>}
