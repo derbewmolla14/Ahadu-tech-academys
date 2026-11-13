@@ -8,6 +8,7 @@ export default function YearSelection() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const faculty = searchParams.get('faculty');
+  const academicLevel = searchParams.get('level') || 'Senior Undergraduate';
   const department = searchParams.get('department');
 
   useEffect(() => {
@@ -18,7 +19,7 @@ export default function YearSelection() {
   }, [faculty, department, name, navigate]);
 
   const onYearSelect = (year) => {
-    navigate(`/university/${name}/content?faculty=${encodeURIComponent(faculty)}&department=${encodeURIComponent(department)}&year=${encodeURIComponent(year)}`);
+    navigate(`/university/${name}/content?faculty=${encodeURIComponent(faculty)}&level=${encodeURIComponent(academicLevel)}&department=${encodeURIComponent(department)}&year=${encodeURIComponent(year)}`);
   };
 
   // Don't render if missing required data
