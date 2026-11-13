@@ -3,11 +3,11 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-const uploadsDirectory = uploadsDirectory;
+const uploadsDirectory = path.join(__dirname, '../uploads');
 fs.mkdirSync(uploadsDirectory, { recursive: true });
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, path.join(__dirname, '../uploads')),
+  destination: (req, file, cb) => cb(null, uploadsDirectory),
   filename: (req, file, cb) => cb(null, file.fieldname + '-' + Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname))
 });
 const allowedMimes = ['application/pdf', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'];
