@@ -3,19 +3,19 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 const departmentMap = {
   Natural: [
-    'Electrical Engineering',
-    'Civil Engineering',
-    'Mechanical Engineering',
-    'Computer Science',
     'Software Engineering',
+    'Computer Science',
     'Information Technology',
-    'Water Engineering',
+    'Civil Engineering',
+    'Water Resources and Irrigation Engineering',
+    'Electrical Engineering',
+    'Mechanical Engineering',
   ],
   Social: [
+    'Accounting',
+    'Business Management',
     'Economics',
     'Law',
-    'Business Administration',
-    'Accounting',
     'Sociology',
     'Political Science',
   ],
