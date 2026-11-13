@@ -7,7 +7,8 @@ function titleFromSlug(value = '') {
 }
 function academicLevel(value) {
   if (value === 'Senior') return 'Senior Undergraduate';
-  if (value === 'Masters') return "Master's Degree";
+  if (value === 'Masters' || value === 'MBA') return "Master's Degree";
+  if (value === 'Doctoral Research' || value === 'Academic Seminar') return 'PhD';
   return value || '';
 }
 
