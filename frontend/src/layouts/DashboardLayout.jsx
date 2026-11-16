@@ -255,7 +255,7 @@ export default function DashboardLayout() {
             </NavigationItem>
 
             <NavigationItem
-              to="/dashboard/add-course#materials"
+              to="/dashboard/add-course"
               icon={Upload}
               onClick={closeMenu}
             >
