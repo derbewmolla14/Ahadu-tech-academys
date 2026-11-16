@@ -20,6 +20,7 @@ export default function UniversityLearningPage() {
   const department = decodeSegment(parts[1]);
   const year = decodeSegment(parts[2]);
   const [allCourses, setAllCourses] = useState([]);
+  const [configuredDepartments, setConfiguredDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -31,10 +32,14 @@ export default function UniversityLearningPage() {
       try {
         setLoading(true); setError('');
         const params = new URLSearchParams({ level: 'university', faculty: config.faculty });
-        const response = await apiFetch('content?' + params.toString());
-        const result = await response.json();
+        const [response, departmentsResponse] = await Promise.all([apiFetch('content?' + params.toString()), apiFetch('departments')]);
+        const [result, departmentResult] = await Promise.all([response.json(), departmentsResponse.json()]);
         if (!response.ok || !result.success) throw new Error(result.message || 'Unable to load courses.');
-        if (active) setAllCourses(Array.isArray(result.data) ? result.data : []);
+        if (!departmentsResponse.ok) throw new Error('Unable to load configured departments.');
+        if (active) {
+          setAllCourses(Array.isArray(result.data) ? result.data : []);
+          setConfiguredDepartments(Array.isArray(departmentResult) ? departmentResult.map(item => typeof item === 'string' ? item : item.name).filter(Boolean) : []);
+        }
       } catch (err) { if (active) setError(err.message || 'Unable to load courses.'); }
       finally { if (active) setLoading(false); }
     }
@@ -42,8 +47,11 @@ export default function UniversityLearningPage() {
     return () => { active = false; };
   }, [categoryId]);
 
-  const stageCourses = useMemo(() => allCourses.filter((course) => (course.studyStage || course.year) === stage), [allCourses, stage]);
-  const departments = useMemo(() => [...new Set(stageCourses.map((course) => course.department).filter((item) => item && item !== 'General'))].sort(), [stageCourses]);
+  const stageCourses = useMemo(() => config && config.stages.length === 0 ? allCourses : allCourses.filter((course) => (course.studyStage || course.year) === stage), [allCourses, config, stage]);
+  const departments = useMemo(() => {
+    const uploadedDepartments = new Set(stageCourses.map((course) => course.department).filter((item) => item && item !== 'General'));
+    return configuredDepartments.filter((name) => uploadedDepartments.has(name)).sort((a, b) => a.localeCompare(b));
+  }, [stageCourses, configuredDepartments]);
   const years = useMemo(() => [...new Set(stageCourses.filter((course) => course.department === department).map((course) => course.year).filter(Boolean))].sort((a,b) => a.localeCompare(b, undefined, { numeric: true })), [stageCourses, department]);
   const courses = useMemo(() => {
     let result = stageCourses;
