@@ -102,6 +102,12 @@ export default function AdminDashboard() {
         {/* ACTION BUTTONS */}
         <div className="mb-8 flex gap-4">
           <Link
+            to="/admin/university-departments"
+            className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+          >
+            🏛️ Manage University Departments
+          </Link>
+          <Link
             to="/admin/add-course"
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
           >
