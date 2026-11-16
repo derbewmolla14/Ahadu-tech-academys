@@ -37,15 +37,32 @@ export default function UniversityCourseContentPage() {
       </section>
       {accessLocked && <section className="rounded-3xl border border-amber-500/40 bg-amber-500/10 p-8 text-amber-100"><div className="text-3xl">🔒</div><h2 className="mt-3 text-xl font-semibold">Premium course — approval required</h2><p className="mt-2 text-amber-200/90">{lockedMessage || 'An administrator must approve this course for your account before you can open its learning materials.'}</p><p className="mt-3 text-sm text-amber-200/70">The course information is visible, but videos, PDF notes, and PowerPoint files remain locked until approval.</p></section>}
       {!accessLocked && <>
-      {course.notes?.length > 0 && <MaterialSection title="PDF Notes" items={course.notes} getUrl={(item) => fileUrl(item.fileUrl)} />}
+      {course.notes?.length > 0 && <MaterialSection title="PDF Notes" items={course.notes} getUrl={(_item, index) => 'content/' + courseId + '/material/notes/' + index} protectedDownload />}
       {course.videos?.length > 0 && <MaterialSection title="Video Lessons" items={course.videos} getUrl={(item) => item.url} />}
-      {course.ppts?.length > 0 && <MaterialSection title="PowerPoint Presentations" items={course.ppts} getUrl={(item) => fileUrl(item.fileUrl)} />}
+      {course.ppts?.length > 0 && <MaterialSection title="PowerPoint Presentations" items={course.ppts} getUrl={(_item, index) => 'content/' + courseId + '/material/ppts/' + index} protectedDownload />}
       {!course.notes?.length && !course.videos?.length && !course.ppts?.length && <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-300">No learning materials have been uploaded for this course yet.</div>}
       </>}
     </div>
   );
 }
 
-function MaterialSection({ title, items, getUrl }) {
-  return <section className="rounded-3xl border border-slate-800 bg-slate-900 p-6"><h2 className="text-xl font-semibold text-white">{title}</h2><ul className="mt-4 space-y-3">{items.map((item, index) => <li key={index}><a href={getUrl(item)} target="_blank" rel="noreferrer" className="text-sky-400 hover:underline">{item.title || title} ↗</a></li>)}</ul></section>;
+function MaterialSection({ title, items, getUrl, protectedDownload = false }) {
+  const openProtectedFile = async (event, item, index) => {
+    event.preventDefault();
+    const tab = window.open('about:blank', '_blank');
+    try {
+      const response = await apiFetch(getUrl(item, index));
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.message || 'Unable to open this file.');
+      }
+      const objectUrl = URL.createObjectURL(await response.blob());
+      if (tab) tab.location.href = objectUrl;
+      else window.location.href = objectUrl;
+    } catch (error) {
+      if (tab) tab.close();
+      window.alert(error.message || 'Unable to open this file.');
+    }
+  };
+  return <section className="rounded-3xl border border-slate-800 bg-slate-900 p-6"><h2 className="text-xl font-semibold text-white">{title}</h2><ul className="mt-4 space-y-3">{items.map((item, index) => <li key={index}><a href={protectedDownload ? '#' : getUrl(item, index)} onClick={protectedDownload ? (event) => openProtectedFile(event, item, index) : undefined} target={protectedDownload ? undefined : '_blank'} rel="noreferrer" className="text-sky-400 hover:underline">{item.title || title} ↗</a></li>)}</ul></section>;
 }
