@@ -48,7 +48,7 @@ const uploadContent = async (req, res) => {
     const {
       level = 'university', university = '', department = '', year = '',
       grade = '', subject = '', technology = '', faculty = '', studyStage = '', courseCode = '', course, description,
-      notes, videos, ppts, questions, isActive
+      notes, videos, ppts, questions, isActive, isPremium
     } = req.body;
 
     if (!['elementary', 'highschool', 'university', 'coding'].includes(level)) {
@@ -139,7 +139,8 @@ const uploadContent = async (req, res) => {
       videos: parsedVideos,
       ppts: parsedPpts,
       questions: parsedQuestions,
-      isActive: isActive === undefined ? true : isActive === 'true' || isActive === true
+      isActive: isActive === undefined ? true : isActive === 'true' || isActive === true,
+      isPremium: isPremium === true || isPremium === 'true'
     };
 
     let content;
@@ -183,7 +184,16 @@ const getContent = async (req, res) => {
     if (year) query.year = year;
     if (course) query.course = course;
 
-    const content = await CourseContent.find(query);
+    const content = await CourseContent.find(query).lean();
+    // University listings return metadata only; lesson URLs are fetched from the protected detail endpoint.
+    if (level === 'university') {
+      content.forEach((item) => {
+        delete item.notes;
+        delete item.videos;
+        delete item.ppts;
+        delete item.questions;
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -208,15 +218,27 @@ const getContentById = async (req, res) => {
 
     const content = await CourseContent.findById(id);
 
-    if (!content) {
+    if (!content || !content.isActive) {
       return res.status(404).json({
         success: false,
         message: 'Course content not found'
       });
     }
 
+    const isAdmin = req.user?.role === 'admin';
+    const isUnlocked = req.user?.unlockedCourseContents?.some((item) => String(item) === String(content._id));
+    if (content.isPremium && !isAdmin && !isUnlocked) {
+      return res.status(200).json({
+        success: true,
+        accessLocked: true,
+        message: 'This premium course is locked. Please contact the administrator for approval.',
+        data: { ...content.toObject(), notes: [], videos: [], ppts: [], questions: [] }
+      });
+    }
+
     res.status(200).json({
       success: true,
+      accessLocked: false,
       data: content
     });
 
@@ -357,7 +379,50 @@ const updateCourse = async (req, res) => {
   }
 };
 
+
+// Admin grants access to one premium course for one student.
+const unlockCourseForStudent = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ success: false, message: 'Student is required.' });
+    const [course, User] = await Promise.all([
+      CourseContent.findById(req.params.id),
+      Promise.resolve(require('../models/User'))
+    ]);
+    if (!course) return res.status(404).json({ success: false, message: 'Course not found.' });
+    if (!course.isPremium) return res.status(400).json({ success: false, message: 'This course is not marked as premium.' });
+    const student = await User.findById(userId);
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
+    if (student.role === 'admin') return res.status(400).json({ success: false, message: 'Choose a student account.' });
+    const alreadyUnlocked = student.unlockedCourseContents.some((id) => String(id) === String(course._id));
+    if (!alreadyUnlocked) {
+      student.unlockedCourseContents.push(course._id);
+      await student.save();
+    }
+    return res.json({ success: true, message: 'Premium course approved for this student.' });
+  } catch (error) {
+    console.error('Unlock premium course error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to approve this course.' });
+  }
+};
+
+const lockCourseForStudent = async (req, res) => {
+  try {
+    const User = require('../models/User');
+    const student = await User.findById(req.params.userId);
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
+    student.unlockedCourseContents = student.unlockedCourseContents.filter((id) => String(id) !== String(req.params.id));
+    await student.save();
+    return res.json({ success: true, message: 'Premium course access revoked.' });
+  } catch (error) {
+    console.error('Revoke premium course access error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to revoke course access.' });
+  }
+};
+
 module.exports = {
+  unlockCourseForStudent,
+  lockCourseForStudent,
   upload,
   uploadContent,
   getContent,
