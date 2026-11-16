@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { apiFetch } from '../api/api';
+import { apiFetch, apiBaseURL } from '../api/api';
+
+const getUploadedFileUrl = (fileUrl) => {
+  if (!fileUrl) return '#';
+  if (/^https?:\\/\\//i.test(fileUrl)) return fileUrl;
+  const backendOrigin = apiBaseURL.replace(/\\/api\\/?$/, '');
+  return backendOrigin + '/' + String(fileUrl).replace(/^\\/+/, '');
+};
 
 export default function ElementaryGradePage() {
   const { id } = useParams();
@@ -67,7 +74,7 @@ export default function ElementaryGradePage() {
                   <h3 className="mb-2 font-semibold text-slate-200">📄 Notes</h3>
                   <ul className="space-y-2">
                     {course.notes.map((note, index) => (
-                      <li key={index}><a className="text-sm text-blue-400 hover:underline" href={note.fileUrl} target="_blank" rel="noreferrer">{note.title || 'Open PDF note'} ↗</a></li>
+                      <li key={index}><a className="text-sm text-blue-400 hover:underline" href={getUploadedFileUrl(note.fileUrl)} target="_blank" rel="noreferrer">{note.title || 'Open PDF note'} ↗</a></li>
                     ))}
                   </ul>
                 </section>
@@ -87,7 +94,7 @@ export default function ElementaryGradePage() {
                   <h3 className="mb-2 font-semibold text-slate-200">📊 Presentations</h3>
                   <ul className="space-y-2">
                     {course.ppts.map((ppt, index) => (
-                      <li key={index}><a className="text-sm text-blue-400 hover:underline" href={ppt.fileUrl} target="_blank" rel="noreferrer">{ppt.title || 'Open presentation'} ↗</a></li>
+                      <li key={index}><a className="text-sm text-blue-400 hover:underline" href={getUploadedFileUrl(ppt.fileUrl)} target="_blank" rel="noreferrer">{ppt.title || 'Open presentation'} ↗</a></li>
                     ))}
                   </ul>
                 </section>
