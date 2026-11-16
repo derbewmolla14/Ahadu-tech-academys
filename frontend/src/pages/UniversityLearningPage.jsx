@@ -137,11 +137,19 @@ export default function UniversityLearningPage() {
               <input id="department-search" value={departmentSearch} onChange={event => setDepartmentSearch(event.target.value)} placeholder="Search department name…" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-sky-500" />
               <p className="mt-2 text-sm text-slate-400">{visibleDepartments.length} active departments · sorted alphabetically</p>
             </section>
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="divide-y divide-slate-800 rounded-2xl border border-slate-800 bg-slate-900 px-5">
               {visibleDepartments.map((item) => (
-                <button key={item} type="button" onClick={() => navigate('/university/' + categoryId + '/senior/' + encodeURIComponent(item))} className="rounded-3xl border border-slate-800 bg-slate-900 p-7 text-left text-white hover:border-sky-500">
-                  <h2 className="text-xl font-semibold">{item}</h2>
-                  <p className="mt-2 text-slate-400">View available academic years</p>
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => navigate('/university/' + categoryId + '/senior/' + encodeURIComponent(item))}
+                  className="flex w-full items-center justify-between gap-4 py-5 text-left text-white transition hover:text-sky-300"
+                >
+                  <span>
+                    <span className="block text-lg font-semibold">{item}</span>
+                    <span className="mt-1 block text-sm text-slate-400">{config.faculty} · Active</span>
+                  </span>
+                  <span className="shrink-0 text-sm font-medium text-sky-400">Academic years →</span>
                 </button>
               ))}
             </div>
