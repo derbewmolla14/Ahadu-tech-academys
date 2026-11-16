@@ -22,28 +22,74 @@ export default function UniversityLearningPage() {
   const year = decodeSegment(parts[2]);
   const [allCourses, setAllCourses] = useState([]);
   const [configuredDepartments, setConfiguredDepartments] = useState([]);
+  const [departmentLoading, setDepartmentLoading] = useState(true);
+  const [departmentError, setDepartmentError] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [departmentSearch, setDepartmentSearch] = useState('');
 
+  // Load departments separately so course API errors cannot hide department data.
+  useEffect(() => {
+    let active = true;
+    async function loadDepartments() {
+      if (!config) {
+        setDepartmentError('Academic category not found.');
+        setDepartmentLoading(false);
+        return;
+      }
+      try {
+        setDepartmentLoading(true);
+        setDepartmentError('');
+        const params = new URLSearchParams({ category: config.faculty });
+        const response = await apiFetch('departments?' + params.toString());
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Unable to load departments.');
+        if (!Array.isArray(result)) throw new Error('The departments API returned an unexpected response.');
+        if (active) {
+          setConfiguredDepartments(result
+            .filter(item => item && item.isActive === true && item.category === config.faculty)
+            .map(item => item.name)
+            .filter(Boolean));
+        }
+      } catch (err) {
+        if (active) {
+          setConfiguredDepartments([]);
+          setDepartmentError(err.message || 'Unable to load departments.');
+        }
+      } finally {
+        if (active) setDepartmentLoading(false);
+      }
+    }
+    loadDepartments();
+    return () => { active = false; };
+  }, [categoryId]);
+
+  // Course loading has independent state and does not control department rendering.
   useEffect(() => {
     let active = true;
     async function loadCourses() {
-      if (!config) { setError('Academic category not found.'); setLoading(false); return; }
+      if (!config) {
+        setError('Academic category not found.');
+        setLoading(false);
+        return;
+      }
       try {
-        setLoading(true); setError('');
+        setLoading(true);
+        setError('');
         const params = new URLSearchParams({ level: 'university', faculty: config.faculty });
-        const [response, departmentsResponse] = await Promise.all([apiFetch('content?' + params.toString()), apiFetch('departments')]);
-        const [result, departmentResult] = await Promise.all([response.json(), departmentsResponse.json()]);
+        const response = await apiFetch('content?' + params.toString());
+        const result = await response.json();
         if (!response.ok || !result.success) throw new Error(result.message || 'Unable to load courses.');
-        if (!departmentsResponse.ok) throw new Error('Unable to load configured departments.');
+        if (active) setAllCourses(Array.isArray(result.data) ? result.data : []);
+      } catch (err) {
         if (active) {
-          setAllCourses(Array.isArray(result.data) ? result.data : []);
-          setConfiguredDepartments(Array.isArray(departmentResult) ? departmentResult.filter(item => item && item.category === config.faculty && item.isActive !== false).map(item => item.name).filter(Boolean) : []);
+          setAllCourses([]);
+          setError(err.message || 'Unable to load courses.');
         }
-      } catch (err) { if (active) setError(err.message || 'Unable to load courses.'); }
-      finally { if (active) setLoading(false); }
+      } finally {
+        if (active) setLoading(false);
+      }
     }
     loadCourses();
     return () => { active = false; };
@@ -81,7 +127,9 @@ export default function UniversityLearningPage() {
       {loading && <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-300">Loading university courses…</div>}
       {!loading && error && <div role="alert" className="rounded-2xl border border-red-800 bg-red-950/40 p-6 text-red-200">{error}</div>}
       {!loading && !error && !stage && config.stages.length > 0 && <div className="grid gap-5 sm:grid-cols-3">{config.stages.map((item) => <button key={item} type="button" onClick={() => navigate('/university/' + categoryId + '/' + item.toLowerCase())} className="rounded-3xl border border-slate-800 bg-slate-900 p-8 text-left text-white transition hover:border-sky-500 hover:bg-slate-800"><h2 className="text-2xl font-semibold">{item}</h2><p className="mt-3 text-slate-400">{item === 'Senior' ? 'Browse departments and academic years.' : 'Open available courses directly.'}</p></button>)}</div>}
-      {!loading && !error && stage === 'Senior' && !department && (
+      {stage === 'Senior' && !department && departmentLoading && <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-center text-slate-300">Loading active departments…</div>}
+      {stage === 'Senior' && !department && !departmentLoading && departmentError && <div role="alert" className="rounded-2xl border border-red-800 bg-red-950/40 p-6 text-red-200">{departmentError}</div>}
+      {!departmentLoading && !departmentError && stage === 'Senior' && !department && (
         departments.length ? (
           <>
             <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
