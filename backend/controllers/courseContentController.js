@@ -46,7 +46,7 @@ const uploadContent = async (req, res) => {
   try {
     const {
       level = 'university', university = '', department = '', year = '',
-      grade = '', subject = '', technology = '', course, description,
+      grade = '', subject = '', technology = '', faculty = '', studyStage = '', courseCode = '', course, description,
       notes, videos, ppts, questions, isActive
     } = req.body;
 
@@ -73,7 +73,18 @@ const uploadContent = async (req, res) => {
       recordDepartment = subject;
       recordYear = `Grade ${grade}`;
     } else if (level === 'university') {
-      if (!university || !department || !year) return res.status(400).json({ success: false, message: 'University, department, and academic year are required' });
+      if (!['Natural Science', 'Social Science', "Master's Degree", 'PhD'].includes(faculty)) return res.status(400).json({ success: false, message: 'Please select a valid university academic category' });
+      recordUniversity = 'University';
+      if (faculty === 'Natural Science' || faculty === 'Social Science') {
+        if (!['Remedial', 'Freshman', 'Senior'].includes(studyStage)) return res.status(400).json({ success: false, message: 'Please select Remedial, Freshman, or Senior' });
+        if (studyStage === 'Senior' && (!department || !year)) return res.status(400).json({ success: false, message: 'Department and academic year are required for Senior courses' });
+        recordDepartment = studyStage === 'Senior' ? department : 'General';
+        recordYear = studyStage === 'Senior' ? year : studyStage;
+      } else {
+        recordDepartment = department || 'Graduate Studies';
+        recordYear = faculty === 'PhD' ? 'PhD' : 'Masters';
+        studyStage = faculty === 'PhD' ? 'PhD' : 'Masters';
+      }
     } else {
       if (!technology) return res.status(400).json({ success: false, message: 'Please select a training area' });
       recordUniversity = 'Other Skills & Trainings';
@@ -116,7 +127,7 @@ const uploadContent = async (req, res) => {
     };
     const existingContent = await CourseContent.findOne(identity);
     const values = {
-      ...identity, level, grade, subject, technology,
+      ...identity, level, grade, subject, technology, faculty, studyStage, courseCode,
       description: description || '',
       notes: parsedNotes,
       videos: parsedVideos,
@@ -150,7 +161,7 @@ const uploadContent = async (req, res) => {
 // Get course content (public - only active courses)
 const getContent = async (req, res) => {
   try {
-    const { level, university, department, year, grade, subject, technology, course } = req.query;
+    const { level, university, department, year, grade, subject, technology, faculty, studyStage, course, courseCode } = req.query;
 
     // Build query object - only active courses for public access
     const query = { isActive: true };
@@ -159,6 +170,9 @@ const getContent = async (req, res) => {
     if (grade) query.grade = grade;
     if (subject) query.subject = subject;
     if (technology) query.technology = technology;
+    if (faculty) query.faculty = faculty;
+    if (studyStage) query.studyStage = studyStage;
+    if (courseCode) query.courseCode = new RegExp(courseCode, 'i');
     if (department) query.department = department;
     if (year) query.year = year;
     if (course) query.course = course;
