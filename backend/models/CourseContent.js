@@ -1,6 +1,10 @@
 const mongoose = require('mongoose');
 
 const courseContentSchema = new mongoose.Schema({
+  level: { type: String, enum: ['elementary', 'highschool', 'university', 'coding'], default: 'university' },
+  grade: { type: String, default: '' },
+  subject: { type: String, default: '' },
+  technology: { type: String, default: '' },
   university: {
     type: String,
     required: true,
