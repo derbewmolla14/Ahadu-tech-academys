@@ -97,6 +97,12 @@ async function connectMongoose() {
       console.log('[MongoDB] Ready state:', mongoose.connection.readyState, '(1=connected)');
 
       await migrateLegacyRoles();
+      try {
+        const { seedUniversityDepartments } = require('../seed/universityDepartments');
+        await seedUniversityDepartments();
+      } catch (seedError) {
+        console.error('[University departments] Seed failed:', seedError.stack || seedError);
+      }
 
       return true;
     } catch (err) {
