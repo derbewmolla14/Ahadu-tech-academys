@@ -56,6 +56,7 @@ import DepartmentBrowser from "./pages/DepartmentBrowser";
 
 // Admin pages
 import AdminDashboard from "./pages/AdminDashboard";
+import UniversityDepartmentsAdmin from "./pages/UniversityDepartmentsAdmin";
 import AddCourse from "./pages/AddCourse";
 
 // ========================================
@@ -292,6 +293,16 @@ function AppRoutes() {
         <Route
           path="coding"
           element={<CodingPage />}
+        />
+
+        {/* University department management */}
+        <Route
+          path="admin/university-departments"
+          element={
+            <PrivateRoute>
+              <UniversityDepartmentsAdmin />
+            </PrivateRoute>
+          }
         />
 
         {/* Existing admin pages */}
