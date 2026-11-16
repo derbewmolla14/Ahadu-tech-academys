@@ -9,6 +9,8 @@ dotenv.config();
 
 const { assertRequiredEnv } = require('./config/env');
 const { connectMongoose } = require('./db/connectMongoose');
+const authMiddleware = require('./middleware/auth');
+const CourseContent = require('./models/CourseContent');
 
 assertRequiredEnv();
 
@@ -111,7 +113,25 @@ app.use(
   )
 );
 app.use(express.json({ limit: '10mb' }));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', async (req, res, next) => {
+  try {
+    const requestedFile = '/uploads' + req.path;
+    const premiumCourse = await CourseContent.findOne({
+      isPremium: true,
+      $or: [{ 'notes.fileUrl': requestedFile }, { 'ppts.fileUrl': requestedFile }]
+    }).select('_id');
+    if (!premiumCourse) return next();
+    return authMiddleware(req, res, () => {
+      const isAdmin = req.user?.role === 'admin';
+      const isUnlocked = req.user?.unlockedCourseContents?.some((item) => String(item) === String(premiumCourse._id));
+      if (!isAdmin && !isUnlocked) return res.status(403).json({ success: false, message: 'Administrator approval is required for this premium material.' });
+      return next();
+    });
+  } catch (error) {
+    console.error('Premium upload access check failed:', error);
+    return res.status(500).json({ success: false, message: 'Unable to verify material access.' });
+  }
+}, express.static(path.join(__dirname, 'uploads')));
 
 /** Render / load-balancer probes often hit `/`. */
 app.get('/', (req, res) => {
