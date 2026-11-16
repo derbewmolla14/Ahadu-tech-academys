@@ -23,6 +23,7 @@ export default function AddCourse() {
   const [universityOptionsError, setUniversityOptionsError] = useState('');
 
   useEffect(() => {
+    if (selectedCategory !== 'university') return undefined;
     let active = true;
     async function loadUniversityOptions() {
       try {
@@ -42,7 +43,7 @@ export default function AddCourse() {
     }
     loadUniversityOptions();
     return () => { active = false; };
-  }, []);
+  }, [selectedCategory]);
 
   const categories = [
     { id: 'elementary', title: 'Elementary', subtitle: 'Grades 1–8', icon: '📘', detail: 'Upload subjects, lessons, notes, and exercises for elementary students.' },
