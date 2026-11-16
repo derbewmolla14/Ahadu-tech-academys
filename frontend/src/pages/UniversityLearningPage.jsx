@@ -81,7 +81,25 @@ export default function UniversityLearningPage() {
       {loading && <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-300">Loading university courses…</div>}
       {!loading && error && <div role="alert" className="rounded-2xl border border-red-800 bg-red-950/40 p-6 text-red-200">{error}</div>}
       {!loading && !error && !stage && config.stages.length > 0 && <div className="grid gap-5 sm:grid-cols-3">{config.stages.map((item) => <button key={item} type="button" onClick={() => navigate('/university/' + categoryId + '/' + item.toLowerCase())} className="rounded-3xl border border-slate-800 bg-slate-900 p-8 text-left text-white transition hover:border-sky-500 hover:bg-slate-800"><h2 className="text-2xl font-semibold">{item}</h2><p className="mt-3 text-slate-400">{item === 'Senior' ? 'Browse departments and academic years.' : 'Open available courses directly.'}</p></button>)}</div>}
-      {!loading && !error && stage === 'Senior' && !department && (departments.length ? <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{departments.map((item) => <button key={item} type="button" onClick={() => navigate('/university/' + categoryId + '/senior/' + encodeURIComponent(item))} className="rounded-3xl border border-slate-800 bg-slate-900 p-7 text-left text-white hover:border-sky-500"><h2 className="text-xl font-semibold">{item}</h2><p className="mt-2 text-slate-400">View available academic years</p></button>)}</div></> : <Empty message="No active departments are configured for this category yet." />)}
+      {!loading && !error && stage === 'Senior' && !department && (
+        departments.length ? (
+          <>
+            <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+              <label htmlFor="department-search" className="mb-2 block text-sm font-medium text-slate-300">Search departments</label>
+              <input id="department-search" value={departmentSearch} onChange={event => setDepartmentSearch(event.target.value)} placeholder="Search department name…" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-sky-500" />
+              <p className="mt-2 text-sm text-slate-400">{visibleDepartments.length} active departments · sorted alphabetically</p>
+            </section>
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {visibleDepartments.map((item) => (
+                <button key={item} type="button" onClick={() => navigate('/university/' + categoryId + '/senior/' + encodeURIComponent(item))} className="rounded-3xl border border-slate-800 bg-slate-900 p-7 text-left text-white hover:border-sky-500">
+                  <h2 className="text-xl font-semibold">{item}</h2>
+                  <p className="mt-2 text-slate-400">View available academic years</p>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : <Empty message="No active departments are configured for this category yet." />
+      )}
       {!loading && !error && stage === 'Senior' && department && !year && (years.length ? <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{years.map((item) => <button key={item} type="button" onClick={() => navigate('/university/' + categoryId + '/senior/' + encodeURIComponent(department) + '/' + encodeURIComponent(item))} className="rounded-3xl border border-slate-800 bg-slate-900 p-7 text-left text-white hover:border-sky-500"><h2 className="text-2xl font-semibold">{item}</h2><p className="mt-2 text-slate-400">View courses for {department}</p></button>)}</div> : <Empty message={'No academic years have courses uploaded for ' + department + ' yet.'} />)}
       {!loading && !error && listVisible && <><section className="rounded-3xl border border-slate-800 bg-slate-900 p-5"><label htmlFor="university-course-search" className="mb-2 block text-sm font-medium text-slate-300">Search by course name, code, department, or academic year</label><input id="university-course-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search university courses…" className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-sky-500" /><p className="mt-2 text-sm text-slate-400">{courses.length} course(s) found</p></section>
         {courses.length ? <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{courses.map((course) => <Link key={course._id} to={'/university/course/' + course._id} className="rounded-3xl border border-slate-800 bg-slate-900 p-6 text-white transition hover:border-sky-500 hover:bg-slate-800"><p className="text-xs font-semibold uppercase tracking-widest text-sky-400">{course.courseCode || course.department}</p><h2 className="mt-2 text-xl font-semibold">{course.course}</h2>{course.description && <p className="mt-2 text-sm text-slate-400">{course.description}</p>}<p className="mt-4 text-sm text-sky-400">Open course →</p></Link>)}</div> : <Empty message="No courses match this selection or search." />}</>}
