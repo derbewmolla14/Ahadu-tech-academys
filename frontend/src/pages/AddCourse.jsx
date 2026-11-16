@@ -2,17 +2,36 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../api/api';
 
+function Field({ label, name, value, onChange, placeholder, required = false }) {
+  return <div><label className="mb-2 block text-sm font-medium text-slate-300">{label}</label><input name={name} value={value} onChange={onChange} placeholder={placeholder} required={required} className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:border-blue-500 focus:outline-none" /></div>;
+}
+
+function SelectField({ label, name, value, onChange, options, required = false }) {
+  return <div><label className="mb-2 block text-sm font-medium text-slate-300">{label}</label><select name={name} value={value} onChange={onChange} required={required} className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:border-blue-500 focus:outline-none"><option value="">Select {label.replace(' *', '').toLowerCase()}</option>{options.map(option => <option key={option} value={option}>{option}</option>)}</select></div>;
+}
+
 export default function AddCourse() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+
+  const categories = [
+    { id: 'elementary', title: 'Elementary', subtitle: 'Grades 1–8', icon: '📘', detail: 'Upload subjects, lessons, notes, and exercises for elementary students.' },
+    { id: 'highschool', title: 'High School', subtitle: 'Grades 9–12', icon: '🎓', detail: 'Organize courses by grade and subject for high school students.' },
+    { id: 'university', title: 'University / College', subtitle: 'Departments & years', icon: '🏛️', detail: 'Create courses by university, department, and academic year.' },
+    { id: 'coding', title: 'Other Skills & Trainings', subtitle: 'AI · Web · Graphics · More', icon: '💡', detail: 'Publish practical skills courses, technology training, and professional learning.' },
+  ];
 
   // Form state
   const [formData, setFormData] = useState({
     university: '',
     department: '',
     year: '',
+    grade: '',
+    subject: '',
+    technology: '',
     course: '',
     description: '',
     isActive: true
@@ -64,9 +83,10 @@ export default function AddCourse() {
     try {
       const submitData = new FormData();
 
-      // Add form data
+      // Add category and category-specific course details.
+      submitData.append('level', selectedCategory);
       Object.keys(formData).forEach(key => {
-        submitData.append(key, formData[key]);
+        if (formData[key] !== '') submitData.append(key, formData[key]);
       });
 
       // Add materials as JSON strings
@@ -104,6 +124,35 @@ export default function AddCourse() {
     }
   };
 
+  if (!selectedCategory) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white">
+        <div className="bg-slate-900 border-b border-slate-800 p-6">
+          <div className="max-w-6xl mx-auto">
+            <button onClick={() => navigate('/admin/dashboard')} className="text-slate-400 hover:text-white mb-3">← Back to Dashboard</button>
+            <h1 className="text-3xl font-bold">Add New Course</h1>
+            <p className="mt-2 text-slate-400">First, choose the education or training category for your new course.</p>
+          </div>
+        </div>
+        <div className="max-w-6xl mx-auto p-6 lg:p-10">
+          <div className="grid gap-5 sm:grid-cols-2">
+            {categories.map((category) => (
+              <button key={category.id} type="button" onClick={() => setSelectedCategory(category.id)} className="group rounded-2xl border border-slate-800 bg-slate-900 p-7 text-left transition hover:border-blue-500 hover:bg-slate-800/90 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <div className="flex items-start justify-between">
+                  <span className="text-4xl">{category.icon}</span>
+                  <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-300">{category.subtitle}</span>
+                </div>
+                <h2 className="mt-6 text-2xl font-semibold group-hover:text-blue-300">{category.title}</h2>
+                <p className="mt-3 leading-6 text-slate-400">{category.detail}</p>
+                <span className="mt-6 inline-flex items-center gap-2 font-medium text-blue-400">Continue <span aria-hidden="true">→</span></span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       {/* HEADER */}
@@ -139,87 +188,41 @@ export default function AddCourse() {
 
           {/* BASIC INFO */}
           <div className="bg-slate-900 rounded-xl border border-slate-800 p-6">
-            <h2 className="text-xl font-semibold mb-6">Basic Information</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold">Basic Information</h2>
+              <button type="button" onClick={() => setSelectedCategory('')} className="text-sm text-blue-400 hover:text-blue-300">Change category</button>
+            </div>
+            <div className="mb-6 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3">
+              <p className="text-sm text-blue-200">Selected category</p>
+              <p className="font-semibold text-white">{categories.find(item => item.id === selectedCategory)?.title}</p>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  University *
-                </label>
-                <input
-                  type="text"
-                  name="university"
-                  value={formData.university}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white focus:border-blue-500 focus:outline-none"
-                  placeholder="e.g., Addis Ababa University"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Department *
-                </label>
-                <input
-                  type="text"
-                  name="department"
-                  value={formData.department}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white focus:border-blue-500 focus:outline-none"
-                  placeholder="e.g., Computer Science"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Year *
-                </label>
-                <input
-                  type="text"
-                  name="year"
-                  value={formData.year}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white focus:border-blue-500 focus:outline-none"
-                  placeholder="e.g., Year 1"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Course Name *
-                </label>
-                <input
-                  type="text"
-                  name="course"
-                  value={formData.course}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white focus:border-blue-500 focus:outline-none"
-                  placeholder="e.g., Introduction to Programming"
-                />
-              </div>
+              {selectedCategory === 'university' && <>
+                <Field label="University *" name="university" value={formData.university} onChange={handleInputChange} placeholder="e.g., Addis Ababa University" required />
+                <Field label="Department *" name="department" value={formData.department} onChange={handleInputChange} placeholder="e.g., Computer Science" required />
+                <Field label="Academic Year *" name="year" value={formData.year} onChange={handleInputChange} placeholder="e.g., Year 1" required />
+              </>}
+              {selectedCategory === 'elementary' && <>
+                <SelectField label="Grade *" name="grade" value={formData.grade} onChange={handleInputChange} options={Array.from({ length: 8 }, (_, i) => String(i + 1))} required />
+                <Field label="Subject *" name="subject" value={formData.subject} onChange={handleInputChange} placeholder="e.g., Mathematics" required />
+              </>}
+              {selectedCategory === 'highschool' && <>
+                <SelectField label="Grade *" name="grade" value={formData.grade} onChange={handleInputChange} options={['9', '10', '11', '12']} required />
+                <Field label="Subject *" name="subject" value={formData.subject} onChange={handleInputChange} placeholder="e.g., Physics" required />
+              </>}
+              {selectedCategory === 'coding' && <>
+                <SelectField label="Training Area *" name="technology" value={formData.technology} onChange={handleInputChange} options={['Artificial Intelligence (AI)', 'Web Development', 'Graphic Design', 'Mobile App Development', 'Data Science', 'Other Skills']} required />
+                <Field label="Training Level" name="year" value={formData.year} onChange={handleInputChange} placeholder="e.g., Beginner, Intermediate" />
+              </>}
+              <Field label={selectedCategory === 'coding' ? 'Training / Course Name *' : 'Course Name *'} name="course" value={formData.course} onChange={handleInputChange} placeholder="Enter the course name" required />
             </div>
             <div className="mt-6">
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Description
-              </label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                rows={3}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white focus:border-blue-500 focus:outline-none"
-                placeholder="Brief description of the course..."
-              />
+              <label className="block text-sm font-medium text-slate-300 mb-2">Description</label>
+              <textarea name="description" value={formData.description} onChange={handleInputChange} rows={3} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white focus:border-blue-500 focus:outline-none" placeholder="Brief description of the course..." />
             </div>
             <div className="mt-6">
               <label className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  name="isActive"
-                  checked={formData.isActive}
-                  onChange={handleInputChange}
-                  className="w-4 h-4 text-blue-600 bg-slate-800 border-slate-700 rounded focus:ring-blue-500"
-                />
+                <input type="checkbox" name="isActive" checked={formData.isActive} onChange={handleInputChange} className="w-4 h-4 text-blue-600 bg-slate-800 border-slate-700 rounded focus:ring-blue-500" />
                 <span className="text-sm font-medium text-slate-300">Make course active (visible to students)</span>
               </label>
             </div>
