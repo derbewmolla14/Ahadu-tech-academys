@@ -84,6 +84,11 @@ const courseContentSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  isPremium: {
+    type: Boolean,
+    default: false,
+    index: true
   }
 }, {
   timestamps: true
