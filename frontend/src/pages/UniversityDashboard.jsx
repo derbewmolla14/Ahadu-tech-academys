@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom';
 import { apiFetch } from '../api/api';
 
 const categories = [
-  { id: 'natural-science', name: 'Natural Science', description: 'Science, biology, chemistry, physics, and related programs.', icon: '🔬' },
-  { id: 'social-science', name: 'Social Science', description: 'Economics, history, sociology, psychology, and related programs.', icon: '🌍' },
-  { id: 'health-science', name: 'Health Science', description: 'Medicine, public health, nursing, and related programs.', icon: '🩺' },
+  { id: 'natural-science', name: 'Natural Science', description: 'Science, biology, chemistry, physics, and related programs.' },
+  { id: 'social-science', name: 'Social Science', description: 'Economics, history, sociology, psychology, and related programs.' },
+  { id: 'health-science', name: 'Health Science', description: 'Medicine, public health, nursing, and related programs.' },
 ];
 
 const otherPrograms = [
@@ -15,6 +15,7 @@ const otherPrograms = [
 
 export default function UniversityDashboard() {
   const [departments, setDepartments] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState(categories[0].name);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -26,7 +27,6 @@ export default function UniversityDashboard() {
       try {
         setLoading(true);
         setError('');
-        // The public endpoint returns active departments from every category.
         const response = await apiFetch('departments');
         const result = await response.json();
 
@@ -60,28 +60,62 @@ export default function UniversityDashboard() {
     return () => { active = false; };
   }, []);
 
-  const groupedDepartments = useMemo(() => {
+  const selectedCategoryInfo = categories.find((item) => item.name === selectedCategory) || categories[0];
+  const visibleDepartments = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return categories.map((category) => ({
-      ...category,
-      departments: departments
-        .filter((item) =>
-          item.category === category.name &&
-          item.name.toLowerCase().includes(term)
-        )
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    }));
-  }, [departments, search]);
+    return departments
+      .filter((item) =>
+        item.category === selectedCategory &&
+        item.name.toLowerCase().includes(term)
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [departments, selectedCategory, search]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-6">
       <section className="rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-xl shadow-slate-950/40">
         <p className="text-sm font-semibold uppercase tracking-[0.3em] text-sky-400">University Learning</p>
-        <h1 className="mt-3 text-3xl font-semibold text-white md:text-4xl">University Departments</h1>
+        <h1 className="mt-3 text-3xl font-semibold text-white md:text-4xl">Department Directory</h1>
         <p className="mt-3 text-slate-400">
-          Browse all active departments added by the administrator. Choose a department to view its available academic years and courses.
+          Select an academic category to display the departments added by the administrator.
         </p>
-        <label htmlFor="university-department-search" className="mt-6 block text-sm font-medium text-slate-300">
+
+        <div className="mt-6 flex flex-wrap gap-3" role="tablist" aria-label="University department categories">
+          {categories.map((category) => {
+            const selected = selectedCategory === category.name;
+            const count = departments.filter((item) => item.category === category.name).length;
+            return (
+              <button
+                key={category.id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => { setSelectedCategory(category.name); setSearch(''); }}
+                className={'rounded-full px-6 py-3 font-medium transition ' + (
+                  selected
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'
+                )}
+              >
+                {category.name}{!loading && <span className="ml-2 text-xs opacity-80">({count})</span>}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-2xl font-semibold text-white">{selectedCategoryInfo.name}</h2>
+            <p className="mt-1 text-sm text-slate-400">{selectedCategoryInfo.description}</p>
+          </div>
+          {!loading && !error && (
+            <span className="text-sm text-slate-400">{visibleDepartments.length} active department(s)</span>
+          )}
+        </div>
+
+        <label htmlFor="university-department-search" className="mt-5 block text-sm font-medium text-slate-300">
           Search departments
         </label>
         <input
@@ -89,82 +123,60 @@ export default function UniversityDashboard() {
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search by department name…"
+          placeholder="Search departments…"
           className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-sky-500"
         />
-        {!loading && !error && (
-          <p className="mt-2 text-sm text-slate-400">
-            {groupedDepartments.reduce((total, category) => total + category.departments.length, 0)} active departments available
+
+        {loading && (
+          <p className="py-8 text-center text-slate-300">Loading departments…</p>
+        )}
+        {!loading && error && (
+          <p role="alert" className="mt-5 rounded-xl border border-red-800 bg-red-950/40 p-4 text-red-200">
+            {error}
+          </p>
+        )}
+        {!loading && !error && visibleDepartments.length > 0 && (
+          <div className="mt-4 divide-y divide-slate-800">
+            {visibleDepartments.map((department) => (
+              <Link
+                key={department._id}
+                to={'/university/' + selectedCategoryInfo.id + '/senior/' + encodeURIComponent(department.name)}
+                className="block py-5 text-white transition hover:text-sky-300"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-lg font-semibold">{department.name}</h3>
+                  <span className="text-sm text-sky-400">View academic years →</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+        {!loading && !error && visibleDepartments.length === 0 && (
+          <p className="py-8 text-center text-slate-400">
+            {search.trim()
+              ? 'No departments match your search in this category.'
+              : 'No active departments are available in this category yet.'}
           </p>
         )}
       </section>
 
-      {loading && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-300">
-          Loading university departments…
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold text-white">Postgraduate Programs</h2>
+        <div className="grid gap-5 sm:grid-cols-2">
+          {otherPrograms.map((program) => (
+            <Link
+              key={program.id}
+              to={'/university/' + program.id}
+              className="rounded-3xl border border-slate-800 bg-slate-900 p-7 text-white transition hover:border-sky-500 hover:bg-slate-800"
+            >
+              <span className="text-3xl" aria-hidden="true">{program.icon}</span>
+              <h3 className="mt-4 text-xl font-semibold">{program.title}</h3>
+              <p className="mt-2 text-slate-400">{program.description}</p>
+              <span className="mt-5 inline-flex text-sm font-semibold text-sky-400">Continue →</span>
+            </Link>
+          ))}
         </div>
-      )}
-
-      {!loading && error && (
-        <div role="alert" className="rounded-2xl border border-red-800 bg-red-950/40 p-6 text-red-200">
-          {error}
-        </div>
-      )}
-
-      {!loading && !error && groupedDepartments.map((category) => (
-        <section key={category.id} className="space-y-4">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <div className="flex items-center gap-3">
-              <span className="text-3xl" aria-hidden="true">{category.icon}</span>
-              <div>
-                <h2 className="text-2xl font-semibold text-white">{category.name}</h2>
-                <p className="mt-1 text-sm text-slate-400">{category.description}</p>
-              </div>
-            </div>
-            <p className="mt-3 text-sm text-sky-400">{category.departments.length} active department(s)</p>
-          </div>
-
-          {category.departments.length ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {category.departments.map((department) => (
-                <Link
-                  key={department._id}
-                  to={'/university/' + category.id + '/senior/' + encodeURIComponent(department.name)}
-                  className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-white transition hover:border-sky-500 hover:bg-slate-800"
-                >
-                  <h3 className="text-lg font-semibold">{department.name}</h3>
-                  <p className="mt-2 text-sm text-slate-400">View academic years and available courses</p>
-                  <span className="mt-4 inline-flex text-sm font-semibold text-sky-400">Open department →</span>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <p className="rounded-2xl border border-dashed border-slate-700 p-6 text-center text-slate-400">
-              {search.trim() ? 'No departments match your search in this category.' : 'No active departments are available in this category yet.'}
-            </p>
-          )}
-        </section>
-      ))}
-
-      {!loading && !error && (
-        <section className="space-y-4">
-          <h2 className="text-2xl font-semibold text-white">Postgraduate Programs</h2>
-          <div className="grid gap-5 sm:grid-cols-2">
-            {otherPrograms.map((program) => (
-              <Link
-                key={program.id}
-                to={'/university/' + program.id}
-                className="rounded-3xl border border-slate-800 bg-slate-900 p-7 text-white transition hover:border-sky-500 hover:bg-slate-800"
-              >
-                <span className="text-3xl" aria-hidden="true">{program.icon}</span>
-                <h3 className="mt-4 text-xl font-semibold">{program.title}</h3>
-                <p className="mt-2 text-slate-400">{program.description}</p>
-                <span className="mt-5 inline-flex text-sm font-semibold text-sky-400">Continue →</span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+      </section>
     </div>
   );
 }
