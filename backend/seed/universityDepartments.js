@@ -217,7 +217,7 @@ async function seedUniversityDepartments() {
   }
   await Department.collection.createIndex(
     { category: 1, normalizedName: 1 },
-    { unique: true, name: 'category_normalizedName_unique', partialFilterExpression: { normalizedName: { $type: 'string' } } }
+    { unique: true, partialFilterExpression: { normalizedName: { $type: 'string' } } }
   );
   let inserted = 0;
   for (const [category, names] of Object.entries(DEPARTMENTS)) {
