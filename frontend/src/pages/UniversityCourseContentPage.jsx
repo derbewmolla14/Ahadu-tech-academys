@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { apiFetch, apiPath } from '../api/api';
+import { apiFetch, apiBaseURL } from '../api/api';
 
 export default function UniversityCourseContentPage() {
   const { courseId } = useParams();
@@ -22,7 +22,7 @@ export default function UniversityCourseContentPage() {
     load();
     return () => { active = false; };
   }, [courseId]);
-  const fileUrl = (url) => /^https?:\/\//i.test(url || '') ? url : apiPath(String(url || '').replace(/^\/+/, ''));
+  const fileUrl = (url) => /^https?:\/\//i.test(url || '') ? url : apiBaseURL.replace(/\/api\/?$/, '') + '/' + String(url || '').replace(/^\/+/, '');
   if (loading) return <div className="p-8 text-center text-slate-300">Loading course…</div>;
   if (error || !course) return <div role="alert" className="mx-auto max-w-4xl rounded-2xl border border-red-800 bg-red-950/40 p-6 text-red-200">{error || 'Course not found.'}</div>;
   return (
