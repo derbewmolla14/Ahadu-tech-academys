@@ -33,7 +33,7 @@ export default function AddCourse() {
         const [departments, years] = await Promise.all([departmentsResponse.json(), yearsResponse.json()]);
         if (!departmentsResponse.ok || !yearsResponse.ok) throw new Error('Unable to load configured departments and academic years.');
         if (active) {
-          setUniversityDepartments(Array.isArray(departments) ? departments.map(item => typeof item === 'string' ? item : item.name).filter(Boolean) : []);
+          setUniversityDepartments(Array.isArray(departments) ? departments.filter(item => item && item.isActive !== false) : []);
           setUniversityYears(Array.isArray(years) ? years.map(item => typeof item === 'number' ? 'Year ' + item : 'Year ' + item.yearNumber).filter(item => item !== 'Year undefined') : []);
         }
       } catch (err) {
@@ -274,13 +274,13 @@ export default function AddCourse() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {selectedCategory === 'university' && <>
-                <SelectField label="Academic Category *" name="faculty" value={formData.faculty || ''} onChange={(event) => setFormData(prev => ({ ...prev, faculty: event.target.value, studyStage: '', department: '', year: '' }))} options={['Natural Science', 'Social Science', "Master's Degree", 'PhD']} required />
-                {(formData.faculty === 'Natural Science' || formData.faculty === 'Social Science') && <SelectField label="Academic Stage *" name="studyStage" value={formData.studyStage || ''} onChange={(event) => setFormData(prev => ({ ...prev, studyStage: event.target.value, department: '', year: event.target.value === 'Senior' ? '' : event.target.value }))} options={['Remedial', 'Freshman', 'Senior']} required />}
+                <SelectField label="Academic Category *" name="faculty" value={formData.faculty || ''} onChange={(event) => setFormData(prev => ({ ...prev, faculty: event.target.value, studyStage: '', department: '', year: '' }))} options={['Natural Science', 'Social Science', 'Health Science', "Master's Degree", 'PhD']} required />
+                {(formData.faculty === 'Natural Science' || formData.faculty === 'Social Science' || formData.faculty === 'Health Science') && <SelectField label="Academic Stage *" name="studyStage" value={formData.studyStage || ''} onChange={(event) => setFormData(prev => ({ ...prev, studyStage: event.target.value, department: '', year: event.target.value === 'Senior' ? '' : event.target.value }))} options={['Remedial', 'Freshman', 'Senior']} required />}
                 {formData.studyStage === 'Senior' && <>
-                  <SelectField label="Department *" name="department" value={formData.department} onChange={handleInputChange} options={universityDepartments} required />
+                  <SelectField label="Department *" name="department" value={formData.department} onChange={handleInputChange} options={universityDepartments.filter(item => item.category === formData.faculty).map(item => item.name)} required />
                   <SelectField label="Academic Year *" name="year" value={formData.year} onChange={handleInputChange} options={universityYears} required />
                 </>}
-                {(formData.faculty === "Master's Degree" || formData.faculty === 'PhD') && <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">This course will be filed under {formData.faculty}.</div>}
+                {(formData.faculty === "Master's Degree" || formData.faculty === 'PhD') && <><div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">This course will be filed under {formData.faculty}.</div><SelectField label="Department" name="department" value={formData.department} onChange={handleInputChange} options={universityDepartments.filter(item => item.category === formData.faculty).map(item => item.name)} /><SelectField label="Academic Year" name="year" value={formData.year} onChange={handleInputChange} options={universityYears} /></>}
                 <Field label="Course Code" name="courseCode" value={formData.courseCode || ''} onChange={handleInputChange} placeholder="e.g., CSE 201" />
                 {universityOptionsError && <p className="text-sm text-amber-300 md:col-span-2">{universityOptionsError}</p>}
               </>}
