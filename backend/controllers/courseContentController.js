@@ -74,7 +74,8 @@ const uploadContent = async (req, res) => {
       recordYear = `Grade ${grade}`;
     } else if (level === 'university') {
       if (!['Natural Science', 'Social Science', "Master's Degree", 'PhD'].includes(faculty)) return res.status(400).json({ success: false, message: 'Please select a valid university academic category' });
-      recordUniversity = 'University';
+      // Include faculty in the legacy unique-key field so identical course names can exist in different academic categories.
+      recordUniversity = 'University - ' + faculty;
       if (faculty === 'Natural Science' || faculty === 'Social Science') {
         if (!['Remedial', 'Freshman', 'Senior'].includes(studyStage)) return res.status(400).json({ success: false, message: 'Please select Remedial, Freshman, or Senior' });
         if (studyStage === 'Senior' && (!department || !year)) return res.status(400).json({ success: false, message: 'Department and academic year are required for Senior courses' });
