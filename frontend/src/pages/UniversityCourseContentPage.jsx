@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { apiFetch, apiBaseURL } from '../api/api';
+import { apiFetch } from '../api/api';
 
 export default function UniversityCourseContentPage() {
   const { courseId } = useParams();
