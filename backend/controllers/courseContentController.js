@@ -252,6 +252,27 @@ const getContentById = async (req, res) => {
   }
 };
 
+// Stream a PDF/PPT only after verifying the student's course access.
+const streamCourseMaterial = async (req, res) => {
+  try {
+    const { id, kind, index } = req.params;
+    const course = await CourseContent.findById(id);
+    if (!course || !course.isActive) return res.status(404).json({ success: false, message: 'Course not found.' });
+    const isAdmin = req.user?.role === 'admin';
+    const isUnlocked = req.user?.unlockedCourseContents?.some((item) => String(item) === String(course._id));
+    if (course.isPremium && !isAdmin && !isUnlocked) return res.status(403).json({ success: false, message: 'Administrator approval is required for this premium course.' });
+    if (!['notes', 'ppts'].includes(kind)) return res.status(400).json({ success: false, message: 'Unsupported material type.' });
+    const item = course[kind]?.[Number(index)];
+    if (!item?.fileUrl || !item.fileUrl.startsWith('/uploads/')) return res.status(404).json({ success: false, message: 'Material file not found.' });
+    const filePath = path.join(uploadsDirectory, path.basename(item.fileUrl));
+    if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, message: 'Material file is missing from the server.' });
+    return res.sendFile(filePath);
+  } catch (error) {
+    console.error('Stream course material error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to open course material.' });
+  }
+};
+
 // Delete course content
 const deleteContent = async (req, res) => {
   try {
@@ -439,6 +460,7 @@ module.exports = {
   uploadContent,
   getContent,
   getContentById,
+  streamCourseMaterial,
   deleteContent,
   getAllCourses,
   toggleCourseStatus,
