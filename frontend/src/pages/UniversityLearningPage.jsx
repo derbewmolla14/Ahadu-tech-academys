@@ -12,9 +12,11 @@ const configById = {
 const decodeSegment = (value) => { try { return decodeURIComponent(value || ''); } catch { return value || ''; } };
 
 export default function UniversityLearningPage() {
-  const { faculty: categoryId } = useParams();
+  const { faculty: routeFaculty } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  // Explicit category routes use fixed URL segments rather than a :faculty parameter.
+  const categoryId = routeFaculty || decodeSegment(location.pathname.split('/').filter(Boolean)[1]);
   const config = configById[categoryId];
   const parts = location.pathname.split('/').filter(Boolean).slice(2);
   const rawStage = decodeSegment(parts[0]);
