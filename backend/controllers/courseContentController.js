@@ -406,6 +406,17 @@ const unlockCourseForStudent = async (req, res) => {
   }
 };
 
+const getStudentsForPremiumAccess = async (_req, res) => {
+  try {
+    const User = require('../models/User');
+    const students = await User.find({ role: { $ne: 'admin' } }).select('fullName email role unlockedCourseContents').sort({ fullName: 1 }).lean();
+    return res.json({ success: true, data: students });
+  } catch (error) {
+    console.error('Get premium access students error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to load students.' });
+  }
+};
+
 const lockCourseForStudent = async (req, res) => {
   try {
     const User = require('../models/User');
@@ -423,6 +434,7 @@ const lockCourseForStudent = async (req, res) => {
 module.exports = {
   unlockCourseForStudent,
   lockCourseForStudent,
+  getStudentsForPremiumAccess,
   upload,
   uploadContent,
   getContent,
