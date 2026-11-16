@@ -86,7 +86,6 @@ export default function AddCourse() {
 
       // Add category and category-specific course details.
       submitData.append('level', selectedCategory);
-      if (selectedCategory === 'elementary') submitData.set('grade', selectedElementaryGrade);
       Object.keys(formData).forEach(key => {
         if (formData[key] !== '') submitData.append(key, formData[key]);
       });
