@@ -108,6 +108,12 @@ export default function AdminDashboard() {
             🏛️ Manage University Departments
           </Link>
           <Link
+            to="/admin/premium-course-access"
+            className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+          >
+            🔒 Premium Course Access
+          </Link>
+          <Link
             to="/admin/add-course"
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
           >
