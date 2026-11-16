@@ -7,6 +7,7 @@ const {
   uploadContent,
   getContent,
   getContentById,
+  streamCourseMaterial,
   deleteContent,
   getAllCourses,
   toggleCourseStatus,
@@ -25,6 +26,7 @@ router.get('/', getContent);
 // GET /api/content/admin/all - Get all courses for admin (including inactive)
 router.get('/admin/all', auth, permit('admin'), getAllCourses);
 router.get('/admin/students', auth, permit('admin'), getStudentsForPremiumAccess);
+router.get('/:id/material/:kind/:index', auth, streamCourseMaterial);
 router.post('/:id/unlock', auth, permit('admin'), unlockCourseForStudent);
 router.delete('/:id/unlock/:userId', auth, permit('admin'), lockCourseForStudent);
 
