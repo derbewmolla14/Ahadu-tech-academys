@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 const categories = [
   { id: 'natural-science', title: 'Natural Science', description: 'Explore Remedial, Freshman, and Senior science courses.', icon: '🔬' },
   { id: 'social-science', title: 'Social Science', description: 'Explore Remedial, Freshman, and Senior social science courses.', icon: '🌍' },
+  { id: 'health-science', title: 'Health Science', description: 'Explore Remedial, Freshman, and Senior health science courses.', icon: '🩺' },
   { id: 'masters', title: "Master's Degree", description: 'Browse available master’s degree courses.', icon: '🎓' },
   { id: 'phd', title: 'PhD', description: 'Browse available doctoral courses.', icon: '📚' },
 ];
