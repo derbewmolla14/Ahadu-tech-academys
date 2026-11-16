@@ -280,7 +280,7 @@ export default function AddCourse() {
                   <SelectField label="Department *" name="department" value={formData.department} onChange={handleInputChange} options={universityDepartments.filter(item => item.category === formData.faculty).map(item => item.name)} required />
                   <SelectField label="Academic Year *" name="year" value={formData.year} onChange={handleInputChange} options={universityYears} required />
                 </>}
-                {(formData.faculty === "Master's Degree" || formData.faculty === 'PhD') && <><div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">This course will be filed under {formData.faculty}.</div><SelectField label="Department" name="department" value={formData.department} onChange={handleInputChange} options={universityDepartments.filter(item => item.category === formData.faculty).map(item => item.name)} /><SelectField label="Academic Year" name="year" value={formData.year} onChange={handleInputChange} options={universityYears} /></>}
+                {(formData.faculty === "Master's Degree" || formData.faculty === 'PhD') && <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">This course will be filed under {formData.faculty}.</div>}
                 <Field label="Course Code" name="courseCode" value={formData.courseCode || ''} onChange={handleInputChange} placeholder="e.g., CSE 201" />
                 {universityOptionsError && <p className="text-sm text-amber-300 md:col-span-2">{universityOptionsError}</p>}
               </>}
