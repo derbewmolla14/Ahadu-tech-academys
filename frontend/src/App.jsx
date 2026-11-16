@@ -189,10 +189,12 @@ function AppRoutes() {
           path="university/course/:courseId"
           element={<UniversityCourseContentPage />}
         />
-        <Route
-          path="university/:faculty/*"
-          element={<UniversityLearningPage />}
-        />
+        {/* Explicit category routes must take priority over the legacy /university/:name routes below. */}
+        <Route path="university/natural-science/*" element={<UniversityLearningPage />} />
+        <Route path="university/social-science/*" element={<UniversityLearningPage />} />
+        <Route path="university/health-science/*" element={<UniversityLearningPage />} />
+        <Route path="university/masters/*" element={<UniversityLearningPage />} />
+        <Route path="university/phd/*" element={<UniversityLearningPage />} />
 
         <Route
           path="university/:name/department"
