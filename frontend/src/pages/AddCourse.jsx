@@ -17,6 +17,7 @@ export default function AddCourse() {
   const [success, setSuccess] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedElementaryGrade, setSelectedElementaryGrade] = useState('');
+  const [selectedHighSchoolGrade, setSelectedHighSchoolGrade] = useState('');
 
   const categories = [
     { id: 'elementary', title: 'Elementary', subtitle: 'Grades 1–8', icon: '📘', detail: 'Upload subjects, lessons, notes, and exercises for elementary students.' },
@@ -130,6 +131,25 @@ export default function AddCourse() {
     }
   };
 
+  if (selectedCategory === 'highschool' && !selectedHighSchoolGrade) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white">
+        <div className="bg-slate-900 border-b border-slate-800 p-6"><div className="max-w-6xl mx-auto">
+          <button onClick={() => setSelectedCategory('')} className="text-slate-400 hover:text-white mb-3">← Back to categories</button>
+          <h1 className="text-3xl font-bold">High School Courses</h1>
+          <p className="mt-2 text-slate-400">Select a grade before adding its course and learning materials.</p>
+        </div></div>
+        <div className="max-w-6xl mx-auto p-6 lg:p-10"><div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
+          {[9, 10, 11, 12].map((grade) => (
+            <button key={grade} type="button" onClick={() => { setSelectedHighSchoolGrade(String(grade)); setFormData(prev => ({ ...prev, grade: String(grade) })); }} className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center transition hover:border-blue-500 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <span className="text-xs uppercase tracking-widest text-slate-400">Grade</span><span className="mt-2 block text-4xl font-bold">{grade}</span><span className="mt-3 block text-sm text-blue-400">Select grade →</span>
+            </button>
+          ))}
+        </div></div>
+      </div>
+    );
+  }
+
   if (selectedCategory === 'elementary' && !selectedElementaryGrade) {
     return (
       <div className="min-h-screen bg-slate-950 text-white">
@@ -221,7 +241,7 @@ export default function AddCourse() {
           <div className="bg-slate-900 rounded-xl border border-slate-800 p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold">Basic Information</h2>
-              <button type="button" onClick={() => { setSelectedCategory(''); setSelectedElementaryGrade(''); }} className="text-sm text-blue-400 hover:text-blue-300">Change category</button>
+              <button type="button" onClick={() => { setSelectedCategory(''); setSelectedElementaryGrade(''); setSelectedHighSchoolGrade(''); }} className="text-sm text-blue-400 hover:text-blue-300">Change category</button>
             </div>
             <div className="mb-6 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3">
               <p className="text-sm text-blue-200">Selected category</p>
@@ -238,7 +258,7 @@ export default function AddCourse() {
                 <Field label="Subject *" name="subject" value={formData.subject} onChange={handleInputChange} placeholder="e.g., Mathematics" required />
               </>}
               {selectedCategory === 'highschool' && <>
-                <SelectField label="Grade *" name="grade" value={formData.grade} onChange={handleInputChange} options={['9', '10', '11', '12']} required />
+                <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3"><p className="text-sm text-blue-200">Selected grade</p><p className="text-xl font-semibold text-white">Grade {selectedHighSchoolGrade}</p><button type="button" onClick={() => setSelectedHighSchoolGrade('')} className="mt-2 text-sm text-blue-400">Choose another grade</button></div>
                 <Field label="Subject *" name="subject" value={formData.subject} onChange={handleInputChange} placeholder="e.g., Physics" required />
               </>}
               {selectedCategory === 'coding' && <>
