@@ -62,7 +62,8 @@ export default function AddCourse() {
     technology: '',
     course: '',
     description: '',
-    isActive: true
+    isActive: true,
+    isPremium: false
   });
 
   // Material state
@@ -303,6 +304,12 @@ export default function AddCourse() {
               <label className="block text-sm font-medium text-slate-300 mb-2">Description</label>
               <textarea name="description" value={formData.description} onChange={handleInputChange} rows={3} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white focus:border-blue-500 focus:outline-none" placeholder="Brief description of the course..." />
             </div>
+            {selectedCategory === 'university' && <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+              <label className="flex items-center gap-3">
+                <input type="checkbox" name="isPremium" checked={formData.isPremium} onChange={handleInputChange} className="h-4 w-4 rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-amber-500" />
+                <span className="text-sm font-medium text-amber-200">Premium course — students can see the course, but only students approved by an administrator can open its materials.</span>
+              </label>
+            </div>}
             <div className="mt-6">
               <label className="flex items-center gap-3">
                 <input type="checkbox" name="isActive" checked={formData.isActive} onChange={handleInputChange} className="w-4 h-4 text-blue-600 bg-slate-800 border-slate-700 rounded focus:ring-blue-500" />
