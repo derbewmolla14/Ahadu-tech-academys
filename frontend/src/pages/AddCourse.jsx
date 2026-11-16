@@ -90,19 +90,19 @@ export default function AddCourse() {
         if (formData[key] !== '') submitData.append(key, formData[key]);
       });
 
-      // Add materials as JSON strings
-      submitData.append('notes', JSON.stringify(notes.filter(note => note.title.trim())));
-      submitData.append('videos', JSON.stringify(videos.filter(video => video.title.trim() && video.url.trim())));
-      submitData.append('ppts', JSON.stringify(ppts.filter(ppt => ppt.title.trim())));
+      // Only submit PDF/PPT entries that have both a title and an attached file.
+      // The database requires a file URL for every saved note and presentation.
+      const validNotes = notes.filter(note => note.title.trim() && note.file);
+      const validPpts = ppts.filter(ppt => ppt.title.trim() && ppt.file);
+      const validVideos = videos.filter(video => video.title.trim() && video.url.trim());
 
-      // Add files
-      notes.forEach((note, index) => {
-        if (note.file) submitData.append('files', note.file);
-      });
+      submitData.append('notes', JSON.stringify(validNotes.map(note => ({ title: note.title.trim() }))));
+      submitData.append('videos', JSON.stringify(validVideos.map(video => ({ title: video.title.trim(), url: video.url.trim() }))));
+      submitData.append('ppts', JSON.stringify(validPpts.map(ppt => ({ title: ppt.title.trim() }))));
 
-      ppts.forEach((ppt, index) => {
-        if (ppt.file) submitData.append('files', ppt.file);
-      });
+      // Keep file order aligned with the metadata arrays above.
+      validNotes.forEach(note => submitData.append('files', note.file));
+      validPpts.forEach(ppt => submitData.append('files', ppt.file));
 
       const response = await apiFetch('content/upload', {
         method: 'POST',
@@ -111,6 +111,11 @@ export default function AddCourse() {
 
       const data = await response.json();
 
+      if (!response.ok) {
+        const details = Array.isArray(data.details) ? data.details.join('; ') : data.error;
+        throw new Error([data.message || 'Failed to create course', details].filter(Boolean).join(': '));
+      }
+
       if (data.success) {
         setSuccess('Course created successfully!');
         setTimeout(() => navigate('/admin/dashboard'), 2000);
@@ -118,7 +123,7 @@ export default function AddCourse() {
         setError(data.message || 'Failed to create course');
       }
     } catch (err) {
-      setError('Error creating course');
+      setError(err.message || 'Error creating course');
       console.error('Submit error:', err);
     } finally {
       setLoading(false);
