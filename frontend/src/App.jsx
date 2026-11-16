@@ -57,6 +57,7 @@ import DepartmentBrowser from "./pages/DepartmentBrowser";
 // Admin pages
 import AdminDashboard from "./pages/AdminDashboard";
 import UniversityDepartmentsAdmin from "./pages/UniversityDepartmentsAdmin";
+import PremiumCourseAccessAdmin from "./pages/PremiumCourseAccessAdmin";
 import AddCourse from "./pages/AddCourse";
 
 // ========================================
@@ -303,6 +304,15 @@ function AppRoutes() {
           element={
             <PrivateRoute>
               <UniversityDepartmentsAdmin />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="admin/premium-course-access"
+          element={
+            <PrivateRoute>
+              <PremiumCourseAccessAdmin />
             </PrivateRoute>
           }
         />
