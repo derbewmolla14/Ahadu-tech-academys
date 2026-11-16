@@ -34,6 +34,8 @@ import HighSchoolGradePage from "./pages/HighSchoolGradePage";
 
 // University pages
 import UniversityDashboard from "./pages/UniversityDashboard";
+import UniversityLearningPage from "./pages/UniversityLearningPage";
+import UniversityCourseContentPage from "./pages/UniversityCourseContentPage";
 import UniversityDetail from "./pages/UniversityDetail";
 import UniversityDepartment from "./pages/UniversityDepartment";
 import UniversityCourses from "./pages/UniversityCourses";
@@ -177,10 +179,18 @@ function AppRoutes() {
           element={<HighSchoolGradePage />}
         />
 
-        {/* University */}
+        {/* University - direct academic category navigation */}
         <Route
           path="university"
           element={<UniversityDashboard />}
+        />
+        <Route
+          path="university/course/:courseId"
+          element={<UniversityCourseContentPage />}
+        />
+        <Route
+          path="university/:faculty/*"
+          element={<UniversityLearningPage />}
         />
 
         <Route
