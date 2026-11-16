@@ -17,7 +17,8 @@ export default function UniversityLearningPage() {
   const navigate = useNavigate();
   const config = configById[categoryId];
   const parts = location.pathname.split('/').filter(Boolean).slice(2);
-  const stage = decodeSegment(parts[0]);
+  const rawStage = decodeSegment(parts[0]);
+  const stage = ({ remedial: 'Remedial', freshman: 'Freshman', senior: 'Senior' })[rawStage.toLowerCase()] || rawStage;
   const department = decodeSegment(parts[1]);
   const year = decodeSegment(parts[2]);
   const [allCourses, setAllCourses] = useState([]);
@@ -126,7 +127,7 @@ export default function UniversityLearningPage() {
       </section>
       {loading && <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-300">Loading university courses…</div>}
       {!loading && error && <div role="alert" className="rounded-2xl border border-red-800 bg-red-950/40 p-6 text-red-200">{error}</div>}
-      {!loading && !error && !stage && config.stages.length > 0 && <div className="grid gap-5 sm:grid-cols-3">{config.stages.map((item) => <button key={item} type="button" onClick={() => navigate('/university/' + categoryId + '/' + item.toLowerCase())} className="rounded-3xl border border-slate-800 bg-slate-900 p-8 text-left text-white transition hover:border-sky-500 hover:bg-slate-800"><h2 className="text-2xl font-semibold">{item}</h2><p className="mt-3 text-slate-400">{item === 'Senior' ? 'Browse departments and academic years.' : 'Open available courses directly.'}</p></button>)}</div>}
+      {!stage && config.stages.length > 0 && <div className="grid gap-5 sm:grid-cols-3">{config.stages.map((item) => <button key={item} type="button" onClick={() => navigate('/university/' + categoryId + '/' + item.toLowerCase())} className="rounded-3xl border border-slate-800 bg-slate-900 p-8 text-left text-white transition hover:border-sky-500 hover:bg-slate-800"><h2 className="text-2xl font-semibold">{item}</h2><p className="mt-3 text-slate-400">{item === 'Senior' ? 'Browse departments and academic years.' : 'Open available courses directly.'}</p></button>)}</div>}
       {stage === 'Senior' && !department && departmentLoading && <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-center text-slate-300">Loading active departments…</div>}
       {stage === 'Senior' && !department && !departmentLoading && departmentError && <div role="alert" className="rounded-2xl border border-red-800 bg-red-950/40 p-6 text-red-200">{departmentError}</div>}
       {!departmentLoading && !departmentError && stage === 'Senior' && !department && (
