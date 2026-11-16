@@ -1,4 +1,5 @@
 const CourseContent = require('../models/CourseContent');
+const Department = require('../models/Department');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -79,6 +80,10 @@ const uploadContent = async (req, res) => {
       if (faculty === 'Natural Science' || faculty === 'Social Science' || faculty === 'Health Science') {
         if (!['Remedial', 'Freshman', 'Senior'].includes(studyStage)) return res.status(400).json({ success: false, message: 'Please select Remedial, Freshman, or Senior' });
         if (studyStage === 'Senior' && (!department || !year)) return res.status(400).json({ success: false, message: 'Department and academic year are required for Senior courses' });
+        if (studyStage === 'Senior') {
+          const configuredDepartment = await Department.findOne({ name: department, category: faculty, isActive: true });
+          if (!configuredDepartment) return res.status(400).json({ success: false, message: 'Select an active department from the selected academic category.' });
+        }
         recordDepartment = studyStage === 'Senior' ? department : 'General';
         recordYear = studyStage === 'Senior' ? year : studyStage;
       } else {
