@@ -1,11 +1,15 @@
 const CourseContent = require('../models/CourseContent');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
+
+const uploadsDirectory = path.join(__dirname, '../uploads');
+fs.mkdirSync(uploadsDirectory, { recursive: true });
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../uploads'));
+    cb(null, uploadsDirectory);
   },
   filename: (req, file, cb) => {
     // Generate unique filename with timestamp
@@ -135,11 +139,11 @@ const uploadContent = async (req, res) => {
       data: content
     });
   } catch (error) {
-    console.error('Upload content error:', error);
+    console.error('Upload content error:', error.stack || error);
     if (error.code === 11000) {
       return res.status(400).json({ success: false, message: 'Course already exists in this category' });
     }
-    return res.status(500).json({ success: false, message: 'Server error while uploading content', error: error.message });
+    return res.status(500).json({ success: false, message: 'Server error while uploading content', error: error.message, details: error.name === 'ValidationError' ? Object.values(error.errors).map(item => item.message) : undefined });
   }
 };
 
