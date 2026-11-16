@@ -16,6 +16,7 @@ export default function AddCourse() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedElementaryGrade, setSelectedElementaryGrade] = useState('');
 
   const categories = [
     { id: 'elementary', title: 'Elementary', subtitle: 'Grades 1–8', icon: '📘', detail: 'Upload subjects, lessons, notes, and exercises for elementary students.' },
@@ -85,6 +86,7 @@ export default function AddCourse() {
 
       // Add category and category-specific course details.
       submitData.append('level', selectedCategory);
+      if (selectedCategory === 'elementary') submitData.set('grade', selectedElementaryGrade);
       Object.keys(formData).forEach(key => {
         if (formData[key] !== '') submitData.append(key, formData[key]);
       });
@@ -123,6 +125,31 @@ export default function AddCourse() {
       setLoading(false);
     }
   };
+
+  if (selectedCategory === 'elementary' && !selectedElementaryGrade) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white">
+        <div className="bg-slate-900 border-b border-slate-800 p-6">
+          <div className="max-w-6xl mx-auto">
+            <button onClick={() => setSelectedCategory('')} className="text-slate-400 hover:text-white mb-3">← Back to categories</button>
+            <h1 className="text-3xl font-bold">Elementary Courses</h1>
+            <p className="mt-2 text-slate-400">Select the grade before adding its course and learning materials.</p>
+          </div>
+        </div>
+        <div className="max-w-6xl mx-auto p-6 lg:p-10">
+          <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((grade) => (
+              <button key={grade} type="button" onClick={() => { setSelectedElementaryGrade(String(grade)); setFormData(prev => ({ ...prev, grade: String(grade) })); }} className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center transition hover:border-blue-500 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <span className="text-xs uppercase tracking-widest text-slate-400">Grade</span>
+                <span className="mt-2 block text-4xl font-bold">{grade}</span>
+                <span className="mt-3 block text-sm text-blue-400">Select grade →</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!selectedCategory) {
     return (
@@ -190,7 +217,7 @@ export default function AddCourse() {
           <div className="bg-slate-900 rounded-xl border border-slate-800 p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold">Basic Information</h2>
-              <button type="button" onClick={() => setSelectedCategory('')} className="text-sm text-blue-400 hover:text-blue-300">Change category</button>
+              <button type="button" onClick={() => { setSelectedCategory(''); setSelectedElementaryGrade(''); }} className="text-sm text-blue-400 hover:text-blue-300">Change category</button>
             </div>
             <div className="mb-6 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3">
               <p className="text-sm text-blue-200">Selected category</p>
@@ -203,7 +230,7 @@ export default function AddCourse() {
                 <Field label="Academic Year *" name="year" value={formData.year} onChange={handleInputChange} placeholder="e.g., Year 1" required />
               </>}
               {selectedCategory === 'elementary' && <>
-                <SelectField label="Grade *" name="grade" value={formData.grade} onChange={handleInputChange} options={Array.from({ length: 8 }, (_, i) => String(i + 1))} required />
+                <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3"><p className="text-sm text-blue-200">Selected grade</p><p className="text-xl font-semibold text-white">Grade {selectedElementaryGrade}</p><button type="button" onClick={() => setSelectedElementaryGrade('')} className="mt-2 text-sm text-blue-400">Choose another grade</button></div>
                 <Field label="Subject *" name="subject" value={formData.subject} onChange={handleInputChange} placeholder="e.g., Mathematics" required />
               </>}
               {selectedCategory === 'highschool' && <>
