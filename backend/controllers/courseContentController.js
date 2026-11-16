@@ -40,112 +40,121 @@ const upload = multer({
 // Upload course content (create or update)
 const uploadContent = async (req, res) => {
   try {
-    const { university, department, year, course, description, notes, videos, ppts, questions, isActive } = req.body;
+    const {
+      level = 'university', university = '', department = '', year = '',
+      grade = '', subject = '', technology = '', course, description,
+      notes, videos, ppts, questions, isActive
+    } = req.body;
 
-    // Validate required fields
-    if (!university || !department || !year || !course) {
-      return res.status(400).json({
-        success: false,
-        message: 'University, department, year, and course are required'
-      });
+    if (!['elementary', 'highschool', 'university', 'coding'].includes(level)) {
+      return res.status(400).json({ success: false, message: 'Please select a valid course category' });
+    }
+    if (!course) {
+      return res.status(400).json({ success: false, message: 'Course name is required' });
     }
 
-    // Parse JSON strings if they come as strings
+    // Keep the legacy university/department/year fields populated so older
+    // course browsing pages and the existing unique index remain compatible.
+    let recordUniversity = university;
+    let recordDepartment = department;
+    let recordYear = year;
+    if (level === 'elementary') {
+      if (!grade || !subject) return res.status(400).json({ success: false, message: 'Grade and subject are required for Elementary courses' });
+      recordUniversity = 'Elementary';
+      recordDepartment = subject;
+      recordYear = `Grade ${grade}`;
+    } else if (level === 'highschool') {
+      if (!grade || !subject) return res.status(400).json({ success: false, message: 'Grade and subject are required for High School courses' });
+      recordUniversity = 'High School';
+      recordDepartment = subject;
+      recordYear = `Grade ${grade}`;
+    } else if (level === 'university') {
+      if (!university || !department || !year) return res.status(400).json({ success: false, message: 'University, department, and academic year are required' });
+    } else {
+      if (!technology) return res.status(400).json({ success: false, message: 'Please select a training area' });
+      recordUniversity = 'Other Skills & Trainings';
+      recordDepartment = technology;
+      recordYear = year || 'All Levels';
+    }
+
     let parsedNotes = [];
     let parsedVideos = [];
     let parsedPpts = [];
     let parsedQuestions = [];
-
     try {
       parsedNotes = notes ? (typeof notes === 'string' ? JSON.parse(notes) : notes) : [];
       parsedVideos = videos ? (typeof videos === 'string' ? JSON.parse(videos) : videos) : [];
       parsedPpts = ppts ? (typeof ppts === 'string' ? JSON.parse(ppts) : ppts) : [];
       parsedQuestions = questions ? (typeof questions === 'string' ? JSON.parse(questions) : questions) : [];
     } catch (parseError) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid JSON format in notes, videos, ppts, or questions'
-      });
+      return res.status(400).json({ success: false, message: 'Invalid JSON format in course materials' });
     }
 
-    // Handle file uploads for notes and ppts
-    if (req.files && req.files.length > 0) {
-      req.files.forEach((file, index) => {
-        // Determine if this is a note or ppt based on file type
-        const isPpt = file.mimetype.includes('powerpoint') || file.mimetype.includes('presentation');
-        if (isPpt && parsedPpts[index - parsedNotes.length]) {
-          parsedPpts[index - parsedNotes.length].fileUrl = `/uploads/${file.filename}`;
-        } else if (parsedNotes[index]) {
-          parsedNotes[index].fileUrl = `/uploads/${file.filename}`;
-        }
-      });
-    }
-
-    // Find existing content or create new
-    const existingContent = await CourseContent.findOne({
-      university,
-      department,
-      year,
-      course
+    // Match uploaded files to their note/PPT entries in the order selected.
+    let noteFileIndex = 0;
+    let pptFileIndex = 0;
+    (req.files || []).forEach((file) => {
+      const isPpt = file.mimetype.includes('powerpoint') || file.mimetype.includes('presentation');
+      if (isPpt && parsedPpts[pptFileIndex]) {
+        parsedPpts[pptFileIndex].fileUrl = `/uploads/${file.filename}`;
+        pptFileIndex += 1;
+      } else if (!isPpt && parsedNotes[noteFileIndex]) {
+        parsedNotes[noteFileIndex].fileUrl = `/uploads/${file.filename}`;
+        noteFileIndex += 1;
+      }
     });
+
+    const identity = {
+      university: recordUniversity,
+      department: recordDepartment,
+      year: recordYear,
+      course
+    };
+    const existingContent = await CourseContent.findOne(identity);
+    const values = {
+      ...identity, level, grade, subject, technology,
+      description: description || '',
+      notes: parsedNotes,
+      videos: parsedVideos,
+      ppts: parsedPpts,
+      questions: parsedQuestions,
+      isActive: isActive === undefined ? true : isActive === 'true' || isActive === true
+    };
 
     let content;
     if (existingContent) {
-      // Update existing content
-      existingContent.description = description !== undefined ? description : existingContent.description;
-      existingContent.notes = parsedNotes.length > 0 ? parsedNotes : existingContent.notes;
-      existingContent.videos = parsedVideos.length > 0 ? parsedVideos : existingContent.videos;
-      existingContent.ppts = parsedPpts.length > 0 ? parsedPpts : existingContent.ppts;
-      existingContent.questions = parsedQuestions.length > 0 ? parsedQuestions : existingContent.questions;
-      existingContent.isActive = isActive !== undefined ? isActive : existingContent.isActive;
+      Object.assign(existingContent, values);
       content = await existingContent.save();
     } else {
-      // Create new content
-      content = new CourseContent({
-        university,
-        department,
-        year,
-        course,
-        description: description || '',
-        notes: parsedNotes,
-        videos: parsedVideos,
-        ppts: parsedPpts,
-        questions: parsedQuestions,
-        isActive: isActive !== undefined ? isActive : true
-      });
-      await content.save();
+      content = await CourseContent.create(values);
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: existingContent ? 'Course content updated successfully' : 'Course content created successfully',
       data: content
     });
-
   } catch (error) {
     console.error('Upload content error:', error);
     if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: 'Course content already exists for this combination'
-      });
+      return res.status(400).json({ success: false, message: 'Course already exists in this category' });
     }
-    res.status(500).json({
-      success: false,
-      message: 'Server error while uploading content',
-      error: error.message
-    });
+    return res.status(500).json({ success: false, message: 'Server error while uploading content', error: error.message });
   }
 };
 
 // Get course content (public - only active courses)
 const getContent = async (req, res) => {
   try {
-    const { university, department, year, course } = req.query;
+    const { level, university, department, year, grade, subject, technology, course } = req.query;
 
     // Build query object - only active courses for public access
     const query = { isActive: true };
+    if (level) query.level = level;
     if (university) query.university = university;
+    if (grade) query.grade = grade;
+    if (subject) query.subject = subject;
+    if (technology) query.technology = technology;
     if (department) query.department = department;
     if (year) query.year = year;
     if (course) query.course = course;
