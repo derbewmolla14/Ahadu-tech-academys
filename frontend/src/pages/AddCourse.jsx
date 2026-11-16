@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../api/api';
 
@@ -18,6 +18,31 @@ export default function AddCourse() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedElementaryGrade, setSelectedElementaryGrade] = useState('');
   const [selectedHighSchoolGrade, setSelectedHighSchoolGrade] = useState('');
+  const [universityDepartments, setUniversityDepartments] = useState([]);
+  const [universityYears, setUniversityYears] = useState([]);
+  const [universityOptionsError, setUniversityOptionsError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    async function loadUniversityOptions() {
+      try {
+        const [departmentsResponse, yearsResponse] = await Promise.all([
+          apiFetch('departments'),
+          apiFetch('university-years'),
+        ]);
+        const [departments, years] = await Promise.all([departmentsResponse.json(), yearsResponse.json()]);
+        if (!departmentsResponse.ok || !yearsResponse.ok) throw new Error('Unable to load configured departments and academic years.');
+        if (active) {
+          setUniversityDepartments(Array.isArray(departments) ? departments.map(item => typeof item === 'string' ? item : item.name).filter(Boolean) : []);
+          setUniversityYears(Array.isArray(years) ? years.map(item => typeof item === 'number' ? 'Year ' + item : 'Year ' + item.yearNumber).filter(item => item !== 'Year undefined') : []);
+        }
+      } catch (err) {
+        if (active) setUniversityOptionsError(err.message || 'Unable to load University options.');
+      }
+    }
+    loadUniversityOptions();
+    return () => { active = false; };
+  }, []);
 
   const categories = [
     { id: 'elementary', title: 'Elementary', subtitle: 'Grades 1–8', icon: '📘', detail: 'Upload subjects, lessons, notes, and exercises for elementary students.' },
@@ -249,9 +274,15 @@ export default function AddCourse() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {selectedCategory === 'university' && <>
-                <Field label="University *" name="university" value={formData.university} onChange={handleInputChange} placeholder="e.g., Addis Ababa University" required />
-                <Field label="Department *" name="department" value={formData.department} onChange={handleInputChange} placeholder="e.g., Computer Science" required />
-                <Field label="Academic Year *" name="year" value={formData.year} onChange={handleInputChange} placeholder="e.g., Year 1" required />
+                <SelectField label="Academic Category *" name="faculty" value={formData.faculty || ''} onChange={(event) => setFormData(prev => ({ ...prev, faculty: event.target.value, studyStage: '', department: '', year: '' }))} options={['Natural Science', 'Social Science', "Master's Degree", 'PhD']} required />
+                {(formData.faculty === 'Natural Science' || formData.faculty === 'Social Science') && <SelectField label="Academic Stage *" name="studyStage" value={formData.studyStage || ''} onChange={(event) => setFormData(prev => ({ ...prev, studyStage: event.target.value, department: '', year: event.target.value === 'Senior' ? '' : event.target.value }))} options={['Remedial', 'Freshman', 'Senior']} required />}
+                {formData.studyStage === 'Senior' && <>
+                  <SelectField label="Department *" name="department" value={formData.department} onChange={handleInputChange} options={universityDepartments} required />
+                  <SelectField label="Academic Year *" name="year" value={formData.year} onChange={handleInputChange} options={universityYears} required />
+                </>}
+                {(formData.faculty === "Master's Degree" || formData.faculty === 'PhD') && <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">This course will be filed under {formData.faculty}.</div>}
+                <Field label="Course Code" name="courseCode" value={formData.courseCode || ''} onChange={handleInputChange} placeholder="e.g., CSE 201" />
+                {universityOptionsError && <p className="text-sm text-amber-300 md:col-span-2">{universityOptionsError}</p>}
               </>}
               {selectedCategory === 'elementary' && <>
                 <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3"><p className="text-sm text-blue-200">Selected grade</p><p className="text-xl font-semibold text-white">Grade {selectedElementaryGrade}</p><button type="button" onClick={() => setSelectedElementaryGrade('')} className="mt-2 text-sm text-blue-400">Choose another grade</button></div>
