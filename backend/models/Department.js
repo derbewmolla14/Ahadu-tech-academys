@@ -14,7 +14,7 @@ departmentSchema.pre('validate', function normalizeDepartmentName(next) {
   next();
 });
 
-departmentSchema.index({ category: 1, normalizedName: 1 }, { unique: true });
+departmentSchema.index({ category: 1, normalizedName: 1 }, { unique: true, partialFilterExpression: { normalizedName: { $type: 'string' } } });
 
 departmentSchema.statics.CATEGORIES = DEPARTMENT_CATEGORIES;
 
