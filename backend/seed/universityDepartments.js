@@ -210,6 +210,15 @@ const DEPARTMENTS = {
 };
 
 async function seedUniversityDepartments() {
+  // Remove the legacy globally-unique name index so a department name can
+  // legitimately exist in more than one academic category (for example Geography).
+  try { await Department.collection.dropIndex('name_1'); } catch (error) {
+    if (error.codeName !== 'IndexNotFound' && error.code !== 27) throw error;
+  }
+  await Department.collection.createIndex(
+    { category: 1, normalizedName: 1 },
+    { unique: true, name: 'category_normalizedName_unique', partialFilterExpression: { normalizedName: { $type: 'string' } } }
+  );
   let inserted = 0;
   for (const [category, names] of Object.entries(DEPARTMENTS)) {
     for (const name of names) {
