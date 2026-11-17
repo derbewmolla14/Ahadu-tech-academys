@@ -10,7 +10,18 @@ export default function AdminUniversityResources() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const change = (event) => setForm((old) => ({ ...old, [event.target.name]: event.target.value }));
+  const change = (event) => {
+    const { name, value } = event.target;
+    setForm((old) => {
+      if (name === 'kind') {
+        const resourceType = value === 'course-material' ? 'pdf' : 'image';
+        return { ...old, kind: value, resourceType };
+      }
+      if (name === 'level' && value !== 'Senior') return { ...old, level: value, department: '' };
+      if (name === 'level' && value === 'Senior') return { ...old, level: value, course: '' };
+      return { ...old, [name]: value };
+    });
+  };
   const load = async () => {
     const response = await apiFetch('university-learning/admin/resources');
     const data = await response.json();
