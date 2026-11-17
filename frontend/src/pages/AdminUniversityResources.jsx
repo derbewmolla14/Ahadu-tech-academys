@@ -51,7 +51,7 @@ export default function AdminUniversityResources() {
     event.preventDefault(); setError(''); setMessage('');
     if (!form.title.trim()) { setError('Please enter a resource title.'); return; }
     if (form.level === 'Senior' && !form.department.trim()) { setError('Please select a Department.'); return; }
-    if (!form.course.trim()) { setError('Please select or enter a Course.'); return; }
+    if ((form.level !== 'Senior' || form.kind === 'course-material') && !form.course.trim()) { setError('Please select or enter a Course.'); return; }
     if (form.kind === 'exam-question' && !form.academicYear.trim()) { setError('Please select an Academic Year for this exam question.'); return; }
     if (form.resourceType === 'text' && !form.textContent.trim()) { setError('Please enter the text or question content.'); return; }
     if (form.resourceType !== 'text' && !file) { setError('Please select a file to upload.'); return; }
