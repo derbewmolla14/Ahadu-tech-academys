@@ -38,6 +38,9 @@ jobs:
       - name: Check server and University learning modules
         run: |
           node --check server.js
+          node --check models/CourseContent.js
+          node --check controllers/courseContentController.js
           node --check models/UniversityResource.js
           node --check controllers/universityFlowController.js
+          node --check routes/courseContent.js
           node --check routes/universityFlow.js
