@@ -62,6 +62,21 @@ export default function UniversityDepartmentsAdmin() {
     } catch (err) { setError(err.message || 'Unable to update department.'); }
   };
 
+  // The backend DELETE endpoint deactivates a department instead of physically
+  // deleting it, preserving links from existing courses and historical records.
+  const removeDepartment = async (item) => {
+    if (!window.confirm(`Remove "${item.name}" from the student department list? Existing course records will be preserved.`)) return;
+    try {
+      setError(''); setSuccess('');
+      const response = await apiFetch('departments/' + item._id, { method: 'DELETE' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Unable to remove department.');
+      setSuccess(`${item.name} was removed from the student list. Existing courses were preserved.`);
+      if (editingId === item._id) resetForm();
+      await loadDepartments();
+    } catch (err) { setError(err.message || 'Unable to remove department.'); }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 p-6 text-white">
       <div className="mx-auto max-w-6xl space-y-6">
@@ -81,10 +96,10 @@ export default function UniversityDepartmentsAdmin() {
           {success && <p className="mt-4 rounded-lg border border-green-800 bg-green-950/30 p-3 text-green-200">{success}</p>}
         </section>
         <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          <div className="flex flex-wrap items-center justify-between gap-4"><h2 className="text-xl font-semibold">Department Directory</h2><span className="text-sm text-slate-400">{visibleDepartments.length} listed</span></div>
+          <div className="flex flex-wrap items-center justify-between gap-4"><div><h2 className="text-xl font-semibold">Department Directory</h2><p className="mt-1 text-sm text-slate-400">All configured departments, including inactive entries hidden from students.</p></div><div className="flex flex-wrap gap-3 text-sm"><span className="rounded-lg bg-slate-800 px-3 py-2">All: {departments.length}</span><span className="rounded-lg bg-green-950/60 px-3 py-2 text-green-300">Active: {departments.filter(item => item.isActive).length}</span><span className="rounded-lg bg-slate-800 px-3 py-2 text-slate-300">Inactive: {departments.filter(item => !item.isActive).length}</span><span className="rounded-lg bg-blue-950/60 px-3 py-2 text-blue-300">Shown: {visibleDepartments.length}</span></div></div>
           <div className="mt-4 flex flex-wrap gap-2">{categories.map(item => <button key={item} onClick={() => { setCategory(item); setSearch(''); }} className={'rounded-full px-4 py-2 text-sm ' + (category === item ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700')}>{item}</button>)}</div>
           <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search departments…" className="mt-4 w-full rounded-lg border border-slate-700 bg-slate-950 px-4 py-3 text-white" />
-          {loading ? <p className="py-8 text-center text-slate-400">Loading departments…</p> : visibleDepartments.length ? <div className="mt-4 divide-y divide-slate-800">{visibleDepartments.map(item => <div key={item._id} className="flex flex-wrap items-center justify-between gap-3 py-4"><div><p className="font-medium">{item.name}</p><p className="text-sm text-slate-400">{item.category} · {item.isActive ? 'Active' : 'Inactive'}</p></div><div className="flex gap-2"><button onClick={() => editDepartment(item)} className="rounded-md bg-slate-700 px-3 py-2 text-sm hover:bg-slate-600">Edit</button><button onClick={() => toggleDepartment(item)} className={'rounded-md px-3 py-2 text-sm ' + (item.isActive ? 'bg-amber-900/50 text-amber-200' : 'bg-green-900/50 text-green-200')}>{item.isActive ? 'Deactivate' : 'Activate'}</button></div></div>)}</div> : <p className="py-8 text-center text-slate-400">No departments found in this category.</p>}
+          {loading ? <p className="py-8 text-center text-slate-400">Loading departments…</p> : visibleDepartments.length ? <div className="mt-4 divide-y divide-slate-800">{visibleDepartments.map(item => <div key={item._id} className="flex flex-wrap items-center justify-between gap-3 py-4"><div><p className="font-medium">{item.name}</p><p className="text-sm text-slate-400">{item.category} · {item.isActive ? 'Active' : 'Inactive'}</p></div><div className="flex gap-2"><button onClick={() => editDepartment(item)} className="rounded-md bg-slate-700 px-3 py-2 text-sm hover:bg-slate-600">Edit</button><button onClick={() => toggleDepartment(item)} className={'rounded-md px-3 py-2 text-sm ' + (item.isActive ? 'bg-amber-900/50 text-amber-200' : 'bg-green-900/50 text-green-200')}>{item.isActive ? 'Deactivate' : 'Activate'}</button><button onClick={() => removeDepartment(item)} className="rounded-md bg-red-950/70 px-3 py-2 text-sm text-red-200 hover:bg-red-900">Remove</button></div></div>)}</div> : <p className="py-8 text-center text-slate-400">No departments found in this category.</p>}
         </section>
       </div>
     </div>
