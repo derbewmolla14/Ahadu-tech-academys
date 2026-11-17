@@ -45,23 +45,23 @@ export default function ElementaryGradePage() {
   }, [id]);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 p-6">
+    <div className="mx-auto max-w-6xl space-y-5 p-4 sm:space-y-8 sm:p-6">
       {selectedPdf && <div className="fixed inset-0 z-50 flex flex-col bg-slate-950/95 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label={selectedPdf.title}>
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 pb-3"><h2 className="truncate text-lg font-semibold text-white">{selectedPdf.title}</h2><button type="button" onClick={() => setSelectedPdf(null)} className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">Close ×</button></div>
         <iframe title={selectedPdf.title} src={selectedPdf.url} className="mx-auto min-h-0 w-full max-w-6xl flex-1 rounded-xl border border-slate-700 bg-white" />
       </div>}
-      <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8">
+      <div className="rounded-3xl border border-slate-800 bg-slate-900 p-4 sm:p-6 lg:p-8">
         <Link to="/elementary" className="text-sm text-blue-400 hover:text-blue-300">← All Elementary grades</Link>
-        <h1 className="mt-4 text-3xl font-bold text-white">Elementary — Grade {id}</h1>
+        <h1 className="mt-4 text-2xl font-bold text-white sm:text-3xl">Elementary — Grade {id}</h1>
         <p className="mt-2 text-slate-400">Courses and learning materials uploaded for Grade {id} appear here.</p>
       </div>
 
-      {loading && <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-300">Loading Grade {id} courses…</div>}
+      {loading && <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 text-center sm:p-8 text-slate-300">Loading Grade {id} courses…</div>}
       {!loading && error && <div role="alert" className="rounded-2xl border border-red-800 bg-red-950/40 p-6 text-red-200">{error}</div>}
       {!loading && !error && courses.length === 0 && (
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center">
           <div className="text-4xl">📚</div>
-          <h2 className="mt-3 text-xl font-semibold text-white">No courses uploaded yet</h2>
+          <h2 className="mt-3 text-lg font-semibold text-white sm:text-xl">No courses uploaded yet</h2>
           <p className="mt-2 text-slate-400">There are currently no published courses for Grade {id}. Please check again later.</p>
         </div>
       )}
