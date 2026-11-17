@@ -19,6 +19,7 @@ const universityLearningSessionSchema = new mongoose.Schema({
   departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department', default: null },
   departmentName: { type: String, default: null },
   courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'CourseContent', default: null },
+  courseName: { type: String, default: null },
   learningType: { type: String, enum: ['EXAM_QUESTION', 'COURSE_MATERIAL', 'EXIT_EXAM', null], default: null },
   examYear: { type: String, default: null },
   lastActivityAt: { type: Date, default: Date.now }
