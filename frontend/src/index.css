@@ -233,3 +233,78 @@ html[data-theme="light"] select {
   color: #172033;
   border-color: #cbd5e1;
 }
+
+
+/* =========================================
+   RESPONSIVE TYPOGRAPHY & MOBILE READABILITY
+   Base breakpoint: phones (up to 639px)
+========================================= */
+@media (max-width: 639px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    font-size: 15px;
+    line-height: 1.55;
+  }
+
+  /* Scale common Tailwind text utilities consistently on phones.
+     Larger breakpoints (sm/md/lg) retain their normal Tailwind sizing. */
+  [class~="text-xs"] { font-size: 0.72rem; line-height: 1.4; }
+  [class~="text-sm"] { font-size: 0.8125rem; line-height: 1.5; }
+  [class~="text-base"] { font-size: 0.9375rem; line-height: 1.55; }
+  [class~="text-lg"] { font-size: 1rem; line-height: 1.45; }
+  [class~="text-xl"] { font-size: 1.125rem; line-height: 1.35; }
+  [class~="text-2xl"] { font-size: 1.3125rem; line-height: 1.3; }
+  [class~="text-3xl"] { font-size: 1.5rem; line-height: 1.25; }
+  [class~="text-4xl"] { font-size: 1.75rem; line-height: 1.2; }
+  [class~="text-5xl"] { font-size: 2rem; line-height: 1.15; }
+  [class~="text-6xl"] { font-size: 2.25rem; line-height: 1.1; }
+
+  h1, h2, h3, h4 {
+    letter-spacing: -0.02em;
+    overflow-wrap: anywhere;
+  }
+
+  p, li, label, button, a {
+    overflow-wrap: anywhere;
+  }
+
+  input, select, textarea, button {
+    min-width: 0;
+  }
+
+  /* Keep wide data tables usable without squeezing their columns. */
+  table {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  th, td {
+    padding: 0.625rem 0.75rem;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+  }
+
+  pre, code {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
+
+/* Improve long-form reading on all screen sizes. */
+p, li {
+  line-height: 1.6;
+}
+
+@media (min-width: 640px) {
+  p, li {
+    line-height: 1.65;
+  }
+}
