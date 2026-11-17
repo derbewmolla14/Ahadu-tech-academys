@@ -32,7 +32,7 @@ export default function AdminUniversityResources() {
   };
   useEffect(() => { load().catch((err) => setError(err.message)); }, []);
   useEffect(() => {
-    const category = form.stream === 'Natural' ? 'Natural Science' : 'Social Science';
+    const category = ({ Natural: 'Natural Science', Social: 'Social Science', Health: 'Health Science', Diploma: 'Diploma' })[form.stream];
     apiFetch('departments?category=' + encodeURIComponent(category))
       .then((response) => response.json())
       .then((data) => setDepartments(Array.isArray(data) ? data : []))
@@ -62,7 +62,7 @@ export default function AdminUniversityResources() {
   };
   const field = (label, name, options) => <label className="block text-sm text-slate-300">{label}<select name={name} value={form[name]} onChange={change} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-3">{options.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>;
   return <main className="mx-auto max-w-6xl space-y-6 p-5 text-white"><h1 className="text-3xl font-bold">University Resource Uploads</h1><form onSubmit={submit} className="grid gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:grid-cols-2 lg:grid-cols-3">
-    {field('Stream', 'stream', ['Natural', 'Social'])}{field('Level', 'level', ['Freshman', 'Remedial', 'Senior'])}
+    {field('Stream', 'stream', ['Natural', 'Social', 'Health', 'Diploma'])}{field('Level', 'level', ['Freshman', 'Remedial', 'Senior', 'Diploma'])}
     {field('Content path', 'kind', form.level === 'Senior' ? ['exit-exam', 'course-material'] : ['exam-question', 'course-material'])}
     <label className="block text-sm text-slate-300">Department<select name="department" value={form.department} onChange={change} disabled={form.level !== 'Senior'} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-3 disabled:opacity-50"><option value="">Select department</option>{departments.map((item) => <option key={item._id} value={item.name}>{item.name}</option>)}</select></label>
     <label className="block text-sm text-slate-300">Course<input name="course" value={form.course} onChange={change} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-3" /></label>
