@@ -54,11 +54,11 @@ exports.getCatalog = async (req, res) => {
     const resources = await UniversityResource.find(query)
       .select('title resourceType textContent answer solution originalFileName mimeType accessType')
       .sort({ createdAt: -1 }).lean();
-    const unlocked = new Set((req.user.unlockedUniversityResources || []).map((id) => String(id)));
+    const unlocked = new Set((req.user?.unlockedUniversityResources || []).map((id) => String(id)));
     return res.json({
       resources: resources.map((item) => ({
         ...item,
-        hasAccess: item.accessType !== 'premium' || req.user.role === 'admin' || unlocked.has(String(item._id)),
+        hasAccess: item.accessType !== 'premium' || req.user?.role === 'admin' || unlocked.has(String(item._id)),
       })),
     });
   } catch (error) {
@@ -156,8 +156,8 @@ exports.downloadApproved = async (req, res) => {
   try {
     const item = await UniversityResource.findOne({ _id: req.params.id, status: 'approved' });
     if (!item) return res.status(404).json({ message: 'Approved resource not found.' });
-    const isAdmin = req.user.role === 'admin';
-    const isUnlocked = (req.user.unlockedUniversityResources || []).some((id) => String(id) === String(item._id));
+    const isAdmin = req.user?.role === 'admin';
+    const isUnlocked = (req.user?.unlockedUniversityResources || []).some((id) => String(id) === String(item._id));
     if (item.accessType === 'premium' && !isAdmin && !isUnlocked) return res.status(403).json({ message: 'This is a premium resource. Please complete payment or request access before opening it.' });
     if (!item.storedFileName) return res.status(404).json({ message: 'This resource has no attached file.' });
     const filePath = path.join(PRIVATE_DIR, path.basename(item.storedFileName));
