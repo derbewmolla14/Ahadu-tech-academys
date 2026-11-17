@@ -121,7 +121,7 @@ export default function CourseList() {
   const department = searchParams.get('department');
   const year = searchParams.get('year');
   const contentType = searchParams.get('contentType') || 'course-materials';
-  const categoryName = faculty === 'Natural' ? 'Natural Science' : faculty === 'Social' ? 'Social Science' : faculty;
+  const categoryName = faculty === 'Natural' ? 'Natural Science' : faculty === 'Social' ? 'Social Science' : faculty === 'Health' ? 'Health Science' : faculty;
   const [searchTerm, setSearchTerm] = useState('');
   const [seniorCourses, setSeniorCourses] = useState([]);
   const [seniorLoading, setSeniorLoading] = useState(false);
@@ -192,7 +192,6 @@ export default function CourseList() {
       <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-xl shadow-slate-950/50">
         <h1 className="text-3xl font-semibold text-white">{getTitle()}</h1>
         <p className="mt-2 text-slate-400">{level === 'Senior' ? 'Courses uploaded by the administrator for your selected department and category.' : 'These are sample courses based on your selected path.'}</p>
-        <p className="mt-3 text-slate-300">University: {name.replace(/-/g, ' ')}</p>
         {department && <p className="mt-1 text-slate-300">Department: {department}</p>}
         {year && <p className="mt-1 text-slate-300">Year: {year}</p>}
         <div className="mt-6 flex flex-wrap gap-3">
