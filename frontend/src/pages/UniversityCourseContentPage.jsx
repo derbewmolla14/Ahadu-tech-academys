@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../api/api';
 
 export default function UniversityCourseContentPage() {
   const { courseId } = useParams();
+  const [searchParams] = useSearchParams();
+  const faculty = searchParams.get('faculty') || 'Natural Science';
+  const department = searchParams.get('department') || '';
+  const contentType = searchParams.get('contentType') || 'course-materials';
+  const universityName = searchParams.get('universityName') || 'university';
+  const facultyParam = faculty === 'Natural Science' ? 'Natural' : faculty === 'Social Science' ? 'Social' : faculty === 'Health Science' ? 'Health' : faculty;
+  const backToCourses = `/university/${universityName}/courses?${new URLSearchParams({ faculty: facultyParam, level: 'Senior', department, contentType }).toString()}`;
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -29,7 +36,7 @@ export default function UniversityCourseContentPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-6">
       <section className="rounded-3xl border border-slate-800 bg-slate-900 p-8">
-        <Link to="/university" className="text-sm text-sky-400 hover:text-sky-300">← University Categories</Link>
+        <Link to={backToCourses} className="text-sm text-sky-400 hover:text-sky-300">← Back to {contentType === "exit-exam" ? "Exit Exam" : "Course Materials"}</Link>
         <h1 className="mt-4 text-3xl font-semibold text-white">{course.course}</h1>
         <p className="mt-2 text-slate-400">{course.courseCode ? 'Code: ' + course.courseCode + ' · ' : ''}{course.department} · {course.year}</p>
         {course.description && <p className="mt-4 text-slate-300">{course.description}</p>}
