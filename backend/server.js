@@ -20,13 +20,17 @@ assertRequiredEnv();
 function crashLog(kind, payload) {
   const ts = new Date().toISOString();
   const line = '═'.repeat(60);
-  console.error(`\n${line}\n[FATAL ${kind}] ${ts}\n${line}`);
+  console.error(`
+${line}
+[FATAL ${kind}] ${ts}
+${line}`);
   if (payload instanceof Error) {
     console.error(payload.stack || `${payload.name}: ${payload.message}`);
   } else {
     console.error(payload);
   }
-  console.error(`${line}\n`);
+  console.error(`${line}
+`);
 }
 
 process.on('uncaughtException', (err) => {
@@ -71,7 +75,8 @@ const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const courseRoutes = require('./routes/courses');
 const contentRoutes = require('./routes/content');
-const courseContentRoutes = require('./routes/courseContent');\nconst universityLearningSessionRoutes = require('./routes/universityLearningSession');
+const courseContentRoutes = require('./routes/courseContent');
+const universityLearningSessionRoutes = require('./routes/universityLearningSession');
 const departmentRoutes = require('./routes/departments');
 const universityYearRoutes = require('./routes/universityYears');
 const universityRoutes = require('./routes/universities');
@@ -152,7 +157,8 @@ app.use('/api/content', courseContentRoutes);
 app.use('/api/content', universityContentRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/university-years', universityYearRoutes);
-app.use('/api/universities', universityRoutes);\napp.use('/api/university-learning-session', universityLearningSessionRoutes);
+app.use('/api/universities', universityRoutes);
+app.use('/api/university-learning-session', universityLearningSessionRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ ok: false, error: 'Not found', path: req.originalUrl });
