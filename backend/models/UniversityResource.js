@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const universityResourceSchema = new mongoose.Schema({
-  stream: { type: String, enum: ['Natural', 'Social'], required: true, index: true },
+  stream: { type: String, enum: ['Natural', 'Social', 'Health', 'Diploma'], required: true, index: true },
   level: { type: String, enum: ['Freshman', 'Remedial', 'Senior'], required: true, index: true },
   department: { type: String, trim: true, default: '' },
   course: { type: String, trim: true, default: '' },
