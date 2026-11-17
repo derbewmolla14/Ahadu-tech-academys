@@ -10,37 +10,17 @@ fs.mkdirSync(PRIVATE_DIR, { recursive: true });
 
 const approvedFilter = { status: 'approved' };
 
-const STREAM_CATEGORY = {
-  Natural: 'Natural Science',
-  Social: 'Social Science',
-  Health: 'Health Science',
-  Diploma: 'Diploma',
-};
-
-const normalizeName = (value) => String(value || '').trim().toLocaleLowerCase();
-const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\\]\\]/g, '\\const approvedFilter = { status: 'approved' };');
+const STREAM_CATEGORY = { Natural: 'Natural Science', Social: 'Social Science', Health: 'Health Science', Diploma: 'Diploma' };
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\\]\\]/g, '\\$&');
+const exactInsensitive = (value) => new RegExp('^' + escapeRegex(String(value || '').trim()) + '$', 'i');
 
 const resolveDepartment = async (stream, departmentName) => {
   const category = STREAM_CATEGORY[stream];
   const name = String(departmentName || '').trim();
   if (!category || !name) return null;
-  return Department.findOne({
-    category,
-    name: { $regex: `^${escapeRegex(name)}const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
-const UniversityResource = require('../models/UniversityResource');
-const Department = require('../models/Department');
-const User = require('../models/User');
-
-const PRIVATE_DIR = path.join(__dirname, '../private_uploads/university');
-fs.mkdirSync(PRIVATE_DIR, { recursive: true });
-
-, $options: 'i' },
-    isActive: true,
-  }).select('name normalizedName category').lean();
+  return Department.findOne({ category, name: { $regex: exactInsensitive(name) }, isActive: true })
+    .select('name normalizedName category').lean();
 };
-
 exports.getCatalog = async (req, res) => {
   try {
     const { stream, level, department, course, kind, academicYear } = req.query;
