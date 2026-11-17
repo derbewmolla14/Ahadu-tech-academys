@@ -4,9 +4,9 @@ import { apiFetch, apiBaseURL } from '../api/api';
 
 const getUploadedFileUrl = (fileUrl) => {
   if (!fileUrl) return '#';
-  if (/^https?:\\/\\//i.test(fileUrl)) return fileUrl;
-  const backendOrigin = apiBaseURL.replace(/\\/api\\/?$/, '');
-  return backendOrigin + '/' + String(fileUrl).replace(/^\\/+/, '');
+  if (/^https?:\/\//i.test(fileUrl)) return fileUrl;
+  const backendOrigin = apiBaseURL.replace(/\/api\/?$/, '');
+  return backendOrigin + '/' + String(fileUrl).replace(/^\/+/, '');
 };
 
 export default function ElementaryGradePage() {
