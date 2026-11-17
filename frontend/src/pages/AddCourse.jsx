@@ -289,7 +289,7 @@ export default function AddCourse() {
                 {formData.studyStage === 'Senior' && <>
                   <SelectField label="Department *" name="department" value={formData.department} onChange={handleInputChange} options={universityDepartments.filter(item => item.category === formData.faculty).map(item => item.name)} required />
                   <SelectField label="Academic Year *" name="year" value={formData.year} onChange={handleInputChange} options={universityYears} required />
-                  <SelectField label="Content Type *" name="contentType" value={formData.contentType || "course-materials"} onChange={handleInputChange} options={["course-materials", "exit-exam"]} required />
+                  <div><label className="mb-2 block text-sm font-medium text-slate-300">Content Type *</label><select name="contentType" value={formData.contentType || "course-materials"} onChange={handleInputChange} required className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:border-blue-500 focus:outline-none"><option value="course-materials">Course Materials</option><option value="exit-exam">Exit Exam Questions</option></select></div>
                 </>}
                 {(formData.faculty === "Master's Degree" || formData.faculty === 'PhD') && <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">This course will be filed under {formData.faculty}.</div>}
                 <Field label="Course Code" name="courseCode" value={formData.courseCode || ''} onChange={handleInputChange} placeholder="e.g., CSE 201" />
@@ -307,7 +307,7 @@ export default function AddCourse() {
                 <SelectField label="Training Area *" name="technology" value={formData.technology} onChange={handleInputChange} options={['Artificial Intelligence (AI)', 'Web Development', 'Graphic Design', 'Mobile App Development', 'Data Science', 'Other Skills']} required />
                 <Field label="Training Level" name="year" value={formData.year} onChange={handleInputChange} placeholder="e.g., Beginner, Intermediate" />
               </>}
-              <Field label={selectedCategory === 'coding' ? 'Training / Course Name *' : 'Course Name *'} name="course" value={formData.course} onChange={handleInputChange} placeholder="Enter the course name" required />
+              <Field label={selectedCategory === 'coding' ? 'Training / Course Name *' : selectedCategory === 'university' && formData.studyStage === 'Senior' && formData.contentType === 'exit-exam' ? 'Exam Title *' : 'Course Name *'} name="course" value={formData.course} onChange={handleInputChange} placeholder="Enter the course name" required />
             </div>
             <div className="mt-6">
               <label className="block text-sm font-medium text-slate-300 mb-2">Description</label>
