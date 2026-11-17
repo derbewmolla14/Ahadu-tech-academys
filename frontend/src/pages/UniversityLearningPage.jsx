@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { apiFetch } from '../api/api';
 
 const STREAMS = {
@@ -22,8 +22,10 @@ async function apiRequest(path, body) {
 }
 
 export default function UniversityLearningPage() {
-  const { faculty: routeStream } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
+  // The current App routes use literal stream paths, not a :faculty parameter.
+  const routeStream = location.pathname.split('/')[2];
   const stream = STREAMS[routeStream];
   const [session, setSession] = useState(null);
   const [departments, setDepartments] = useState([]);
