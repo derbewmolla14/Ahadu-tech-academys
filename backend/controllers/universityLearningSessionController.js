@@ -10,6 +10,7 @@ const clearBelowLevel = {
   departmentId: null,
   departmentName: null,
   courseId: null,
+  courseName: null,
   learningType: null,
   examYear: null
 };
@@ -157,7 +158,7 @@ exports.selectDepartment = async (req, res) => {
     if (!department) return fail(res, 404, 'This department is not active in the selected stream.');
     Object.assign(session, {
       departmentId: department._id, departmentName: department.name,
-      courseId: null, learningType: null, examYear: null,
+      courseId: null, courseName: null, learningType: null, examYear: null,
       state: 'SENIOR_LEARNING_TYPE', lastActivityAt: new Date()
     });
     await session.save();
@@ -183,10 +184,11 @@ exports.selectCourse = async (req, res) => {
       studyStage: session.level, isActive: true
     };
     if (seniorState) query.department = session.departmentName;
-    const course = await CourseContent.findOne(query).select('_id');
+    const course = await CourseContent.findOne(query).select('_id course');
     if (!course) return fail(res, 404, 'Course not found for this learning path.');
 
     session.courseId = course._id;
+    session.courseName = course.course;
     session.learningType = null;
     session.examYear = null;
     session.state = juniorState ? 'JUNIOR_LEARNING_TYPE' : 'SENIOR_MATERIALS';
@@ -253,18 +255,18 @@ exports.back = async (req, res) => {
       JUNIOR_COURSES: { state: 'SELECT_LEVEL', level: null, ...clearBelowLevel },
       SENIOR_DEPARTMENTS: { state: 'SELECT_LEVEL', level: null, ...clearBelowLevel },
       JUNIOR_LEARNING_TYPE: {
-        state: 'JUNIOR_COURSES', courseId: null, learningType: null, examYear: null
+        state: 'JUNIOR_COURSES', courseId: null, courseName: null, learningType: null, examYear: null
       },
       EXAM_YEAR: { state: 'JUNIOR_LEARNING_TYPE', learningType: null, examYear: null },
       EXAM_QUESTIONS: { state: 'EXAM_YEAR', examYear: null },
       JUNIOR_MATERIALS: { state: 'JUNIOR_LEARNING_TYPE', learningType: null },
       SENIOR_LEARNING_TYPE: {
         state: 'SENIOR_DEPARTMENTS', departmentId: null, departmentName: null,
-        learningType: null, courseId: null
+        learningType: null, courseId: null, courseName: null
       },
       SENIOR_EXIT_EXAM: { state: 'SENIOR_LEARNING_TYPE', learningType: null },
       SENIOR_COURSES: { state: 'SENIOR_LEARNING_TYPE', learningType: null, courseId: null },
-      SENIOR_MATERIALS: { state: 'SENIOR_COURSES', courseId: null }
+      SENIOR_MATERIALS: { state: 'SENIOR_COURSES', courseId: null, courseName: null }
     };
     const patch = back[session.state];
     if (!patch) return fail(res, 409, 'There is no previous menu.');
