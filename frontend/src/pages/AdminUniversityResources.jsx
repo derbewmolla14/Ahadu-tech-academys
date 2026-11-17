@@ -17,8 +17,8 @@ export default function AdminUniversityResources() {
         const resourceType = value === 'course-material' ? 'pdf' : 'image';
         return { ...old, kind: value, resourceType };
       }
-      if (name === 'level' && value !== 'Senior') return { ...old, level: value, department: '' };
-      if (name === 'level' && value === 'Senior') return { ...old, level: value, course: '' };
+      if (name === 'level' && value !== 'Senior') return { ...old, level: value, department: '', kind: old.kind === 'exit-exam' ? 'course-material' : old.kind, resourceType: old.kind === 'exit-exam' ? 'pdf' : old.resourceType };
+      if (name === 'level' && value === 'Senior') return { ...old, level: value, course: '', kind: 'exit-exam', resourceType: 'image' };
       return { ...old, [name]: value };
     });
   };
