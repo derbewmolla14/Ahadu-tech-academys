@@ -47,7 +47,7 @@ const uploadContent = async (req, res) => {
   try {
     const {
       level = 'university', university = '', department = '', year = '',
-      grade = '', subject = '', technology = '', faculty = '', studyStage = '', courseCode = '', course, description,
+      grade = '', subject = '', technology = '', faculty = '', studyStage = '', contentType = 'course-materials', courseCode = '', course, description,
       notes, videos, ppts, questions, isActive, isPremium
     } = req.body;
 
@@ -80,6 +80,7 @@ const uploadContent = async (req, res) => {
       if (faculty === 'Natural Science' || faculty === 'Social Science' || faculty === 'Health Science') {
         if (!['Remedial', 'Freshman', 'Senior'].includes(studyStage)) return res.status(400).json({ success: false, message: 'Please select Remedial, Freshman, or Senior' });
         if (studyStage === 'Senior' && (!department || !year)) return res.status(400).json({ success: false, message: 'Department and academic year are required for Senior courses' });
+        if (studyStage === 'Senior' && !['course-materials', 'exit-exam'].includes(contentType)) return res.status(400).json({ success: false, message: 'Select Course Materials or Exit Exam.' });
         if (studyStage === 'Senior') {
           const configuredDepartment = await Department.findOne({ name: department, category: faculty, isActive: true });
           if (!configuredDepartment) return res.status(400).json({ success: false, message: 'Select an active department from the selected academic category.' });
@@ -133,7 +134,7 @@ const uploadContent = async (req, res) => {
     };
     const existingContent = await CourseContent.findOne(identity);
     const values = {
-      ...identity, level, grade, subject, technology, faculty, studyStage, courseCode,
+      ...identity, level, grade, subject, technology, faculty, studyStage, contentType: studyStage === 'Senior' ? contentType : 'course-materials', courseCode,
       description: description || '',
       notes: parsedNotes,
       videos: parsedVideos,
@@ -168,7 +169,7 @@ const uploadContent = async (req, res) => {
 // Get course content (public - only active courses)
 const getContent = async (req, res) => {
   try {
-    const { level, university, department, year, grade, subject, technology, faculty, studyStage, course, courseCode } = req.query;
+    const { level, university, department, year, grade, subject, technology, faculty, studyStage, contentType, course, courseCode } = req.query;
 
     // Build query object - only active courses for public access
     const query = { isActive: true };
@@ -179,6 +180,8 @@ const getContent = async (req, res) => {
     if (technology) query.technology = technology;
     if (faculty) query.faculty = faculty;
     if (studyStage) query.studyStage = studyStage;
+    if (contentType === 'course-materials') query.$or = [{ contentType: 'course-materials' }, { contentType: { $exists: false } }];
+    else if (contentType) query.contentType = contentType;
     if (courseCode) query.courseCode = new RegExp(courseCode, 'i');
     if (department) query.department = department;
     if (year) query.year = year;
