@@ -116,14 +116,7 @@ export default function SettingsPage() {
     setSavingPreferences(true);
     showNotice("", "");
     try {
-      const response = await api.patch("/auth/me", {
-        theme: nextTheme,
-        language: nextLanguage,
-      });
-      if (response.data?.user) {
-        // Keep the shared authenticated user in sync through the profile helper.
-        await updateProfile({ fullName: response.data.user.fullName || fullName });
-      }
+      await updateProfile({ theme: nextTheme, language: nextLanguage });
       localStorage.setItem("language", nextLanguage);
       applyTheme(nextTheme);
       showNotice("success", "Your preferences have been saved.");
