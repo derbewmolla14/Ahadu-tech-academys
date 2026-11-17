@@ -23,6 +23,15 @@ export default function UniversityFlow() {
   const [courseSearch, setCourseSearch] = useState('');
   const [departmentSearch, setDepartmentSearch] = useState('');
   const [resourceSearch, setResourceSearch] = useState('');
+  const [paymentResource, setPaymentResource] = useState(null);
+  const paymentDetails = {
+    bankName: import.meta.env.VITE_PAYMENT_BANK_NAME || '',
+    accountName: import.meta.env.VITE_PAYMENT_ACCOUNT_NAME || '',
+    accountNumber: import.meta.env.VITE_PAYMENT_ACCOUNT_NUMBER || '',
+    telebirrName: import.meta.env.VITE_TELEBIRR_ACCOUNT_NAME || '',
+    telebirrNumber: import.meta.env.VITE_TELEBIRR_PHONE || '',
+    telegramUsername: (import.meta.env.VITE_PAYMENT_TELEGRAM_USERNAME || '').replace(/^@/, ''),
+  };
 
   const load = useCallback(async (next) => {
     if (!next.stream) { setCatalog({}); return; }
@@ -143,13 +152,33 @@ export default function UniversityFlow() {
             {resource.hasAccess && resource.textContent && <p className="mt-3 whitespace-pre-wrap text-slate-300">{resource.textContent}</p>}
             {resource.hasAccess && resource.answer && <p className="mt-3 text-slate-300"><strong>Answer:</strong> {resource.answer}</p>}
             {resource.hasAccess && resource.solution && <p className="mt-2 whitespace-pre-wrap text-slate-300"><strong>Solution:</strong> {resource.solution}</p>}
-            {!resource.hasAccess && <p className="mt-3 text-sm text-amber-200">Premium access is required. Complete payment or subscription with the academy administrator and ask them to unlock this resource for your account.</p>}
+            {!resource.hasAccess && <><p className="mt-3 text-sm text-amber-200">Premium access is required. Complete payment and send your receipt for manual verification.</p><button type="button" onClick={() => setPaymentResource(resource)} className="mt-4 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500">Pay &amp; Request Access</button></>}
             {resource.resourceType !== 'text' && resource.hasAccess && <button type="button" onClick={() => openResource(resource)} className="mt-4 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold hover:bg-sky-500">Open {resource.resourceType}</button>}
           </article>)}
           {resources.length > 0 && !filteredResources.length && <p className="text-slate-400">No approved resources match your search.</p>}
           {!resources.length && <p className="text-slate-400">No approved resources are available at this step yet.</p>}
         </section>}
       </>}
+      {paymentResource && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4" role="dialog" aria-modal="true" aria-labelledby="premium-payment-title">
+        <section className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+          <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-widest text-amber-400">Premium resource</p><h2 id="premium-payment-title" className="mt-2 text-2xl font-bold">Payment instructions</h2><p className="mt-1 text-sm text-slate-400">{paymentResource.title}</p></div><button type="button" onClick={() => setPaymentResource(null)} className="rounded-lg px-3 py-2 text-slate-300 hover:bg-slate-800" aria-label="Close payment instructions">✕</button></div>
+          <p className="mt-5 text-sm leading-6 text-slate-300">Make the payment externally using one of the academy accounts below. After paying, send a clear screenshot or receipt through Telegram. An administrator will verify it and unlock this specific resource for your student account.</p>
+          <div className="mt-5 space-y-3 rounded-xl border border-slate-700 bg-slate-950 p-4"><h3 className="font-semibold text-white">Bank transfer</h3>
+            {paymentDetails.bankName && <p className="text-sm text-slate-300">Bank: <strong>{paymentDetails.bankName}</strong></p>}
+            {paymentDetails.accountName && <p className="text-sm text-slate-300">Account name: <strong>{paymentDetails.accountName}</strong></p>}
+            {paymentDetails.accountNumber && <p className="text-sm text-slate-300">Account number: <strong>{paymentDetails.accountNumber}</strong></p>}
+            {!paymentDetails.bankName && !paymentDetails.accountNumber && <p className="text-sm text-amber-200">Bank details will appear here once configured by the academy.</p>}
+          </div>
+          <div className="mt-3 space-y-2 rounded-xl border border-slate-700 bg-slate-950 p-4"><h3 className="font-semibold text-white">Telebirr</h3>
+            {paymentDetails.telebirrName && <p className="text-sm text-slate-300">Account name: <strong>{paymentDetails.telebirrName}</strong></p>}
+            {paymentDetails.telebirrNumber && <p className="text-sm text-slate-300">Telebirr number: <strong>{paymentDetails.telebirrNumber}</strong></p>}
+            {!paymentDetails.telebirrName && !paymentDetails.telebirrNumber && <p className="text-sm text-amber-200">Telebirr details will appear here once configured by the academy.</p>}
+          </div>
+          <ol className="mt-5 list-decimal space-y-2 pl-5 text-sm text-slate-300"><li>Pay the amount communicated by the academy using the account details above.</li><li>Keep your payment receipt or screenshot.</li><li>Send the receipt, your student account email/ID, and the resource title to the academy on Telegram.</li><li>Wait for the administrator to verify the payment and unlock access.</li></ol>
+          {paymentDetails.telegramUsername ? <a href={`https://t.me/${paymentDetails.telegramUsername}`} target="_blank" rel="noreferrer" className="mt-6 block rounded-xl bg-sky-600 px-4 py-3 text-center font-semibold text-white hover:bg-sky-500">Send payment proof on Telegram</a> : <p className="mt-5 rounded-lg border border-amber-700 bg-amber-950/50 p-3 text-sm text-amber-200">Telegram contact has not been configured yet. The academy administrator must set VITE_PAYMENT_TELEGRAM_USERNAME.</p>}
+          <button type="button" onClick={() => setPaymentResource(null)} className="mt-3 w-full rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-300 hover:bg-slate-800">Close</button>
+        </section>
+      </div>}
     </main>
   );
 }
