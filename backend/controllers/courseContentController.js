@@ -47,9 +47,11 @@ const uploadContent = async (req, res) => {
   try {
     const {
       level = 'university', university = '', department = '', year = '',
-      grade = '', subject = '', technology = '', faculty = '', studyStage = '', contentType = 'course-materials', courseCode = '', course, description,
+      grade = '', subject = '', technology = '', faculty = '', studyStage: requestedStudyStage = '', contentType = 'course-materials', courseCode = '', course, description,
       notes, videos, ppts, questions, isActive, isPremium
     } = req.body;
+
+    let studyStage = requestedStudyStage;
 
     if (!['elementary', 'highschool', 'university', 'coding'].includes(level)) {
       return res.status(400).json({ success: false, message: 'Please select a valid course category' });
@@ -82,10 +84,10 @@ const uploadContent = async (req, res) => {
         if (studyStage === 'Senior' && (!department || !year)) return res.status(400).json({ success: false, message: 'Department and academic year are required for Senior courses' });
         if (studyStage === 'Senior' && !['course-materials', 'exit-exam'].includes(contentType)) return res.status(400).json({ success: false, message: 'Select Course Materials or Exit Exam.' });
         if (studyStage === 'Senior') {
-          const configuredDepartment = await Department.findOne({ name: department, category: faculty, isActive: true });
+          const configuredDepartment = await Department.findOne({ name: String(department).trim(), category: faculty, isActive: true });
           if (!configuredDepartment) return res.status(400).json({ success: false, message: 'Select an active department from the selected academic category.' });
         }
-        recordDepartment = studyStage === 'Senior' ? department : 'General';
+        recordDepartment = studyStage === 'Senior' ? String(department).trim() : 'General';
         recordYear = studyStage === 'Senior' ? year : studyStage;
       } else {
         recordDepartment = department || 'Graduate Studies';
