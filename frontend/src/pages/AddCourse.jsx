@@ -115,7 +115,6 @@ export default function AddCourse() {
 
       // Add category and category-specific course details.
       submitData.append('level', selectedCategory);
-      if (selectedCategory === 'university') submitData.append('contentType', formData.contentType || 'course-materials');
       Object.keys(formData).forEach(key => {
         if (formData[key] !== '') submitData.append(key, formData[key]);
       });
