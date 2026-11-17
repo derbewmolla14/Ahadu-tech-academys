@@ -123,7 +123,6 @@ export default function AddCourse() {
       if (stageRequired && !formData.studyStage) return 'Please select an Academic Stage.';
       if (formData.studyStage === 'Senior') {
         if (!String(formData.department || '').trim()) return 'Please select a Department.';
-        if (!String(formData.year || '').trim()) return 'Please select an Academic Year.';
         if (!formData.contentType) return 'Please select a Content Type.';
       }
     }
@@ -326,7 +325,7 @@ export default function AddCourse() {
                 {(formData.faculty === 'Natural Science' || formData.faculty === 'Social Science' || formData.faculty === 'Health Science' || formData.faculty === 'Diploma') && <SelectField label="Academic Stage *" name="studyStage" value={formData.studyStage || ''} onChange={(event) => setFormData(prev => ({ ...prev, studyStage: event.target.value, department: '', year: event.target.value === 'Senior' ? '' : event.target.value }))} options={formData.faculty === 'Diploma' ? ['Freshman', 'Remedial', 'Senior', 'Diploma'] : ['Remedial', 'Freshman', 'Senior']} required />}
                 {formData.studyStage === 'Senior' && <>
                   <SelectField label="Department *" name="department" value={formData.department} onChange={handleInputChange} options={universityDepartments.filter(item => item.category === formData.faculty).map(item => item.name)} required />
-                  <SelectField label="Academic Year *" name="year" value={formData.year} onChange={handleInputChange} options={universityYears} required />
+                  <div><SelectField label="Academic Year (optional)" name="year" value={formData.year} onChange={handleInputChange} options={universityYears} /><p className="mt-1 text-xs text-slate-400">Leave blank to make this course available to students in every academic year.</p></div>
                   <div><label className="mb-2 block text-sm font-medium text-slate-300">Content Type *</label><select name="contentType" value={formData.contentType || "course-materials"} onChange={handleInputChange} required className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:border-blue-500 focus:outline-none"><option value="course-materials">Course Materials</option><option value="exit-exam">Exit Exam Questions</option></select></div>
                 </>}
                 {(formData.faculty === "Master's Degree" || formData.faculty === 'PhD') && <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">This course will be filed under {formData.faculty}.</div>}
