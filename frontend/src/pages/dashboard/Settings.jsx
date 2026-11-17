@@ -1,517 +1,347 @@
-
-import { useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
-  User,
-  Mail,
-  Lock,
-  Camera,
-  Sun,
-  Moon,
-  Eye,
-  EyeOff,
-  Save,
-  ShieldCheck,
+  Camera, Check, ChevronRight, Eye, EyeOff, Globe2, LockKeyhole,
+  Monitor, Moon, Palette, Save, ShieldCheck, Sun, UserRound,
 } from "lucide-react";
-import {
-  applyTheme,
-  getSavedTheme,
-} from "../../utils/theme";
-const rawApiUrl = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
+import { AuthContext } from "../../context/AuthContext";
+import api, { apiBaseURL } from "../../api/api";
+import { applyTheme, getSavedTheme } from "../../utils/theme";
 
-const API = rawApiUrl.endsWith("/api")
-  ? rawApiUrl
-  : `${rawApiUrl}/api`;
-  
-const API_BASE = (
-  rawApiUrl.replace(/\/+$/, "").endsWith("/api")
-    ? rawApiUrl.replace(/\/+$/, "")
-    : `${rawApiUrl.replace(/\/+$/, "")}/api`
-) || "/api";
+const tabs = [
+  { id: "account", label: "Account & Profile", icon: UserRound },
+  { id: "appearance", label: "Appearance", icon: Palette },
+  { id: "language", label: "Language", icon: Globe2 },
+];
+const themeOptions = [
+  { id: "light", label: "Light", detail: "A bright, clean workspace", icon: Sun },
+  { id: "dark", label: "Dark", detail: "A comfortable low-light workspace", icon: Moon },
+  { id: "system", label: "System default", detail: "Follow your device preference", icon: Monitor },
+];
+const fieldClass = "mt-2 w-full rounded-xl border border-[var(--app-border)] bg-[var(--app-bg)] px-4 py-3 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-muted)] focus:border-sky-500 focus:ring-2 focus:ring-sky-500/15 disabled:cursor-not-allowed disabled:opacity-70";
+const cardClass = "rounded-2xl border border-[var(--app-border)] bg-[var(--app-card)] p-5 shadow-sm sm:p-6";
+const buttonClass = "inline-flex items-center justify-center gap-2 rounded-xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60";
 
-const card =
-  "rounded-xl border border-slate-800 bg-[#111c30] p-5 md:p-6";
+function getPhotoUrl(user) {
+  const value = user?.profilePhotoUrl || user?.profilePhoto || "";
+  if (!value) return "";
+  if (/^https?:\/\//i.test(value)) return value;
+  const origin = apiBaseURL.replace(/\/api\/?$/, "");
+  return origin + (value.startsWith("/") ? value : "/" + value);
+}
 
-const field =
-  "mt-2 w-full rounded-lg border border-slate-700 bg-[#0b1425] px-4 py-3 text-sm text-white outline-none transition focus:border-sky-400";
+function initials(name) {
+  return String(name || "A").trim().split(/\s+/).slice(0, 2).map((part) => part[0] || "").join("").toUpperCase();
+}
 
 export default function SettingsPage() {
+  const { user, updateProfile } = useContext(AuthContext);
   const fileRef = useRef(null);
-
-  const [profile, setProfile] = useState({
-    name: "",
-    email: "",
-    photo: "",
-  });
-
+  const [activeTab, setActiveTab] = useState("account");
+  const [fullName, setFullName] = useState(user?.fullName || "");
   const [photoFile, setPhotoFile] = useState(null);
-  const [preview, setPreview] = useState("");
-
-  const [email, setEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
+  const [photoPreview, setPhotoPreview] = useState("");
+  const [theme, setTheme] = useState(user?.preferences?.theme || getSavedTheme());
+  const [language, setLanguage] = useState(user?.preferences?.language || localStorage.getItem("language") || "en");
   const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPasswords, setShowPasswords] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingPreferences, setSavingPreferences] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [notice, setNotice] = useState({ type: "", text: "" });
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  useEffect(() => {
+    setFullName(user?.fullName || "");
+    if (user?.preferences?.theme) setTheme(user.preferences.theme);
+    if (user?.preferences?.language) setLanguage(user.preferences.language);
+  }, [user]);
 
-  const [theme, setTheme] = useState(
-    localStorage.getItem("theme") || "dark"
-  );
+  useEffect(() => () => {
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+  }, [photoPreview]);
 
-  const [brightness, setBrightness] = useState(
-    Number(localStorage.getItem("brightness") || 100)
-  );
+  const photoUrl = useMemo(() => photoPreview || getPhotoUrl(user), [photoPreview, user]);
 
-  // Apply theme and brightness
-  function updateAppearance(nextTheme, nextBrightness) {
-    setTheme(nextTheme);
-    setBrightness(nextBrightness);
-
-    localStorage.setItem("theme", nextTheme);
-    localStorage.setItem("brightness", nextBrightness);
-
-    document.documentElement.dataset.theme = nextTheme;
-    document.documentElement.style.setProperty(
-      "--app-brightness",
-      nextBrightness / 100
-    );
+  function showNotice(type, text) {
+    setNotice({ type, text });
   }
 
-  // Profile image preview
-  function handlePhotoChange(event) {
+  function choosePhoto(event) {
     const file = event.target.files?.[0];
-
     if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setMessage("Please select an image file.");
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+      showNotice("error", "Choose a JPG, PNG, WebP, or GIF image.");
+      event.target.value = "";
       return;
     }
-
     if (file.size > 5 * 1024 * 1024) {
-      setMessage("Image must be smaller than 5 MB.");
+      showNotice("error", "Your profile photo must be 5 MB or smaller.");
+      event.target.value = "";
       return;
     }
-
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
     setPhotoFile(file);
-    setPreview(URL.createObjectURL(file));
-    setMessage("");
+    setPhotoPreview(URL.createObjectURL(file));
+    showNotice("", "");
   }
 
-  // Change profile details
   async function saveProfile(event) {
     event.preventDefault();
-    setLoading(true);
-    setMessage("");
-
+    if (fullName.trim().length < 2) {
+      showNotice("error", "Please enter a name with at least 2 characters.");
+      return;
+    }
+    setSavingProfile(true);
+    showNotice("", "");
     try {
-      const body = new FormData();
-      body.append("name", profile.name);
-
-      if (photoFile) {
-        body.append("photo", photoFile);
-      }
-const response = await fetch(`${API_BASE}/users/me/profile`, {
-  method: "PATCH",
-  credentials: "include",
-  body,
-});
-
-      if (!response.ok) {
-        throw new Error("Unable to update profile.");
-      }
-
-      setMessage("Profile updated successfully.");
+      const form = new FormData();
+      form.append("fullName", fullName.trim());
+      form.append("theme", theme);
+      form.append("language", language);
+      if (photoFile) form.append("profilePhoto", photoFile);
+      await updateProfile(form);
       setPhotoFile(null);
+      showNotice("success", "Your profile has been updated.");
     } catch (error) {
-      setMessage(error.message);
+      showNotice("error", error.response?.data?.message || "Unable to save your profile. Please try again.");
     } finally {
-      setLoading(false);
+      setSavingProfile(false);
     }
   }
 
-  // Change email
-  async function saveEmail(event) {
-    event.preventDefault();
-    setLoading(true);
-    setMessage("");
-
+  async function savePreferences(nextValues = {}) {
+    const nextTheme = nextValues.theme || theme;
+    const nextLanguage = nextValues.language || language;
+    setSavingPreferences(true);
+    showNotice("", "");
     try {
-      const response = await fetch(`${API}/api/users/me/email`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+      const response = await api.patch("/auth/me", {
+        theme: nextTheme,
+        language: nextLanguage,
       });
-
-      if (!response.ok) {
-        throw new Error("Unable to update email.");
+      if (response.data?.user) {
+        // Keep the shared authenticated user in sync through the profile helper.
+        await updateProfile({ fullName: response.data.user.fullName || fullName });
       }
-
-      setMessage("Email update requested. Check your inbox to verify it.");
+      localStorage.setItem("language", nextLanguage);
+      applyTheme(nextTheme);
+      showNotice("success", "Your preferences have been saved.");
     } catch (error) {
-      setMessage(error.message);
+      showNotice("error", error.response?.data?.message || "Unable to save your preferences.");
     } finally {
-      setLoading(false);
+      setSavingPreferences(false);
     }
   }
 
-  // Change password
-  async function savePassword(event) {
-    event.preventDefault();
-    setMessage("");
+  function selectTheme(value) {
+    setTheme(value);
+    applyTheme(value);
+    savePreferences({ theme: value });
+  }
 
+  function selectLanguage(value) {
+    setLanguage(value);
+    localStorage.setItem("language", value);
+    savePreferences({ language: value });
+  }
+
+  async function changePassword(event) {
+    event.preventDefault();
+    showNotice("", "");
     if (newPassword.length < 8) {
-      setMessage("Password must contain at least 8 characters.");
+      showNotice("error", "Your new password must contain at least 8 characters.");
       return;
     }
-
     if (newPassword !== confirmPassword) {
-      setMessage("Passwords do not match.");
+      showNotice("error", "The new password and confirmation do not match.");
       return;
     }
-
-    setLoading(true);
-
+    setSavingPassword(true);
     try {
-      const response = await fetch(`${API}/api/users/me/password`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          currentPassword,
-          newPassword,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Unable to change password.");
-      }
-
+      const response = await api.patch("/auth/change-password", { currentPassword, newPassword });
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      setMessage("Password changed successfully.");
+      showNotice("success", response.data?.message || "Your password has been changed.");
     } catch (error) {
-      setMessage(error.message);
+      showNotice("error", error.response?.data?.message || "Unable to change your password.");
     } finally {
-      setLoading(false);
+      setSavingPassword(false);
     }
   }
 
   return (
-    <div className="space-y-6 text-slate-100">
+    <div className="mx-auto max-w-5xl space-y-7 text-[var(--app-text)]">
+      <header className="overflow-hidden rounded-3xl border border-[var(--app-border)] bg-gradient-to-br from-sky-600/15 via-[var(--app-card)] to-[var(--app-card)] p-6 sm:p-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-500">Workspace preferences</p>
+            <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Settings</h1>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--app-muted)]">
+              Manage your account details, security, display, and language preferences.
+            </p>
+          </div>
+          <div className="hidden rounded-2xl border border-sky-500/20 bg-sky-500/10 p-4 text-sky-500 sm:block">
+            <ShieldCheck size={30} />
+          </div>
+        </div>
+      </header>
 
-      {/* PAGE HEADER */}
-      <div className="rounded-2xl border border-slate-800 bg-gradient-to-r from-[#111c30] to-[#10152c] p-6 md:p-8">
-        <p className="text-xs font-bold tracking-[3px] text-sky-400">
-          ACCOUNT PREFERENCES
-        </p>
-
-        <h1 className="mt-3 text-2xl font-bold md:text-3xl">
-          Settings
-        </h1>
-
-        <p className="mt-2 text-sm text-slate-400">
-          Manage your profile, password, email and display preferences.
-        </p>
-      </div>
-
-      {message && (
-        <div
-          role="status"
-          className="rounded-lg border border-sky-500/30 bg-sky-500/10 p-4 text-sm text-sky-300"
-        >
-          {message}
+      {notice.text && (
+        <div role="status" className={"rounded-xl border px-4 py-3 text-sm " + (notice.type === "error" ? "border-rose-500/30 bg-rose-500/10 text-rose-600" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-600")}>
+          {notice.text}
         </div>
       )}
 
-      {/* PROFILE SETTINGS */}
-      <section className={card}>
-        <div className="mb-6 flex items-center gap-3">
-          <User className="text-sky-400" />
-          <div>
-            <h2 className="font-semibold">Profile Information</h2>
-            <p className="text-xs text-slate-400">
-              Manage your personal information and photo.
-            </p>
-          </div>
-        </div>
+      <div className="grid gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
+        <nav aria-label="Settings sections" className="flex gap-2 overflow-x-auto rounded-2xl border border-[var(--app-border)] bg-[var(--app-card)] p-2 md:block md:space-y-1 md:self-start">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const selected = activeTab === tab.id;
+            return (
+              <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} aria-current={selected ? "page" : undefined}
+                className={"flex shrink-0 items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition md:w-full " + (selected ? "bg-sky-500/10 text-sky-600" : "text-[var(--app-muted)] hover:bg-[var(--app-bg)] hover:text-[var(--app-text)]")}>
+                <Icon size={18} />
+                <span>{tab.label}</span>
+                {selected && <ChevronRight className="ml-auto hidden md:block" size={16} />}
+              </button>
+            );
+          })}
+        </nav>
 
-        <form onSubmit={saveProfile} className="space-y-5">
-          <div className="flex flex-wrap items-center gap-5">
-            <div className="relative">
-              <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-sky-500/50 bg-slate-800 text-2xl font-bold">
-                {preview || profile.photo ? (
-                  <img
-                    src={preview || profile.photo}
-                    alt="Profile"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  "AD"
-                )}
+        <div className="min-w-0 space-y-6">
+          {activeTab === "account" && (
+            <>
+              <section className={cardClass}>
+                <div className="mb-6">
+                  <h2 className="text-lg font-bold">Profile information</h2>
+                  <p className="mt-1 text-sm text-[var(--app-muted)]">Update the name and photo shown across Ahadu Tech Academy.</p>
+                </div>
+                <form onSubmit={saveProfile} className="space-y-6">
+                  <div className="flex flex-wrap items-center gap-5">
+                    <div className="relative">
+                      <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border border-[var(--app-border)] bg-[var(--app-bg)] text-2xl font-bold text-sky-600">
+                        {photoUrl ? <img src={photoUrl} alt="Your profile" className="h-full w-full object-cover" /> : initials(fullName)}
+                      </div>
+                      <button type="button" onClick={() => fileRef.current?.click()} aria-label="Upload profile photo" className="absolute -bottom-2 -right-2 rounded-xl border-2 border-[var(--app-card)] bg-sky-600 p-2 text-white shadow transition hover:bg-sky-500">
+                        <Camera size={16} />
+                      </button>
+                    </div>
+                    <div>
+                      <p className="font-semibold">Profile photo</p>
+                      <p className="mt-1 text-xs text-[var(--app-muted)]">JPG, PNG, WebP or GIF · up to 5 MB</p>
+                      <button type="button" onClick={() => fileRef.current?.click()} className="mt-3 text-sm font-semibold text-sky-600 hover:text-sky-500">Choose a photo</button>
+                      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={choosePhoto} />
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="settings-name" className="text-sm font-semibold">Display name</label>
+                    <input id="settings-name" className={fieldClass} value={fullName} onChange={(event) => setFullName(event.target.value)} minLength={2} maxLength={120} required autoComplete="name" />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between gap-3">
+                      <label htmlFor="settings-email" className="text-sm font-semibold">Email address</label>
+                      <span className="rounded-full bg-slate-500/10 px-2.5 py-1 text-[11px] font-semibold text-[var(--app-muted)]">Read only</span>
+                    </div>
+                    <input id="settings-email" className={fieldClass} value={user?.email || ""} readOnly disabled autoComplete="email" />
+                    <p className="mt-2 text-xs text-[var(--app-muted)]">Email address can only be changed by an administrator.</p>
+                  </div>
+                  <button type="submit" disabled={savingProfile} className={buttonClass}>
+                    <Save size={16} /> {savingProfile ? "Saving…" : "Save profile"}
+                  </button>
+                </form>
+              </section>
+
+              <section className={cardClass}>
+                <div className="mb-5 flex items-start gap-3">
+                  <div className="rounded-xl bg-amber-500/10 p-2.5 text-amber-600"><LockKeyhole size={19} /></div>
+                  <div>
+                    <h2 className="text-lg font-bold">Password & security</h2>
+                    <p className="mt-1 text-sm text-[var(--app-muted)]">Confirm your current password before choosing a new one.</p>
+                  </div>
+                </div>
+                <form onSubmit={changePassword} className="space-y-4">
+                  <div>
+                    <label htmlFor="current-password" className="text-sm font-semibold">Current password</label>
+                    <input id="current-password" type={showPasswords ? "text" : "password"} className={fieldClass} value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required autoComplete="current-password" />
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="new-password" className="text-sm font-semibold">New password</label>
+                      <input id="new-password" type={showPasswords ? "text" : "password"} className={fieldClass} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required minLength={8} autoComplete="new-password" />
+                    </div>
+                    <div>
+                      <label htmlFor="confirm-password" className="text-sm font-semibold">Confirm new password</label>
+                      <input id="confirm-password" type={showPasswords ? "text" : "password"} className={fieldClass} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required minLength={8} autoComplete="new-password" />
+                    </div>
+                  </div>
+                  <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-[var(--app-muted)]">
+                    <input type="checkbox" checked={showPasswords} onChange={(event) => setShowPasswords(event.target.checked)} className="rounded border-[var(--app-border)] text-sky-600 focus:ring-sky-500" />
+                    Show password fields
+                  </label>
+                  <div>
+                    <button type="submit" disabled={savingPassword} className={buttonClass}>
+                      <LockKeyhole size={16} /> {savingPassword ? "Updating…" : "Update password"}
+                    </button>
+                  </div>
+                </form>
+              </section>
+            </>
+          )}
+
+          {activeTab === "appearance" && (
+            <section className={cardClass}>
+              <div className="mb-6">
+                <h2 className="text-lg font-bold">Appearance</h2>
+                <p className="mt-1 text-sm text-[var(--app-muted)]">Choose how Ahadu Tech Academy looks on this device.</p>
               </div>
+              <div className="space-y-3">
+                {themeOptions.map((option) => {
+                  const Icon = option.icon;
+                  const selected = theme === option.id;
+                  return (
+                    <button key={option.id} type="button" onClick={() => selectTheme(option.id)} disabled={savingPreferences}
+                      className={"flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition " + (selected ? "border-sky-500 bg-sky-500/5 ring-2 ring-sky-500/10" : "border-[var(--app-border)] hover:border-sky-500/50")}>
+                      <span className={"rounded-xl p-3 " + (selected ? "bg-sky-500/10 text-sky-600" : "bg-[var(--app-bg)] text-[var(--app-muted)]")}><Icon size={20} /></span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold">{option.label}</span>
+                        <span className="mt-1 block text-xs text-[var(--app-muted)]">{option.detail}</span>
+                      </span>
+                      {selected && <Check size={19} className="text-sky-600" />}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-5 text-xs text-[var(--app-muted)]">System default follows your operating system’s light or dark appearance setting.</p>
+            </section>
+          )}
 
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="absolute bottom-0 right-0 rounded-full bg-sky-500 p-2 text-white hover:bg-sky-600"
-              >
-                <Camera size={16} />
-              </button>
-            </div>
-
-            <div>
-              <h3 className="font-semibold">Profile Photo</h3>
-              <p className="mt-1 text-xs text-slate-400">
-                JPG, PNG or WEBP. Maximum 5 MB.
-              </p>
-
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="mt-3 text-sm font-medium text-sky-400"
-              >
-                Upload new photo
-              </button>
-
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                hidden
-                onChange={handlePhotoChange}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm text-slate-300">
-              Full name
-            </label>
-            <input
-              className={field}
-              value={profile.name}
-              onChange={(e) =>
-                setProfile({ ...profile, name: e.target.value })
-              }
-              placeholder="Enter your full name"
-            />
-          </div>
-
-          <button
-            disabled={loading}
-            className="flex items-center gap-2 rounded-lg bg-sky-500 px-5 py-3 text-sm font-semibold text-white hover:bg-sky-600 disabled:opacity-50"
-          >
-            <Save size={16} />
-            Save Profile
-          </button>
-        </form>
-      </section>
-
-      {/* EMAIL SETTINGS */}
-      <section className={card}>
-        <div className="mb-5 flex items-center gap-3">
-          <Mail className="text-sky-400" />
-          <div>
-            <h2 className="font-semibold">Email Address</h2>
-            <p className="text-xs text-slate-400">
-              Change the email associated with your account.
-            </p>
-          </div>
+          {activeTab === "language" && (
+            <section className={cardClass}>
+              <div className="mb-6">
+                <h2 className="text-lg font-bold">Language</h2>
+                <p className="mt-1 text-sm text-[var(--app-muted)]">Select your preferred platform language.</p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <button type="button" onClick={() => selectLanguage("en")} disabled={savingPreferences}
+                  className={"rounded-2xl border p-5 text-left transition " + (language === "en" ? "border-sky-500 bg-sky-500/5 ring-2 ring-sky-500/10" : "border-[var(--app-border)] hover:border-sky-500/50")}>
+                  <span className="block text-lg font-bold">English</span>
+                  <span className="mt-1 block text-xs text-[var(--app-muted)]">English</span>
+                  {language === "en" && <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-sky-600"><Check size={14} /> Selected</span>}
+                </button>
+                <button type="button" onClick={() => selectLanguage("am")} disabled={savingPreferences}
+                  className={"rounded-2xl border p-5 text-left transition " + (language === "am" ? "border-sky-500 bg-sky-500/5 ring-2 ring-sky-500/10" : "border-[var(--app-border)] hover:border-sky-500/50")}>
+                  <span className="block text-lg font-bold">አማርኛ</span>
+                  <span className="mt-1 block text-xs text-[var(--app-muted)]">Amharic</span>
+                  {language === "am" && <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-sky-600"><Check size={14} /> ተመርጧል</span>}
+                </button>
+              </div>
+              <p className="mt-5 text-xs text-[var(--app-muted)]">Your language preference is saved to your account. Some platform sections may remain in English until their translations are added.</p>
+            </section>
+          )}
         </div>
-
-        <form onSubmit={saveEmail}>
-          <label className="text-sm text-slate-300">
-            New email address
-          </label>
-
-          <input
-            type="email"
-            required
-            className={field}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter new email address"
-          />
-
-          <button
-            disabled={loading}
-            className="mt-4 rounded-lg bg-sky-500 px-5 py-3 text-sm font-semibold text-white hover:bg-sky-600"
-          >
-            Update Email
-          </button>
-        </form>
-      </section>
-
-      {/* PASSWORD SETTINGS */}
-      <section className={card}>
-        <div className="mb-5 flex items-center gap-3">
-          <Lock className="text-sky-400" />
-          <div>
-            <h2 className="font-semibold">Change Password</h2>
-            <p className="text-xs text-slate-400">
-              Keep your administrator account secure.
-            </p>
-          </div>
-        </div>
-
-        <form onSubmit={savePassword} className="space-y-4">
-          <div>
-            <label className="text-sm text-slate-300">
-              Current password
-            </label>
-            <input
-              type="password"
-              required
-              className={field}
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              autoComplete="current-password"
-              placeholder="Enter current password"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm text-slate-300">
-              New password
-            </label>
-            <input
-              type={showPassword ? "text" : "password"}
-              required
-              className={field}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              autoComplete="new-password"
-              placeholder="Enter new password"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm text-slate-300">
-              Confirm new password
-            </label>
-            <input
-              type={showPassword ? "text" : "password"}
-              required
-              className={field}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              autoComplete="new-password"
-              placeholder="Confirm new password"
-            />
-          </div>
-
-          <label className="flex items-center gap-2 text-xs text-slate-400">
-            <input
-              type="checkbox"
-              checked={showPassword}
-              onChange={(e) => setShowPassword(e.target.checked)}
-            />
-            Show passwords
-          </label>
-
-          <button
-            disabled={loading}
-            className="rounded-lg bg-sky-500 px-5 py-3 text-sm font-semibold text-white hover:bg-sky-600"
-          >
-            Update Password
-          </button>
-        </form>
-      </section>
-
-      {/* APPEARANCE SETTINGS */}
-      <section className={card}>
-        <div className="mb-5 flex items-center gap-3">
-          <Sun className="text-sky-400" />
-          <div>
-            <h2 className="font-semibold">Appearance & Brightness</h2>
-            <p className="text-xs text-slate-400">
-              Customize your dashboard display.
-            </p>
-          </div>
-        </div>
-
-        <div className="mb-6 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => updateAppearance("dark", brightness)}
-            className={`flex items-center gap-2 rounded-lg border px-5 py-3 text-sm ${
-              theme === "dark"
-                ? "border-sky-400 bg-sky-500/15 text-sky-300"
-                : "border-slate-700 text-slate-400"
-            }`}
-          >
-            <Moon size={17} />
-            Dark Mode
-          </button>
-
-          <button
-  type="button"
-  onClick={() => {
-    console.log("LIGHT MODE BUTTON CLICKED");
-
-    document.documentElement.setAttribute(
-      "data-theme",
-      "light"
-    );
-
-    document.documentElement.style.colorScheme = "light";
-
-    localStorage.setItem("theme", "light");
-  }}
-  className="rounded-xl border border-sky-400 bg-sky-500 px-6 py-4 text-white"
->
-  Light Mode
-</button>
-        </div>
-
-        <div>
-          <div className="mb-3 flex items-center justify-between">
-            <label className="text-sm text-slate-300">
-              Screen brightness
-            </label>
-            <span className="text-sm font-semibold text-sky-400">
-              {brightness}%
-            </span>
-          </div>
-
-          <input
-            type="range"
-            min="60"
-            max="120"
-            step="5"
-            value={brightness}
-            onChange={(e) =>
-              updateAppearance(theme, Number(e.target.value))
-            }
-            className="w-full accent-sky-500"
-          />
-
-          <div className="mt-2 flex justify-between text-xs text-slate-500">
-            <span>Dim</span>
-            <span>Normal</span>
-            <span>Bright</span>
-          </div>
-        </div>
-      </section>
-
-      {/* SECURITY */}
-      <section className={card}>
-        <div className="flex items-center gap-3">
-          <ShieldCheck className="text-emerald-400" />
-          <div>
-            <h2 className="font-semibold">Account Security</h2>
-            <p className="mt-1 text-xs text-slate-400">
-              Password changes should require your current password.
-              Email changes should be verified before taking effect.
-            </p>
-          </div>
-        </div>
-      </section>
-
+      </div>
     </div>
   );
 }
