@@ -114,6 +114,12 @@ export default function AdminDashboard() {
             🔒 Premium Course Access
           </Link>
           <Link
+            to="/admin/content-approvals"
+            className="bg-emerald-700 hover:bg-emerald-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+          >
+            ✓ Content Approvals
+          </Link>
+          <Link
             to="/admin/add-course"
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
           >
