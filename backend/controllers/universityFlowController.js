@@ -42,10 +42,6 @@ exports.getCatalog = async (req, res) => {
         { id: 'course-material', label: 'Course Material' },
       ] });
     }
-    if (kind === 'exam-question' && !academicYear) {
-      const years = await UniversityResource.distinct('academicYear', { ...base, course, kind, academicYear: { $nin: ['', null] } });
-      return res.json({ years: years.sort() });
-    }
     const query = { ...base };
     if (department) query.department = department;
     if (course) query.course = course;
