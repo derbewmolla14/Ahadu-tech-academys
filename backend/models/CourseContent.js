@@ -11,6 +11,7 @@ const courseContentSchema = new mongoose.Schema({
   examYear: { type: String, trim: true, default: '', index: true },
   questionFormat: { type: String, enum: ['text', 'image', 'pdf', ''], default: '' },
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending', index: true },
+  isApproved: { type: Boolean, default: false, index: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   approvedAt: { type: Date, default: null },
