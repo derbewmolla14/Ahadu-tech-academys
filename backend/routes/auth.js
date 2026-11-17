@@ -11,6 +11,7 @@ const {
   resetPasswordValidators,
   updateProfile,
   updateProfileValidators,
+  changePassword,
 } = require('../controllers/authController');
 
 const router = express.Router();
@@ -28,5 +29,6 @@ router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', ...resetPasswordValidators, resetPassword);
 router.get('/me', auth, me);
 router.patch('/me', auth, multerTrap(profileUpload.single('profilePhoto')), ...updateProfileValidators, updateProfile);
+router.patch('/change-password', auth, changePassword);
 
 module.exports = router;
