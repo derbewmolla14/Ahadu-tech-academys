@@ -121,20 +121,36 @@ app.use(express.json({ limit: '10mb' }));
 app.use('/uploads', async (req, res, next) => {
   try {
     const requestedFile = '/uploads' + req.path;
-    const premiumCourse = await CourseContent.findOne({
-      isPremium: true,
-      $or: [{ 'notes.fileUrl': requestedFile }, { 'ppts.fileUrl': requestedFile }, { 'videos.url': requestedFile }]
-    }).select('_id');
-    if (!premiumCourse) return next();
+    const matchingContent = await CourseContent.findOne({
+      isActive: true,
+      'createdBy': { $ne: null },
+      $or: [
+        { 'notes.fileUrl': requestedFile },
+        { 'ppts.fileUrl': requestedFile },
+        { 'videos.url': requestedFile }
+      ]
+    }).select('_id status isPremium');
+
+    // Unknown, pending, rejected, or legacy files must never be served to students.
+    if (!matchingContent || matchingContent.status !== 'approved') {
+      return res.status(404).json({ success: false, message: 'This learning resource is not approved or available.' });
+    }
+
+    if (!matchingContent.isPremium) return next();
+
     return authMiddleware(req, res, () => {
       const isAdmin = req.user?.role === 'admin';
-      const isUnlocked = req.user?.unlockedCourseContents?.some((item) => String(item) === String(premiumCourse._id));
-      if (!isAdmin && !isUnlocked) return res.status(403).json({ success: false, message: 'Administrator approval is required for this premium material.' });
+      const isUnlocked = req.user?.unlockedCourseContents?.some(
+        (item) => String(item) === String(matchingContent._id)
+      );
+      if (!isAdmin && !isUnlocked) {
+        return res.status(403).json({ success: false, message: 'Administrator approval is required for this premium material.' });
+      }
       return next();
     });
   } catch (error) {
-    console.error('Premium upload access check failed:', error);
-    return res.status(500).json({ success: false, message: 'Unable to verify material access.' });
+    console.error('Upload access check failed:', error);
+    return res.status(500).json({ success: false, message: 'Unable to verify material approval.' });
   }
 }, express.static(path.join(__dirname, 'uploads')));
 
