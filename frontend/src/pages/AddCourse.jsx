@@ -208,13 +208,13 @@ export default function AddCourse() {
       <div className="min-h-screen bg-slate-950 text-white">
         <div className="bg-slate-900 border-b border-slate-800 p-6"><div className="max-w-6xl mx-auto">
           <button onClick={() => setSelectedCategory('')} className="text-slate-400 hover:text-white mb-3">← Back to categories</button>
-          <h1 className="text-3xl font-bold">High School Courses</h1>
+          <h1 className="text-2xl font-bold sm:text-3xl">High School Courses</h1>
           <p className="mt-2 text-slate-400">Select a grade before adding its course and learning materials.</p>
         </div></div>
-        <div className="max-w-6xl mx-auto p-6 lg:p-10"><div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
+        <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-10"><div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
           {[9, 10, 11, 12].map((grade) => (
-            <button key={grade} type="button" onClick={() => { setSelectedHighSchoolGrade(String(grade)); setFormData(prev => ({ ...prev, grade: String(grade) })); }} className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center transition hover:border-blue-500 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <span className="text-xs uppercase tracking-widest text-slate-400">Grade</span><span className="mt-2 block text-4xl font-bold">{grade}</span><span className="mt-3 block text-sm text-blue-400">Select grade →</span>
+            <button key={grade} type="button" onClick={() => { setSelectedHighSchoolGrade(String(grade)); setFormData(prev => ({ ...prev, grade: String(grade) })); }} className="rounded-2xl border border-slate-800 bg-slate-900 p-4 text-center sm:p-8 transition hover:border-blue-500 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <span className="text-xs uppercase tracking-widest text-slate-400">Grade</span><span className="mt-2 block text-3xl font-bold sm:text-4xl">{grade}</span><span className="mt-3 block text-sm text-blue-400">Select grade →</span>
             </button>
           ))}
         </div></div>
@@ -260,12 +260,12 @@ export default function AddCourse() {
         <div className="max-w-6xl mx-auto p-6 lg:p-10">
           <div className="grid gap-5 sm:grid-cols-2">
             {categories.map((category) => (
-              <button key={category.id} type="button" onClick={() => { setFormData({ university: '', department: '', year: '', grade: '', subject: '', technology: '', faculty: '', studyStage: '', contentType: 'course-materials', courseCode: '', course: '', description: '', isActive: true, isPremium: false }); setSelectedElementaryGrade(''); setSelectedHighSchoolGrade(''); setUniversityOptionsError(''); setSelectedCategory(category.id); }} className="group rounded-2xl border border-slate-800 bg-slate-900 p-7 text-left transition hover:border-blue-500 hover:bg-slate-800/90 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <button key={category.id} type="button" onClick={() => { setFormData({ university: '', department: '', year: '', grade: '', subject: '', technology: '', faculty: '', studyStage: '', contentType: 'course-materials', courseCode: '', course: '', description: '', isActive: true, isPremium: false }); setSelectedElementaryGrade(''); setSelectedHighSchoolGrade(''); setUniversityOptionsError(''); setSelectedCategory(category.id); }} className="group rounded-2xl border border-slate-800 bg-slate-900 p-4 text-left sm:p-7 transition hover:border-blue-500 hover:bg-slate-800/90 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <div className="flex items-start justify-between">
                   <span className="text-4xl">{category.icon}</span>
                   <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-300">{category.subtitle}</span>
                 </div>
-                <h2 className="mt-6 text-2xl font-semibold group-hover:text-blue-300">{category.title}</h2>
+                <h2 className="mt-4 text-xl font-semibold sm:mt-6 sm:text-2xl group-hover:text-blue-300">{category.title}</h2>
                 <p className="mt-3 leading-6 text-slate-400">{category.detail}</p>
                 <span className="mt-6 inline-flex items-center gap-2 font-medium text-blue-400">Continue <span aria-hidden="true">→</span></span>
               </button>
@@ -295,7 +295,7 @@ export default function AddCourse() {
       </div>
 
       {/* FORM */}
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="max-w-4xl mx-auto p-4 sm:p-6">
         <form onSubmit={handleSubmit} noValidate className="space-y-8">
           {/* ERROR/SUCCESS MESSAGES */}
           {error && (
@@ -365,7 +365,7 @@ export default function AddCourse() {
           </div>
 
           {selectedCategory === 'university' && formData.studyStage === 'Senior' && formData.contentType === 'exit-exam' ? (
-            <section className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+            <section className="rounded-xl border border-slate-800 bg-slate-900 p-4 sm:p-6">
               <h2 className="text-xl font-semibold">Exit Exam Questions</h2>
               <p className="mt-2 text-sm text-slate-400">Enter a JSON array. Each item must contain question and answer fields.</p>
               <textarea value={questionsJson} onChange={event => setQuestionsJson(event.target.value)} rows={10} className="mt-4 w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 font-mono text-sm text-white focus:border-blue-500 focus:outline-none" />
@@ -386,7 +386,7 @@ export default function AddCourse() {
             </div>
             <div className="space-y-4">
               {notes.map((note, index) => (
-                <div key={index} className="flex gap-4 items-end">
+                <div key={index} className="flex flex-col gap-3 sm:flex-row sm:gap-4 sm:items-end">
                   <div className="flex-1">
                     <input
                       type="text"
