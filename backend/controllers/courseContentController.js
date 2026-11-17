@@ -85,14 +85,13 @@ const uploadContent = async (req, res) => {
       if (faculty === 'Natural Science' || faculty === 'Social Science' || faculty === 'Health Science' || faculty === 'Diploma') {
         if (!['Remedial', 'Freshman', 'Senior', 'Diploma'].includes(String(studyStage || '').trim())) return res.status(400).json({ success: false, message: 'Please select an Academic Stage.' });
         if (studyStage === 'Senior' && !String(department || '').trim()) return res.status(400).json({ success: false, message: 'Please select a Department.' });
-        if (studyStage === 'Senior' && !String(year || '').trim()) return res.status(400).json({ success: false, message: 'Please select an Academic Year.' });
         if (studyStage === 'Senior' && !['course-materials', 'exit-exam'].includes(contentType)) return res.status(400).json({ success: false, message: 'Select Course Materials or Exit Exam.' });
         if (studyStage === 'Senior') {
           const configuredDepartment = await Department.findOne({ name: String(department).trim(), category: faculty, isActive: true });
           if (!configuredDepartment) return res.status(400).json({ success: false, message: 'Select an active department from the selected academic category.' });
         }
         recordDepartment = studyStage === 'Senior' ? String(department).trim() : 'General';
-        recordYear = studyStage === 'Senior' ? String(year).trim() : studyStage;
+        recordYear = studyStage === 'Senior' ? (String(year || '').trim() || 'All Years') : studyStage;
       } else {
         recordDepartment = department || 'Graduate Studies';
         recordYear = faculty === 'PhD' ? 'PhD' : 'Masters';
@@ -194,7 +193,7 @@ const uploadContent = async (req, res) => {
   } catch (error) {
     console.error('Upload content error:', error.stack || error);
     if (error.code === 11000) {
-      return res.status(409).json({ success: false, message: 'A course with this name already exists for the selected category, department, and academic year.' });
+      return res.status(409).json({ success: false, message: 'A course with this name already exists for the selected category and department.' });
     }
     if (error.name === 'ValidationError') {
       return res.status(400).json({ success: false, message: 'Course information is incomplete or invalid. Please review the course details and materials.', details: Object.values(error.errors).map(item => item.message) });
