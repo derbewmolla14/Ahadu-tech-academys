@@ -124,15 +124,16 @@ app.use('/uploads', async (req, res, next) => {
     const matchingContent = await CourseContent.findOne({
       isActive: true,
       'createdBy': { $ne: null },
+      $and: [{ $or: [{ status: 'approved' }, { isApproved: true }] }],
       $or: [
         { 'notes.fileUrl': requestedFile },
         { 'ppts.fileUrl': requestedFile },
         { 'videos.url': requestedFile }
       ]
-    }).select('_id status isPremium');
+    }).select('_id status isApproved isPremium');
 
     // Unknown, pending, rejected, or legacy files must never be served to students.
-    if (!matchingContent || matchingContent.status !== 'approved') {
+    if (!matchingContent || !(matchingContent.status === 'approved' || matchingContent.isApproved === true)) {
       return res.status(404).json({ success: false, message: 'This learning resource is not approved or available.' });
     }
 
