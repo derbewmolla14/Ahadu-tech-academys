@@ -52,7 +52,6 @@ export default function AdminUniversityResources() {
     if (!form.title.trim()) { setError('Please enter a resource title.'); return; }
     if (form.level === 'Senior' && !form.department.trim()) { setError('Please select a Department.'); return; }
     if ((form.level !== 'Senior' || form.kind === 'course-material') && !form.course.trim()) { setError('Please select or enter a Course.'); return; }
-    if (form.kind === 'exam-question' && !form.academicYear.trim()) { setError('Please select an Academic Year for this exam question.'); return; }
     if (form.resourceType === 'text' && !form.textContent.trim()) { setError('Please enter the text or question content.'); return; }
     if (form.resourceType !== 'text' && !file) { setError('Please select a file to upload.'); return; }
     setBusy(true);
@@ -103,7 +102,7 @@ export default function AdminUniversityResources() {
       {field('Content path', 'kind', form.level === 'Senior' ? ['exit-exam', 'course-material'] : ['exam-question', 'course-material'])}
       <label className="block text-sm text-slate-300">Department<select name="department" value={form.department} onChange={change} disabled={form.level !== 'Senior'} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 disabled:opacity-50"><option value="">Select department</option>{departments.map((item) => <option key={item._id} value={item.name}>{item.name}</option>)}</select></label>
       <label className="block text-sm text-slate-300">Course<input name="course" value={form.course} onChange={change} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 p-3" /></label>
-      <label className="block text-sm text-slate-300">Academic year<input name="academicYear" value={form.academicYear} onChange={change} placeholder="2016" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 p-3" /></label>
+      <label className="block text-sm text-slate-300">Academic year (optional)<input name="academicYear" value={form.academicYear} onChange={change} placeholder="Leave blank for all years" className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 p-3" /><span className="mt-1 block text-xs text-slate-400">Leave blank to show this resource to students in every year.</span></label>
       {field('Format', 'resourceType', form.kind === 'course-material' ? ['pdf', 'ppt', 'video'] : ['image', 'pdf', 'text'])}
       {field('Student access', 'accessType', ['free', 'premium'])}
       <label className="block text-sm text-slate-300">Title<input required name="title" value={form.title} onChange={change} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 p-3" /></label>
