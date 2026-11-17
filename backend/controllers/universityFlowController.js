@@ -12,7 +12,7 @@ const approvedFilter = { status: 'approved' };
 exports.getCatalog = async (req, res) => {
   try {
     const { stream, level, department, course, kind, academicYear } = req.query;
-    if (!stream || !['Natural', 'Social', 'Health', 'Diploma'].includes(stream)) return res.status(400).json({ message: 'Choose Natural or Social stream.' });
+    if (!stream || !['Natural', 'Social', 'Health', 'Diploma'].includes(stream)) return res.status(400).json({ message: 'Choose a valid academic stream.' });
     if (level && !['Freshman', 'Remedial', 'Senior', 'Diploma'].includes(level)) return res.status(400).json({ message: 'Invalid academic level.' });
     if (!level) return res.json({ streams: ['Natural', 'Social', 'Health', 'Diploma'], levels: ['Freshman', 'Remedial', 'Senior', 'Diploma'] });
     const base = { ...approvedFilter, stream, level };
@@ -65,7 +65,7 @@ exports.getCatalog = async (req, res) => {
 exports.adminUpload = async (req, res) => {
   try {
     const { stream, level, department = '', course = '', kind, academicYear = '', resourceType, title, textContent = '', answer = '', solution = '' } = req.body;
-    if (!['Natural', 'Social'].includes(stream) || !['Freshman', 'Remedial', 'Senior'].includes(level)) return res.status(400).json({ message: 'Invalid stream or level.' });
+    if (!['Natural', 'Social', 'Health', 'Diploma'].includes(stream) || !['Freshman', 'Remedial', 'Senior', 'Diploma'].includes(level)) return res.status(400).json({ message: 'Invalid stream or level.' });
     if (!['course-material', 'exam-question', 'exit-exam'].includes(kind)) return res.status(400).json({ message: 'Invalid content category.' });
     if (!['pdf', 'ppt', 'video', 'image', 'text'].includes(resourceType)) return res.status(400).json({ message: 'Invalid resource format.' });
     if (!title || !String(title).trim()) return res.status(400).json({ message: 'Resource title is required.' });
