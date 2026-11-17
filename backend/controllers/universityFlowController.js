@@ -79,6 +79,18 @@ exports.adminUpload = async (req, res) => {
     if (kind === 'exam-question' && !academicYear) return res.status(400).json({ message: 'Exam academic year is required.' });
     if (resourceType === 'text' && !String(textContent).trim()) return res.status(400).json({ message: 'Text content is required.' });
     if (resourceType !== 'text' && !req.file) return res.status(400).json({ message: 'Please select a file.' });
+    if (req.file) {
+      const extension = path.extname(req.file.originalname).toLowerCase();
+      const validExtensions = {
+        pdf: ['.pdf'],
+        ppt: ['.ppt', '.pptx'],
+        video: ['.mp4', '.webm', '.mov'],
+        image: ['.png', '.jpg', '.jpeg'],
+      };
+      if (!validExtensions[resourceType]?.includes(extension)) {
+        return res.status(400).json({ message: 'The uploaded file extension does not match the selected resource format.' });
+      }
+    }
     const storedFileName = req.file ? crypto.randomUUID() + path.extname(req.file.originalname).toLowerCase() : '';
     if (req.file) fs.writeFileSync(path.join(PRIVATE_DIR, storedFileName), req.file.buffer, { flag: 'wx' });
     const item = await UniversityResource.create({
