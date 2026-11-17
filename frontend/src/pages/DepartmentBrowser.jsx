@@ -1,207 +1,111 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { apiFetch } from '../api/api';
 
-const departmentMap = {
-  Natural: [
-    'Electrical Engineering',
-    'Civil Engineering',
-    'Mechanical Engineering',
-    'Computer Science',
-    'Software Engineering',
-    'Information Technology',
-    'Water Engineering',
-  ],
-  Social: [
-    'Economics',
-    'Law',
-    'Business Administration',
-    'Accounting',
-    'Sociology',
-    'Political Science',
-  ],
-};
+const categoryName = { Natural: 'Natural Science', Social: 'Social Science' };
 
 export default function DepartmentBrowser() {
   const { name } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const faculty = searchParams.get('faculty') || 'Natural';
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedDepartment, setSelectedDepartment] = useState('');
+  const category = categoryName[faculty] || faculty;
+  const [departments, setDepartments] = useState([]);
+  const [selectedDepartment, setSelectedDepartment] = useState(searchParams.get('department') || '');
   const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const departments = useMemo(() => departmentMap[faculty] || [], [faculty]);
-
-  const filteredDepartments = useMemo(() => {
-    return departments.filter((dept) => dept.toLowerCase().includes(search.toLowerCase()));
-  }, [departments, search]);
-
-  const onDepartmentSelect = (department) => {
-    setSelectedDepartment(department);
-    setSidebarOpen(false); // Close sidebar when department is selected
-  };
-
-  const onContinue = () => {
-    if (selectedDepartment) {
-      navigate(`/university/${name}/years?faculty=${encodeURIComponent(faculty)}&department=${encodeURIComponent(selectedDepartment)}`);
+  useEffect(() => {
+    let active = true;
+    async function loadDepartments() {
+      try {
+        setLoading(true);
+        setError('');
+        const response = await apiFetch('departments?' + new URLSearchParams({ category }).toString());
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Unable to load departments.');
+        if (!Array.isArray(data)) throw new Error('Unexpected departments response.');
+        if (active) setDepartments(data.filter(item => item?.isActive === true && item.category === category).map(item => item.name).filter(Boolean));
+      } catch (err) {
+        if (active) { setDepartments([]); setError(err.message || 'Unable to load departments.'); }
+      } finally {
+        if (active) setLoading(false);
+      }
     }
+    loadDepartments();
+    return () => { active = false; };
+  }, [category]);
+
+  const filteredDepartments = useMemo(
+    () => departments.filter(dept => dept.toLowerCase().includes(search.trim().toLowerCase())),
+    [departments, search]
+  );
+
+  const chooseContentType = (contentType) => {
+    const params = new URLSearchParams({
+      faculty,
+      level: 'Senior',
+      department: selectedDepartment,
+      contentType
+    });
+    navigate(`/university/${name}/courses?${params.toString()}`);
   };
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      {/* Header with Hamburger Menu */}
-      <header className="flex items-center justify-between border-b border-slate-800 bg-slate-900 px-6 py-4">
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="rounded-lg border border-slate-700 p-2 text-slate-400 transition hover:border-slate-500 hover:text-white"
-            aria-label="Toggle sidebar"
-          >
-            <span className="text-xl">☰</span>
-          </button>
+    <div className="mx-auto max-w-6xl space-y-8 p-6">
+      <section className="rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-xl shadow-slate-950/40">
+        <button type="button" onClick={() => navigate(`/university/${name}`)} className="rounded-full border border-slate-700 px-5 py-2 text-sm text-slate-200 hover:border-slate-500">← Back</button>
+        <h1 className="mt-5 text-3xl font-semibold text-white">{faculty} · Senior Department Selection</h1>
+        <p className="mt-2 text-slate-400">Select your department. You will then see Exit Exam and Course Materials.</p>
+      </section>
+
+      {!selectedDepartment ? (
+        <section className="space-y-5 rounded-3xl border border-slate-800 bg-slate-900 p-6">
           <div>
-            <h1 className="text-xl font-semibold text-white">Department Selection</h1>
-            <p className="text-sm text-slate-400">{faculty} Sciences • Senior Level</p>
+            <label htmlFor="department-search" className="mb-2 block text-sm font-medium text-slate-300">Search departments</label>
+            <input id="department-search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Search department…" className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-sky-500" />
           </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => navigate(`/university/${name}`)}
-          className="rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-200 transition hover:border-slate-500"
-        >
-          ← Back
-        </button>
-      </header>
-
-      <div className="flex">
-        {/* Sidebar */}
-        <aside
-          className={`fixed left-0 top-0 z-40 h-full w-80 transform border-r border-slate-800 bg-slate-900 transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${
-            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
-        >
-          <div className="flex h-full flex-col">
-            {/* Sidebar Header */}
-            <div className="border-b border-slate-800 p-6">
-              <h2 className="text-lg font-semibold text-white">Departments</h2>
-              <p className="mt-1 text-sm text-slate-400">Select your department</p>
+          {loading && <p className="py-8 text-center text-slate-300">Loading active departments…</p>}
+          {error && <p role="alert" className="rounded-xl border border-red-800 bg-red-950/40 p-4 text-red-200">{error}</p>}
+          {!loading && !error && filteredDepartments.length > 0 && (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredDepartments.map(department => (
+                <button key={department} type="button" onClick={() => setSelectedDepartment(department)} className="rounded-2xl border border-slate-700 bg-slate-950 p-5 text-left text-white transition hover:border-sky-500 hover:bg-slate-800">
+                  <span className="block text-lg font-semibold">{department}</span>
+                  <span className="mt-2 block text-sm text-slate-400">{category} · Senior</span>
+                  <span className="mt-4 block text-sm font-semibold text-sky-400">Select department →</span>
+                </button>
+              ))}
             </div>
-
-            {/* Search */}
-            <div className="border-b border-slate-800 p-4">
-              <div className="flex items-center gap-3 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2">
-                <span className="text-slate-500">🔍</span>
-                <input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search departments..."
-                  className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-500"
-                />
-              </div>
+          )}
+          {!loading && !error && !filteredDepartments.length && <p className="rounded-xl border border-slate-800 p-6 text-center text-slate-400">No active departments found. Please contact the administrator.</p>}
+        </section>
+      ) : (
+        <section className="space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            <div>
+              <p className="text-sm text-slate-400">Selected department</p>
+              <h2 className="mt-1 text-xl font-semibold text-white">{selectedDepartment}</h2>
             </div>
-
-            {/* Department List */}
-            <div className="flex-1 overflow-y-auto p-4">
-              <div className="space-y-2">
-                {filteredDepartments.map((department) => (
-                  <button
-                    key={department}
-                    type="button"
-                    onClick={() => onDepartmentSelect(department)}
-                    className={`w-full rounded-lg border p-3 text-left transition ${
-                      selectedDepartment === department
-                        ? 'border-sky-500 bg-sky-900/20 text-sky-400'
-                        : 'border-slate-700 bg-slate-800 text-slate-200 hover:border-slate-600 hover:bg-slate-700'
-                    }`}
-                  >
-                    <span className="text-sm font-medium">{department}</span>
-                  </button>
-                ))}
-              </div>
-
-              {!filteredDepartments.length && (
-                <div className="mt-4 rounded-lg border border-slate-700 bg-slate-800 p-4 text-center text-slate-400">
-                  No departments found
-                </div>
-              )}
-            </div>
+            <button type="button" onClick={() => setSelectedDepartment('')} className="rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-200 hover:border-sky-500">Change department</button>
           </div>
-        </aside>
-
-        {/* Overlay for mobile */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 z-30 bg-black/50 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
-        {/* Main Content */}
-        <main className="flex-1 p-6">
-          <div className="mx-auto max-w-4xl">
-            {selectedDepartment ? (
-              <div className="space-y-8">
-                <div className="rounded-3xl border border-slate-800 bg-slate-900 p-10 shadow-xl shadow-slate-950/40">
-                  <h2 className="text-3xl font-semibold text-white">Selected Department</h2>
-                  <p className="mt-3 text-slate-400">You've selected the following department for your Senior level studies.</p>
-                </div>
-
-                <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-xl shadow-slate-950/40">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-2xl font-semibold text-white">{selectedDepartment}</h3>
-                      <p className="mt-2 text-slate-400">{faculty} Sciences Department</p>
-                    </div>
-                    <div className="text-right">
-                      <button
-                        type="button"
-                        onClick={onContinue}
-                        className="rounded-full bg-sky-600 px-6 py-3 text-sm font-medium text-white transition hover:bg-sky-500"
-                      >
-                        Continue →
-                      </button>
-                      <p className="mt-2 text-xs text-slate-500">Proceed to year selection</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-slate-800 bg-slate-950 p-5">
-                    <p className="text-sm uppercase tracking-[0.35em] text-slate-500">Faculty</p>
-                    <p className="mt-2 text-xl font-semibold text-white">{faculty} Sciences</p>
-                  </div>
-                  <div className="rounded-2xl border border-slate-800 bg-slate-950 p-5">
-                    <p className="text-sm uppercase tracking-[0.35em] text-slate-500">Level</p>
-                    <p className="mt-2 text-xl font-semibold text-white">Senior</p>
-                  </div>
-                  <div className="rounded-2xl border border-slate-800 bg-slate-950 p-5">
-                    <p className="text-sm uppercase tracking-[0.35em] text-slate-500">Next Step</p>
-                    <p className="mt-2 text-xl font-semibold text-white">Year Selection</p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex min-h-[60vh] items-center justify-center">
-                <div className="text-center">
-                  <div className="mb-6 text-6xl">🎓</div>
-                  <h2 className="text-2xl font-semibold text-white">Select Your Department</h2>
-                  <p className="mt-3 text-slate-400">
-                    Use the menu button (☰) to open the sidebar and choose your department from the {faculty} Sciences faculty.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setSidebarOpen(true)}
-                    className="mt-6 rounded-full bg-sky-600 px-6 py-3 text-sm font-medium text-white transition hover:bg-sky-500"
-                  >
-                    Open Department List
-                  </button>
-                </div>
-              </div>
-            )}
+          <div className="grid gap-5 md:grid-cols-2">
+            <button type="button" onClick={() => chooseContentType('exit-exam')} className="rounded-3xl border border-slate-800 bg-slate-900 p-8 text-left text-white transition hover:border-sky-500 hover:bg-slate-800">
+              <span className="text-4xl" aria-hidden="true">📝</span>
+              <h3 className="mt-5 text-2xl font-semibold">Exit Exam</h3>
+              <p className="mt-3 text-slate-400">Access uploaded exit exam questions.</p>
+              <span className="mt-6 inline-flex text-sm font-semibold text-sky-400">View Exit Exam →</span>
+            </button>
+            <button type="button" onClick={() => chooseContentType('course-materials')} className="rounded-3xl border border-slate-800 bg-slate-900 p-8 text-left text-white transition hover:border-sky-500 hover:bg-slate-800">
+              <span className="text-4xl" aria-hidden="true">📚</span>
+              <h3 className="mt-5 text-2xl font-semibold">Course Materials</h3>
+              <p className="mt-3 text-slate-400">Access course lists and PDF, PPT, and video lessons.</p>
+              <span className="mt-6 inline-flex text-sm font-semibold text-sky-400">View Course Materials →</span>
+            </button>
           </div>
-        </main>
-      </div>
+        </section>
+      )}
     </div>
   );
 }
