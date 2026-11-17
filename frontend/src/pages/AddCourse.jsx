@@ -70,6 +70,7 @@ export default function AddCourse() {
   const [notes, setNotes] = useState([{ title: '', file: null }]);
   const [videos, setVideos] = useState([{ title: '', url: '' }]);
   const [ppts, setPpts] = useState([{ title: '', file: null }]);
+  const [questionsJson, setQuestionsJson] = useState('[{"question":"","answer":""}]');
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -114,6 +115,7 @@ export default function AddCourse() {
 
       // Add category and category-specific course details.
       submitData.append('level', selectedCategory);
+      if (selectedCategory === 'university' && formData.studyStage === 'Senior') submitData.append('contentType', formData.contentType || 'course-materials');
       Object.keys(formData).forEach(key => {
         if (formData[key] !== '') submitData.append(key, formData[key]);
       });
@@ -127,6 +129,12 @@ export default function AddCourse() {
       submitData.append('notes', JSON.stringify(validNotes.map(note => ({ title: note.title.trim() }))));
       submitData.append('videos', JSON.stringify(validVideos.map(video => ({ title: video.title.trim(), url: video.url.trim() }))));
       submitData.append('ppts', JSON.stringify(validPpts.map(ppt => ({ title: ppt.title.trim() }))));
+      if (selectedCategory === 'university' && formData.studyStage === 'Senior' && formData.contentType === 'exit-exam') {
+        let parsedQuestions;
+        try { parsedQuestions = JSON.parse(questionsJson); } catch { throw new Error('Exit Exam questions must be valid JSON.'); }
+        if (!Array.isArray(parsedQuestions) || !parsedQuestions.length || parsedQuestions.some(item => !item.question || !item.answer)) throw new Error('Add at least one question with both question and answer.');
+        submitData.append('questions', JSON.stringify(parsedQuestions));
+      } else submitData.append('questions', JSON.stringify([]));
 
       // Keep file order aligned with the metadata arrays above.
       validNotes.forEach(note => submitData.append('files', note.file));
@@ -281,6 +289,7 @@ export default function AddCourse() {
                 {formData.studyStage === 'Senior' && <>
                   <SelectField label="Department *" name="department" value={formData.department} onChange={handleInputChange} options={universityDepartments.filter(item => item.category === formData.faculty).map(item => item.name)} required />
                   <SelectField label="Academic Year *" name="year" value={formData.year} onChange={handleInputChange} options={universityYears} required />
+                  <SelectField label="Content Type *" name="contentType" value={formData.contentType || "course-materials"} onChange={handleInputChange} options={["course-materials", "exit-exam"]} required />
                 </>}
                 {(formData.faculty === "Master's Degree" || formData.faculty === 'PhD') && <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">This course will be filed under {formData.faculty}.</div>}
                 <Field label="Course Code" name="courseCode" value={formData.courseCode || ''} onChange={handleInputChange} placeholder="e.g., CSE 201" />
@@ -318,6 +327,14 @@ export default function AddCourse() {
             </div>
           </div>
 
+          {selectedCategory === 'university' && formData.studyStage === 'Senior' && formData.contentType === 'exit-exam' ? (
+            <section className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+              <h2 className="text-xl font-semibold">Exit Exam Questions</h2>
+              <p className="mt-2 text-sm text-slate-400">Enter a JSON array. Each item must contain question and answer fields.</p>
+              <textarea value={questionsJson} onChange={event => setQuestionsJson(event.target.value)} rows={10} className="mt-4 w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 font-mono text-sm text-white focus:border-blue-500 focus:outline-none" />
+            </section>
+          ) : (
+          <>
           {/* NOTES SECTION */}
           <div id="materials" className="bg-slate-900 rounded-xl border border-slate-800 p-6">
             <div className="flex items-center justify-between mb-6">
@@ -456,6 +473,9 @@ export default function AddCourse() {
               ))}
             </div>
           </div>
+
+          </>
+          )}
 
           {/* SUBMIT BUTTON */}
           <div className="flex justify-end gap-4">
