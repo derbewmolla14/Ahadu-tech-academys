@@ -16,10 +16,17 @@ export default function AdminUniversityResources() {
   const change = (event) => {
     const { name, value } = event.target;
     setForm((old) => {
-      if (name === 'stream') return { ...old, stream: value, department: '' };
-      if (name === 'kind') return { ...old, kind: value, resourceType: value === 'course-material' ? 'pdf' : 'image' };
-      if (name === 'level' && value !== 'Senior') return { ...old, level: value, department: '', kind: old.kind === 'exit-exam' ? 'course-material' : old.kind, resourceType: old.kind === 'exit-exam' ? 'pdf' : old.resourceType };
-      if (name === 'level' && value === 'Senior') return { ...old, level: value, course: '', kind: 'exit-exam', resourceType: 'image' };
+      if (name === 'stream') return { ...old, stream: value, department: '', course: '', academicYear: '' };
+      if (name === 'kind') return { ...old, kind: value, academicYear: '', resourceType: value === 'course-material' ? 'pdf' : 'image' };
+      if (name === 'level' && value !== 'Senior') return {
+        ...old, level: value, department: '', course: '', academicYear: '',
+        kind: old.kind === 'exit-exam' ? 'course-material' : old.kind,
+        resourceType: old.kind === 'exit-exam' ? 'pdf' : old.resourceType,
+      };
+      if (name === 'level' && value === 'Senior') return {
+        ...old, level: value, department: '', course: '', academicYear: '',
+        kind: 'exit-exam', resourceType: 'image',
+      };
       return { ...old, [name]: value };
     });
   };
@@ -41,7 +48,14 @@ export default function AdminUniversityResources() {
   }, [form.stream]);
 
   const submit = async (event) => {
-    event.preventDefault(); setBusy(true); setError(''); setMessage('');
+    event.preventDefault(); setError(''); setMessage('');
+    if (!form.title.trim()) { setError('Please enter a resource title.'); return; }
+    if (form.level === 'Senior' && !form.department.trim()) { setError('Please select a Department.'); return; }
+    if (!form.course.trim()) { setError('Please select or enter a Course.'); return; }
+    if (form.kind === 'exam-question' && !form.academicYear.trim()) { setError('Please select an Academic Year for this exam question.'); return; }
+    if (form.resourceType === 'text' && !form.textContent.trim()) { setError('Please enter the text or question content.'); return; }
+    if (form.resourceType !== 'text' && !file) { setError('Please select a file to upload.'); return; }
+    setBusy(true);
     try {
       const body = new FormData();
       Object.entries(form).forEach(([key, value]) => body.append(key, value));
@@ -83,7 +97,7 @@ export default function AdminUniversityResources() {
 
   return <main className="mx-auto max-w-6xl space-y-6 p-5 text-white">
     <header className="rounded-3xl border border-slate-800 bg-slate-900 p-7"><p className="text-sm font-semibold uppercase tracking-widest text-sky-400">Admin workspace</p><h1 className="mt-2 text-3xl font-bold">University Resource Management</h1><p className="mt-2 text-slate-400">Uploads remain hidden from students until explicitly approved. After checking a payment receipt sent through Telegram, enter the student's account ID below and unlock the specific approved premium resource.</p></header>
-    <form onSubmit={submit} className="grid gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:grid-cols-2 lg:grid-cols-3">
+    <form onSubmit={submit} noValidate className="grid gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:grid-cols-2 lg:grid-cols-3">
       {field('Stream', 'stream', ['Natural', 'Social', 'Health', 'Diploma'])}
       {field('Level', 'level', ['Freshman', 'Remedial', 'Senior', 'Diploma'])}
       {field('Content path', 'kind', form.level === 'Senior' ? ['exit-exam', 'course-material'] : ['exam-question', 'course-material'])}
