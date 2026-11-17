@@ -146,6 +146,7 @@ const uploadContent = async (req, res) => {
       isPremium: isPremium === true || isPremium === 'true',
       createdBy: req.user._id,
       status: 'pending',
+      isApproved: false,
       approvedBy: null,
       approvedAt: null
     };
@@ -178,7 +179,7 @@ const getContent = async (req, res) => {
     const { level, university, department, year, grade, subject, technology, faculty, studyStage, contentType, examYear, course, courseCode } = req.query;
 
     // Build query object - only active courses for public access
-    const query = { isActive: true, status: 'approved', createdBy: { $ne: null } };
+    const query = { isActive: true, createdBy: { $ne: null }, $or: [{ status: 'approved' }, { isApproved: true }] };
     if (level) query.level = level;
     if (university) query.university = university;
     if (grade) query.grade = grade;
@@ -228,7 +229,7 @@ const getContentById = async (req, res) => {
 
     const content = await CourseContent.findById(id);
 
-    if (!content || !content.isActive || content.status !== 'approved' || !content.createdBy) {
+    if (!content || !content.isActive || !(content.status === 'approved' || content.isApproved === true) || !content.createdBy) {
       return res.status(404).json({
         success: false,
         message: 'Course content not found'
@@ -267,7 +268,7 @@ const streamCourseMaterial = async (req, res) => {
   try {
     const { id, kind, index } = req.params;
     const course = await CourseContent.findById(id);
-    if (!course || !course.isActive || course.status !== 'approved' || !course.createdBy) return res.status(404).json({ success: false, message: 'Approved course not found.' });
+    if (!course || !course.isActive || !(course.status === 'approved' || course.isApproved === true) || !course.createdBy) return res.status(404).json({ success: false, message: 'Approved course not found.' });
     const isAdmin = req.user?.role === 'admin';
     const isUnlocked = req.user?.unlockedCourseContents?.some((item) => String(item) === String(course._id));
     if (course.isPremium && !isAdmin && !isUnlocked) return res.status(403).json({ success: false, message: 'Administrator approval is required for this premium course.' });
@@ -323,6 +324,7 @@ const setContentApproval = async (req, res) => {
     if (!content) return res.status(404).json({ success: false, message: 'Course content not found.' });
     if (!content.createdBy) return res.status(409).json({ success: false, message: 'This legacy upload has no recorded admin uploader. Re-upload it through the admin upload form before approval.' });
     content.status = status;
+    content.isApproved = status === 'approved';
     content.approvedBy = status === 'approved' ? req.user._id : null;
     content.approvedAt = status === 'approved' ? new Date() : null;
     await content.save();
