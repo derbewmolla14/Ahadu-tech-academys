@@ -261,7 +261,7 @@ export default function AddCourse() {
         <div className="max-w-6xl mx-auto p-6 lg:p-10">
           <div className="grid gap-5 sm:grid-cols-2">
             {categories.map((category) => (
-              <button key={category.id} type="button" onClick={() => { setFormData({ university: '', department: '', year: '', grade: '', subject: '', technology: '', course: '', description: '', isActive: true, isPremium: false }); setSelectedElementaryGrade(''); setSelectedHighSchoolGrade(''); setUniversityOptionsError(''); setSelectedCategory(category.id); }} className="group rounded-2xl border border-slate-800 bg-slate-900 p-7 text-left transition hover:border-blue-500 hover:bg-slate-800/90 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <button key={category.id} type="button" onClick={() => { setFormData({ university: '', department: '', year: '', grade: '', subject: '', technology: '', faculty: '', studyStage: '', contentType: 'course-materials', courseCode: '', course: '', description: '', isActive: true, isPremium: false }); setSelectedElementaryGrade(''); setSelectedHighSchoolGrade(''); setUniversityOptionsError(''); setSelectedCategory(category.id); }} className="group rounded-2xl border border-slate-800 bg-slate-900 p-7 text-left transition hover:border-blue-500 hover:bg-slate-800/90 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <div className="flex items-start justify-between">
                   <span className="text-4xl">{category.icon}</span>
                   <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-300">{category.subtitle}</span>
@@ -314,7 +314,7 @@ export default function AddCourse() {
           <div className="bg-slate-900 rounded-xl border border-slate-800 p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold">Basic Information</h2>
-              <button type="button" onClick={() => { setSelectedCategory(''); setSelectedElementaryGrade(''); setSelectedHighSchoolGrade(''); setFormData({ university: '', department: '', year: '', grade: '', subject: '', technology: '', course: '', description: '', isActive: true, isPremium: false }); }} className="text-sm text-blue-400 hover:text-blue-300">Change category</button>
+              <button type="button" onClick={() => { setSelectedCategory(''); setSelectedElementaryGrade(''); setSelectedHighSchoolGrade(''); setFormData({ university: '', department: '', year: '', grade: '', subject: '', technology: '', faculty: '', studyStage: '', contentType: 'course-materials', courseCode: '', course: '', description: '', isActive: true, isPremium: false }); }} className="text-sm text-blue-400 hover:text-blue-300">Change category</button>
             </div>
             <div className="mb-6 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3">
               <p className="text-sm text-blue-200">Selected category</p>
