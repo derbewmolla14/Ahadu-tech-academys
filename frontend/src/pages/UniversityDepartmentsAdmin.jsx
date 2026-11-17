@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../api/api';
 
-const categories = ['Natural Science', 'Social Science', 'Health Science'];
+const categories = ['Natural Science', 'Social Science', 'Health Science', 'Diploma'];
 
 export default function UniversityDepartmentsAdmin() {
   const [departments, setDepartments] = useState([]);
@@ -83,7 +83,7 @@ export default function UniversityDepartmentsAdmin() {
         <header className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <Link to="/admin/dashboard" className="text-sm text-blue-400 hover:text-blue-300">← Admin Dashboard</Link>
           <h1 className="mt-3 text-3xl font-bold">University Departments</h1>
-          <p className="mt-2 text-slate-400">Manage departments for Natural Science, Social Science, and Health Science.</p>
+          <p className="mt-2 text-slate-400">Manage departments for Natural Science, Social Science, Health Science, and Diploma.</p>
         </header>
         <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <h2 className="text-xl font-semibold">{editingId ? 'Edit Department' : 'Add Department'}</h2>

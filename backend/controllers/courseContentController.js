@@ -74,11 +74,11 @@ const uploadContent = async (req, res) => {
       recordDepartment = subject;
       recordYear = `Grade ${grade}`;
     } else if (level === 'university') {
-      if (!['Natural Science', 'Social Science', 'Health Science', "Master's Degree", 'PhD'].includes(faculty)) return res.status(400).json({ success: false, message: 'Please select a valid university academic category' });
+      if (!['Natural Science', 'Social Science', 'Health Science', 'Diploma', "Master's Degree", 'PhD'].includes(faculty)) return res.status(400).json({ success: false, message: 'Please select a valid university academic category' });
       // Include faculty in the legacy unique-key field so identical course names can exist in different academic categories.
       recordUniversity = 'University - ' + faculty;
-      if (faculty === 'Natural Science' || faculty === 'Social Science' || faculty === 'Health Science') {
-        if (!['Remedial', 'Freshman', 'Senior'].includes(studyStage)) return res.status(400).json({ success: false, message: 'Please select Remedial, Freshman, or Senior' });
+      if (faculty === 'Natural Science' || faculty === 'Social Science' || faculty === 'Health Science' || faculty === 'Diploma') {
+        if (!['Remedial', 'Freshman', 'Senior', 'Diploma'].includes(studyStage)) return res.status(400).json({ success: false, message: 'Please select Remedial, Freshman, Senior, or Diploma' });
         if (studyStage === 'Senior' && (!department || !year)) return res.status(400).json({ success: false, message: 'Department and academic year are required for Senior courses' });
         if (studyStage === 'Senior' && !['course-materials', 'exit-exam'].includes(contentType)) return res.status(400).json({ success: false, message: 'Select Course Materials or Exit Exam.' });
         if (studyStage === 'Senior') {

@@ -5,8 +5,8 @@ const courseContentSchema = new mongoose.Schema({
   grade: { type: String, default: '' },
   subject: { type: String, default: '' },
   technology: { type: String, default: '' },
-  faculty: { type: String, enum: ['Natural Science', 'Social Science', 'Health Science', "Master's Degree", 'PhD', ''], default: '' },
-  studyStage: { type: String, enum: ['Remedial', 'Freshman', 'Senior', 'Masters', 'PhD', ''], default: '' },
+  faculty: { type: String, enum: ['Natural Science', 'Social Science', 'Health Science', 'Diploma', "Master's Degree", 'PhD', ''], default: '' },
+  studyStage: { type: String, enum: ['Remedial', 'Freshman', 'Senior', 'Diploma', 'Masters', 'PhD', ''], default: '' },
   contentType: { type: String, enum: ['course-materials', 'exit-exam'], default: 'course-materials', index: true },
   courseCode: { type: String, trim: true, default: '' },
   university: {

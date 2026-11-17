@@ -11,6 +11,7 @@ const userSchema = new mongoose.Schema(
     approved: { type: Boolean, default: true },
     unlockedCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
     unlockedCourseContents: [{ type: mongoose.Schema.Types.ObjectId, ref: 'CourseContent' }],
+    unlockedUniversityResources: [{ type: mongoose.Schema.Types.ObjectId, ref: 'UniversityResource' }],
   },
   { timestamps: true }
 );
