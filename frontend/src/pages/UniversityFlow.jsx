@@ -9,6 +9,7 @@ export default function UniversityFlow() {
   const [catalog, setCatalog] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [courseSearch, setCourseSearch] = useState('');
 
   const load = useCallback(async (next) => {
     if (!next.stream) { setCatalog({}); return; }
@@ -69,16 +70,16 @@ export default function UniversityFlow() {
       {error && <p role="alert" className="rounded-xl border border-red-800 bg-red-950 p-4 text-red-200">{error}</p>}
       {loading && <p className="py-8 text-center text-slate-400">Loading approved content…</p>}
 
-      {!loading && !selection.stream && <section className="grid gap-4 sm:grid-cols-2">{['Natural', 'Social'].map((stream) => choose(stream, () => move({ stream })))}</section>}
-      {!loading && selection.stream && !selection.level && <section className="grid gap-4 sm:grid-cols-3">{['Freshman', 'Remedial', 'Senior'].map((level) => choose(level, () => move({ level })))}</section>}
+      {!loading && !selection.stream && <section className="grid gap-4 sm:grid-cols-2">{['Natural', 'Social', 'Health', 'Diploma'].map((stream) => choose(stream, () => move({ stream })))}</section>}
+      {!loading && selection.stream && !selection.level && <section className="grid gap-4 sm:grid-cols-3">{['Freshman', 'Remedial', 'Senior', 'Diploma'].map((level) => choose(level, () => move({ level })))}</section>}
 
       {!loading && selection.level === 'Senior' && !selection.department && <section className="space-y-3"><h2 className="text-xl font-semibold">Choose Department</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{(catalog.departments || []).map((department) => choose(department, () => move({ department })))}</div>{!catalog.departments?.length && <p className="text-slate-400">No active departments are configured for this stream yet.</p>}</section>}
 
-      {!loading && ['Freshman', 'Remedial'].includes(selection.level) && !selection.course && <section className="space-y-3"><h2 className="text-xl font-semibold">Choose Course</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{(catalog.courses || []).map((course) => choose(course, () => move({ course })))}</div>{!catalog.courses?.length && <p className="text-slate-400">No approved courses are available yet.</p>}</section>}
+      {!loading && ['Freshman', 'Remedial', 'Diploma'].includes(selection.level) && !selection.course && <section className="space-y-3"><h2 className="text-xl font-semibold">Choose Course</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{(catalog.courses || []).map((course) => choose(course, () => move({ course })))}</div>{!catalog.courses?.length && <p className="text-slate-400">No approved courses are available yet.</p>}</section>}
 
       {!loading && selection.level === 'Senior' && selection.department && !selection.kind && <section className="grid gap-4 sm:grid-cols-2">{(catalog.options || []).map((option) => choose(option.label, () => move({ kind: option.id })))}</section>}
 
-      {!loading && selection.level === 'Senior' && selection.kind === 'course-material' && !selection.course && <section className="space-y-3"><h2 className="text-xl font-semibold">Department Courses</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{(catalog.courses || []).map((course) => choose(course, () => move({ course })))}</div>{!catalog.courses?.length && <p className="text-slate-400">No approved department courses are available yet.</p>}</section>}
+      {!loading && selection.level === 'Senior' && selection.kind === 'course-material' && !selection.course && <section className="space-y-3"><h2 className="text-xl font-semibold">Department Courses</h2><input type="search" value={courseSearch} onChange={(event) => setCourseSearch(event.target.value)} placeholder="Search courses by name or keyword…" className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-sky-500" /><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{(catalog.courses || []).filter((course) => course.toLowerCase().includes(courseSearch.trim().toLowerCase())).map((course) => choose(course, () => move({ course })))}</div>{catalog.courses?.length > 0 && !catalog.courses.filter((course) => course.toLowerCase().includes(courseSearch.trim().toLowerCase())).length && <p className="text-slate-400">No courses match your search.</p>}</section>}
 
       {!loading && ['Freshman', 'Remedial'].includes(selection.level) && selection.course && !selection.kind && <section className="grid gap-4 sm:grid-cols-2">{(catalog.options || []).map((option) => choose(option.label, () => move({ kind: option.id })))}</section>}
 
