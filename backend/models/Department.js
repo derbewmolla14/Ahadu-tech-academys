@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const DEPARTMENT_CATEGORIES = ['Natural Science', 'Social Science', 'Health Science', 'Uncategorized'];
+const DEPARTMENT_CATEGORIES = ['Natural Science', 'Social Science', 'Health Science', 'Diploma', 'Uncategorized];
 const departmentSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   normalizedName: { type: String, required: true, lowercase: true, trim: true },
