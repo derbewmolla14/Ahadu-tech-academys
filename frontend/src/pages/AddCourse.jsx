@@ -60,6 +60,10 @@ export default function AddCourse() {
     grade: '',
     subject: '',
     technology: '',
+    faculty: '',
+    studyStage: '',
+    contentType: 'course-materials',
+    courseCode: '',
     course: '',
     description: '',
     isActive: true,
@@ -104,24 +108,62 @@ export default function AddCourse() {
     setPpts(updated);
   };
 
+  const validateForm = () => {
+    if (!selectedCategory) return 'Please select a course category.';
+    if (!String(formData.course || '').trim()) return 'Please enter the course name.';
+    if (selectedCategory === 'elementary' && !selectedElementaryGrade) return 'Please select an Elementary grade.';
+    if (selectedCategory === 'highschool' && !selectedHighSchoolGrade) return 'Please select a High School grade.';
+    if (selectedCategory === 'elementary' || selectedCategory === 'highschool') {
+      if (!String(formData.subject || '').trim()) return 'Please enter the subject.';
+    }
+    if (selectedCategory === 'university') {
+      const faculty = formData.faculty || '';
+      if (!faculty) return 'Please select an Academic Category.';
+      const stageRequired = ['Natural Science', 'Social Science', 'Health Science', 'Diploma'].includes(faculty);
+      if (stageRequired && !formData.studyStage) return 'Please select an Academic Stage.';
+      if (formData.studyStage === 'Senior') {
+        if (!String(formData.department || '').trim()) return 'Please select a Department.';
+        if (!formData.contentType) return 'Please select a Content Type.';
+      }
+    }
+    if (selectedCategory === 'coding' && !String(formData.technology || '').trim()) return 'Please select a Training Area.';
+    const incompleteNote = notes.findIndex(note => (note.title.trim() || note.file) && (!note.title.trim() || !note.file));
+    if (incompleteNote !== -1) return `PDF Note ${incompleteNote + 1}: enter a title and select a PDF file, or clear both fields.`;
+    const incompletePpt = ppts.findIndex(ppt => (ppt.title.trim() || ppt.file) && (!ppt.title.trim() || !ppt.file));
+    if (incompletePpt !== -1) return `PowerPoint ${incompletePpt + 1}: enter a title and select a PPT/PPTX file, or clear both fields.`;
+    const incompleteVideo = videos.findIndex(video => (video.title.trim() || video.url.trim()) && (!video.title.trim() || !video.url.trim()));
+    if (incompleteVideo !== -1) return `Video ${incompleteVideo + 1}: enter both a video title and video URL, or clear both fields.`;
+    return '';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
     setSuccess('');
+    const validationMessage = validateForm();
+    if (validationMessage) {
+      setError(validationMessage);
+      return;
+    }
+    setLoading(true);
 
     try {
       const submitData = new FormData();
+      const appendIfPresent = (key, value) => {
+        if (value !== undefined && value !== null && String(value).trim() !== '') {
+          submitData.append(key, typeof value === 'boolean' ? String(value) : String(value).trim());
+        }
+      };
 
-      // Add category and category-specific course details.
+      // Send only fields understood by CourseContentController and its schema.
       submitData.append('level', selectedCategory);
-      if (selectedCategory === 'university' && formData.studyStage === 'Senior') submitData.append('contentType', formData.contentType || 'course-materials');
-      Object.keys(formData).forEach(key => {
-        if (formData[key] !== '') submitData.append(key, formData[key]);
+      ['university', 'department', 'year', 'grade', 'subject', 'technology', 'faculty',
+        'studyStage', 'contentType', 'courseCode', 'course', 'description'].forEach(key => {
+        appendIfPresent(key, formData[key]);
       });
+      submitData.append('isActive', String(Boolean(formData.isActive)));
+      submitData.append('isPremium', String(Boolean(formData.isPremium)));
 
-      // Only submit PDF/PPT entries that have both a title and an attached file.
-      // The database requires a file URL for every saved note and presentation.
       const validNotes = notes.filter(note => note.title.trim() && note.file);
       const validPpts = ppts.filter(ppt => ppt.title.trim() && ppt.file);
       const validVideos = videos.filter(video => video.title.trim() && video.url.trim());
@@ -132,32 +174,27 @@ export default function AddCourse() {
       if (selectedCategory === 'university' && formData.studyStage === 'Senior' && formData.contentType === 'exit-exam') {
         let parsedQuestions;
         try { parsedQuestions = JSON.parse(questionsJson); } catch { throw new Error('Exit Exam questions must be valid JSON.'); }
-        if (!Array.isArray(parsedQuestions) || !parsedQuestions.length || parsedQuestions.some(item => !item.question || !item.answer)) throw new Error('Add at least one question with both question and answer.');
+        if (!Array.isArray(parsedQuestions) || !parsedQuestions.length || parsedQuestions.some(item => !String(item.question || '').trim() || !String(item.answer || '').trim())) {
+          throw new Error('Add at least one Exit Exam question with both a question and an answer.');
+        }
         submitData.append('questions', JSON.stringify(parsedQuestions));
-      } else submitData.append('questions', JSON.stringify([]));
+      } else {
+        submitData.append('questions', JSON.stringify([]));
+      }
 
-      // Keep file order aligned with the metadata arrays above.
+      // Match the backend files array: PDFs first, then PowerPoint files.
       validNotes.forEach(note => submitData.append('files', note.file));
       validPpts.forEach(ppt => submitData.append('files', ppt.file));
 
-      const response = await apiFetch('content/upload', {
-        method: 'POST',
-        body: submitData,
-      });
-
+      const response = await apiFetch('content/upload', { method: 'POST', body: submitData });
       const data = await response.json();
-
       if (!response.ok) {
         const details = Array.isArray(data.details) ? data.details.join('; ') : data.error;
         throw new Error([data.message || 'Failed to create course', details].filter(Boolean).join(': '));
       }
-
-      if (data.success) {
-        setSuccess('Course created successfully!');
-        setTimeout(() => navigate('/admin/dashboard'), 2000);
-      } else {
-        setError(data.message || 'Failed to create course');
-      }
+      if (!data.success) throw new Error(data.message || 'Failed to create course.');
+      setSuccess('Course created successfully!');
+      setTimeout(() => navigate('/admin/dashboard'), 2000);
     } catch (err) {
       setError(err.message || 'Error creating course');
       console.error('Submit error:', err);
@@ -223,7 +260,7 @@ export default function AddCourse() {
         <div className="max-w-6xl mx-auto p-6 lg:p-10">
           <div className="grid gap-5 sm:grid-cols-2">
             {categories.map((category) => (
-              <button key={category.id} type="button" onClick={() => setSelectedCategory(category.id)} className="group rounded-2xl border border-slate-800 bg-slate-900 p-7 text-left transition hover:border-blue-500 hover:bg-slate-800/90 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <button key={category.id} type="button" onClick={() => { setFormData({ university: '', department: '', year: '', grade: '', subject: '', technology: '', faculty: '', studyStage: '', contentType: 'course-materials', courseCode: '', course: '', description: '', isActive: true, isPremium: false }); setSelectedElementaryGrade(''); setSelectedHighSchoolGrade(''); setUniversityOptionsError(''); setSelectedCategory(category.id); }} className="group rounded-2xl border border-slate-800 bg-slate-900 p-7 text-left transition hover:border-blue-500 hover:bg-slate-800/90 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <div className="flex items-start justify-between">
                   <span className="text-4xl">{category.icon}</span>
                   <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-300">{category.subtitle}</span>
@@ -259,7 +296,7 @@ export default function AddCourse() {
 
       {/* FORM */}
       <div className="max-w-4xl mx-auto p-6">
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={handleSubmit} noValidate className="space-y-8">
           {/* ERROR/SUCCESS MESSAGES */}
           {error && (
             <div className="bg-red-900/50 border border-red-700 text-red-200 p-4 rounded-lg">
@@ -276,7 +313,7 @@ export default function AddCourse() {
           <div className="bg-slate-900 rounded-xl border border-slate-800 p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold">Basic Information</h2>
-              <button type="button" onClick={() => { setSelectedCategory(''); setSelectedElementaryGrade(''); setSelectedHighSchoolGrade(''); }} className="text-sm text-blue-400 hover:text-blue-300">Change category</button>
+              <button type="button" onClick={() => { setSelectedCategory(''); setSelectedElementaryGrade(''); setSelectedHighSchoolGrade(''); setFormData({ university: '', department: '', year: '', grade: '', subject: '', technology: '', faculty: '', studyStage: '', contentType: 'course-materials', courseCode: '', course: '', description: '', isActive: true, isPremium: false }); }} className="text-sm text-blue-400 hover:text-blue-300">Change category</button>
             </div>
             <div className="mb-6 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3">
               <p className="text-sm text-blue-200">Selected category</p>
@@ -288,7 +325,7 @@ export default function AddCourse() {
                 {(formData.faculty === 'Natural Science' || formData.faculty === 'Social Science' || formData.faculty === 'Health Science' || formData.faculty === 'Diploma') && <SelectField label="Academic Stage *" name="studyStage" value={formData.studyStage || ''} onChange={(event) => setFormData(prev => ({ ...prev, studyStage: event.target.value, department: '', year: event.target.value === 'Senior' ? '' : event.target.value }))} options={formData.faculty === 'Diploma' ? ['Freshman', 'Remedial', 'Senior', 'Diploma'] : ['Remedial', 'Freshman', 'Senior']} required />}
                 {formData.studyStage === 'Senior' && <>
                   <SelectField label="Department *" name="department" value={formData.department} onChange={handleInputChange} options={universityDepartments.filter(item => item.category === formData.faculty).map(item => item.name)} required />
-                  <SelectField label="Academic Year *" name="year" value={formData.year} onChange={handleInputChange} options={universityYears} required />
+                  <div><SelectField label="Academic Year (optional)" name="year" value={formData.year} onChange={handleInputChange} options={universityYears} /><p className="mt-1 text-xs text-slate-400">Leave blank to make this course available to students in every academic year.</p></div>
                   <div><label className="mb-2 block text-sm font-medium text-slate-300">Content Type *</label><select name="contentType" value={formData.contentType || "course-materials"} onChange={handleInputChange} required className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:border-blue-500 focus:outline-none"><option value="course-materials">Course Materials</option><option value="exit-exam">Exit Exam Questions</option></select></div>
                 </>}
                 {(formData.faculty === "Master's Degree" || formData.faculty === 'PhD') && <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">This course will be filed under {formData.faculty}.</div>}

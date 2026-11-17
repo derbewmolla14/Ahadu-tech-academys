@@ -21,8 +21,9 @@ const courseContentSchema = new mongoose.Schema({
   },
   year: {
     type: String,
-    required: true,
-    trim: true
+    required: false,
+    trim: true,
+    default: 'All Years'
   },
   course: {
     type: String,
@@ -95,7 +96,7 @@ const courseContentSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Compound index to ensure uniqueness of university+department+year+course combination
+// Compound index preserves legacy identity while allowing a shared 'All Years' course.
 courseContentSchema.index({ university: 1, department: 1, year: 1, course: 1 }, { unique: true });
 
 module.exports = mongoose.model('CourseContent', courseContentSchema);

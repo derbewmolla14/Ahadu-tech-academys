@@ -45,6 +45,7 @@ import UniversityDepartmentsAdmin from "./pages/UniversityDepartmentsAdmin";
 import PremiumCourseAccessAdmin from "./pages/PremiumCourseAccessAdmin";
 import AddCourse from "./pages/AddCourse";
 import UniversityFlow from "./pages/UniversityFlow";
+import UniversityCourseContentPage from "./pages/UniversityCourseContentPage";
 import UniversityLearningPage from "./pages/UniversityLearningPage";
 import AdminUniversityResources from "./pages/AdminUniversityResources";
 
@@ -171,6 +172,7 @@ function AppRoutes() {
 
         {/* New University flow: stream -> level -> department/course -> approved resources. */}
         <Route path="university" element={<UniversityFlow />} />
+        <Route path="university/course/:courseId" element={<UniversityCourseContentPage />} />
         <Route path="university/masters/*" element={<UniversityLearningPage />} />
         <Route path="university/phd/*" element={<UniversityLearningPage />} />
         <Route path="university/*" element={<Navigate to="/university" replace />} />

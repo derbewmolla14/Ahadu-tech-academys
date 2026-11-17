@@ -42,10 +42,6 @@ exports.getCatalog = async (req, res) => {
         { id: 'course-material', label: 'Course Material' },
       ] });
     }
-    if (kind === 'exam-question' && !academicYear) {
-      const years = await UniversityResource.distinct('academicYear', { ...base, course, kind, academicYear: { $nin: ['', null] } });
-      return res.json({ years: years.sort() });
-    }
     const query = { ...base };
     if (department) query.department = department;
     if (course) query.course = course;
@@ -82,7 +78,6 @@ exports.adminUpload = async (req, res) => {
     if (level !== 'Senior' && kind === 'exit-exam') return res.status(400).json({ message: 'Exit Exam is only available for Senior.' });
     const allowedFormats = kind === 'course-material' ? ['pdf', 'ppt', 'video'] : ['image', 'pdf', 'text'];
     if (!allowedFormats.includes(resourceType)) return res.status(400).json({ message: 'The selected file format does not match this learning content type.' });
-    if (kind === 'exam-question' && !academicYear) return res.status(400).json({ message: 'Exam academic year is required.' });
     if (resourceType === 'text' && !String(textContent).trim()) return res.status(400).json({ message: 'Text content is required.' });
     if (resourceType !== 'text' && !req.file) return res.status(400).json({ message: 'Please select a file.' });
     if (req.file) {

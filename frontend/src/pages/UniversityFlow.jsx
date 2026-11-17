@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../api/api';
 
-const initial = { stream: '', level: '', department: '', course: '', kind: '', academicYear: '' };
+const initial = { stream: '', level: '', department: '', course: '', kind: '' };
 const mainCategories = [
   { title: 'Foundation Building', description: 'Build strong foundations with school-level learning resources.', icon: '📚', to: '/elementary', color: 'from-blue-500 to-cyan-500' },
   { title: 'Development Skills', description: 'Practice coding and develop practical technology skills.', icon: '💻', to: '/coding', color: 'from-orange-500 to-amber-500' },
@@ -60,7 +60,7 @@ export default function UniversityFlow() {
   };
   const reset = () => { setHistory([]); setSelection(initial); setError(''); };
 
-  const heading = selection.academicYear ? selection.academicYear + ' Exam Questions'
+  const heading = selection.kind === 'exam-question' ? 'Exam Questions'
     : selection.kind === 'exit-exam' ? 'Exit Exam'
     : selection.kind === 'course-material' ? 'Course Materials'
     : selection.course ? selection.course
@@ -68,15 +68,15 @@ export default function UniversityFlow() {
     : selection.level || 'Choose an Academic Category';
 
   const choose = (label, onClick, description = '') => (
-    <button key={label} type="button" onClick={onClick} className="group rounded-2xl border border-slate-700 bg-slate-900 p-6 text-left text-white shadow-lg transition hover:-translate-y-1 hover:border-sky-500 hover:bg-slate-800">
-      <span className="block text-lg font-semibold group-hover:text-sky-300">{label}</span>
+    <button key={label} type="button" onClick={onClick} className="group flex min-h-36 w-full flex-col rounded-2xl border border-slate-700 bg-slate-900 p-6 text-left text-white shadow-lg transition duration-200 hover:-translate-y-1 hover:border-sky-500 hover:bg-slate-800 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-sky-500">
+      <span className="block text-lg font-bold leading-snug group-hover:text-sky-300">{label}</span>
       {description && <span className="mt-2 block text-sm leading-6 text-slate-400">{description}</span>}
       <span className="mt-4 block text-sm font-semibold text-sky-400">Continue →</span>
     </button>
   );
 
   const resources = catalog.resources || [];
-  const filteredCourses = (catalog.courses || []).filter((course) => course.toLowerCase().includes(courseSearch.trim().toLowerCase()));
+  const filteredCourses = (catalog.courses || []).filter((course) => String(course || '').toLowerCase().includes(courseSearch.trim().toLowerCase()));
   const filteredDepartments = (catalog.departments || []).filter((department) => department.toLowerCase().includes(departmentSearch.trim().toLowerCase()));
   const filteredResources = resources.filter((resource) => [resource.title, resource.originalFileName, resource.resourceType, resource.textContent].join(' ').toLowerCase().includes(resourceSearch.trim().toLowerCase()));
 
@@ -135,19 +135,18 @@ export default function UniversityFlow() {
           <p className="mt-3 text-slate-400">{heading}</p>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <button type="button" onClick={back} disabled={!history.length} className="rounded-lg bg-slate-800 px-4 py-2 text-sm disabled:opacity-40">← Back</button>
-            <span className="text-xs text-slate-500">{[selection.stream, selection.level, selection.department, selection.course, selection.kind, selection.academicYear].filter(Boolean).join(' / ')}</span>
+            <span className="text-xs text-slate-500">{[selection.stream, selection.level, selection.department, selection.course, selection.kind].filter(Boolean).join(' / ')}</span>
           </div>
         </header>
         {error && <p role="alert" className="rounded-xl border border-amber-800 bg-amber-950/60 p-4 text-amber-200">{error}</p>}
         {loading && <p className="py-8 text-center text-slate-400">Loading approved content…</p>}
-        {!loading && !selection.level && <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{['Freshman', 'Remedial', 'Senior', 'Diploma'].map((level) => choose(level, () => move({ level }), level === 'Senior' ? 'Go directly to the department list.' : 'Browse courses and approved learning resources.'))}</section>}
+        {!loading && !selection.level && <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{['Freshman', 'Remedial', 'Senior', 'Diploma'].map((level) => choose(level, () => move({ level }), level === 'Senior' ? 'Browse departments, course materials, and exit exams.' : 'Browse courses and approved learning resources.'))}</section>}
         {!loading && selection.level === 'Senior' && !selection.department && <section className="space-y-4"><h2 className="text-xl font-semibold">Choose Department</h2><input type="search" value={departmentSearch} onChange={(event) => setDepartmentSearch(event.target.value)} placeholder="Search departments by name…" className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-sky-500" /><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{filteredDepartments.map((department) => choose(department, () => move({ department })))}</div>{!catalog.departments?.length && <p className="text-slate-400">No active departments are configured for this stream yet.</p>}{catalog.departments?.length > 0 && !filteredDepartments.length && <p className="text-slate-400">No departments match your search.</p>}</section>}
         {!loading && ['Freshman', 'Remedial', 'Diploma'].includes(selection.level) && !selection.course && <section className="space-y-4"><h2 className="text-xl font-semibold">Choose Course</h2><input type="search" value={courseSearch} onChange={(event) => setCourseSearch(event.target.value)} placeholder="Search courses by name or keyword…" className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-sky-500" /><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{filteredCourses.map((course) => choose(course, () => move({ course })))}</div>{!catalog.courses?.length && <p className="text-slate-400">No approved courses are available yet.</p>}{catalog.courses?.length > 0 && !filteredCourses.length && <p className="text-slate-400">No courses match your search.</p>}</section>}
         {!loading && selection.level === 'Senior' && selection.department && !selection.kind && <section className="grid gap-5 sm:grid-cols-2">{choose('Exit Exam', () => move({ kind: 'exit-exam' }), 'Open approved exit exam questions, answers, and solutions.')}{choose('Course Material', () => move({ kind: 'course-material' }), 'Browse department courses and approved PDFs, presentations, and videos.')}</section>}
         {!loading && selection.level === 'Senior' && selection.kind === 'course-material' && !selection.course && <section className="space-y-4"><h2 className="text-xl font-semibold">Department Courses</h2><input type="search" value={courseSearch} onChange={(event) => setCourseSearch(event.target.value)} placeholder="Search courses by name or keyword…" className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-sky-500" /><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{filteredCourses.map((course) => choose(course, () => move({ course })))}</div>{!catalog.courses?.length && <p className="text-slate-400">No approved department courses are available yet.</p>}</section>}
-        {!loading && ['Freshman', 'Remedial', 'Diploma'].includes(selection.level) && selection.course && !selection.kind && <section className="grid gap-5 sm:grid-cols-2">{choose('Exam Question', () => move({ kind: 'exam-question' }), 'Choose an academic year to open exam questions.')}{choose('Course Material', () => move({ kind: 'course-material' }), 'Open approved PDF, PPT, and video materials.')}</section>}
-        {!loading && selection.kind === 'exam-question' && !selection.academicYear && <section className="space-y-3"><h2 className="text-xl font-semibold">Choose Academic Year</h2><div className="grid gap-4 sm:grid-cols-3">{(catalog.years || []).map((year) => choose(year, () => move({ academicYear: year })))}</div>{!catalog.years?.length && <p className="text-slate-400">No approved exam years are available yet.</p>}</section>}
-        {!loading && selection.kind && (selection.kind === 'exit-exam' || selection.course && selection.kind === 'course-material' || selection.academicYear) && <section className="space-y-4"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-semibold">Approved Resources</h2>{selection.kind === 'course-material' && <input type="search" value={resourceSearch} onChange={(event) => setResourceSearch(event.target.value)} placeholder="Search materials…" className="w-full max-w-sm rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-sky-500" />}</div>
+        {!loading && ['Freshman', 'Remedial', 'Diploma'].includes(selection.level) && selection.course && !selection.kind && <section className="grid gap-5 sm:grid-cols-2">{choose('Exam Question', () => move({ kind: 'exam-question' }), 'Open approved exam questions across all academic years.')}{choose('Course Material', () => move({ kind: 'course-material' }), 'Open approved PDF, PPT, and video materials.')}</section>}
+        {!loading && selection.kind && (selection.kind === 'exit-exam' || selection.course && ['course-material', 'exam-question'].includes(selection.kind)) && <section className="space-y-4"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-semibold">Approved Resources</h2>{selection.kind === 'course-material' && <input type="search" value={resourceSearch} onChange={(event) => setResourceSearch(event.target.value)} placeholder="Search materials…" className="w-full max-w-sm rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-sky-500" />}</div>
           {filteredResources.map((resource) => <article key={resource._id} className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-md"><div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-semibold">{resource.title}</h3><p className="mt-1 text-xs uppercase text-sky-400">{resource.resourceType}</p></div><span className={resource.accessType === 'premium' ? 'rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300' : 'rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300'}>{resource.accessType === 'premium' ? (resource.hasAccess ? 'Premium · Unlocked' : 'Premium · Locked') : 'Free'}</span></div>
             {resource.hasAccess && resource.textContent && <p className="mt-3 whitespace-pre-wrap text-slate-300">{resource.textContent}</p>}
             {resource.hasAccess && resource.answer && <p className="mt-3 text-slate-300"><strong>Answer:</strong> {resource.answer}</p>}
@@ -174,8 +173,8 @@ export default function UniversityFlow() {
             {paymentDetails.telebirrNumber && <p className="text-sm text-slate-300">Telebirr number: <strong>{paymentDetails.telebirrNumber}</strong></p>}
             {!paymentDetails.telebirrName && !paymentDetails.telebirrNumber && <p className="text-sm text-amber-200">Telebirr details will appear here once configured by the academy.</p>}
           </div>
-          <ol className="mt-5 list-decimal space-y-2 pl-5 text-sm text-slate-300"><li>Pay the amount communicated by the academy using the account details above.</li><li>Keep your payment receipt or screenshot.</li><li>Send the receipt, your student account email/ID, and the resource title to the academy on Telegram.</li><li>Wait for the administrator to verify the payment and unlock access.</li></ol>
-          {paymentDetails.telegramUsername ? <a href={`https://t.me/${paymentDetails.telegramUsername}`} target="_blank" rel="noreferrer" className="mt-6 block rounded-xl bg-sky-600 px-4 py-3 text-center font-semibold text-white hover:bg-sky-500">Send payment proof on Telegram</a> : <p className="mt-5 rounded-lg border border-amber-700 bg-amber-950/50 p-3 text-sm text-amber-200">Telegram contact has not been configured yet. The academy administrator must set VITE_PAYMENT_TELEGRAM_USERNAME.</p>}
+          <ol className="mt-5 list-decimal space-y-2 pl-5 text-sm text-slate-300"><li>Pay the amount communicated by the academy using the account details above.</li><li>Keep your payment receipt or screenshot.</li><li>Send your payment screenshot, student account email/ID, resource title, and payment method to the academy on Telegram.</li><li>Wait for the administrator to verify the payment and unlock access.</li></ol>
+          {paymentDetails.telegramUsername ? <a href={`https://t.me/${paymentDetails.telegramUsername}`} target="_blank" rel="noreferrer" className="mt-6 block rounded-xl bg-sky-600 px-4 py-3 text-center font-semibold text-white hover:bg-sky-500">Open Telegram to send payment screenshot & details</a> : <p className="mt-5 rounded-lg border border-amber-700 bg-amber-950/50 p-3 text-sm text-amber-200">Telegram contact has not been configured yet. The academy administrator must set VITE_PAYMENT_TELEGRAM_USERNAME.</p>}
           <button type="button" onClick={() => setPaymentResource(null)} className="mt-3 w-full rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-300 hover:bg-slate-800">Close</button>
         </section>
       </div>}
