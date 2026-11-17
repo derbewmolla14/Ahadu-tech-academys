@@ -267,7 +267,7 @@ const streamCourseMaterial = async (req, res) => {
   try {
     const { id, kind, index } = req.params;
     const course = await CourseContent.findById(id);
-    if (!course || !course.isActive) return res.status(404).json({ success: false, message: 'Course not found.' });
+    if (!course || !course.isActive || course.status !== 'approved' || !course.createdBy) return res.status(404).json({ success: false, message: 'Approved course not found.' });
     const isAdmin = req.user?.role === 'admin';
     const isUnlocked = req.user?.unlockedCourseContents?.some((item) => String(item) === String(course._id));
     if (course.isPremium && !isAdmin && !isUnlocked) return res.status(403).json({ success: false, message: 'Administrator approval is required for this premium course.' });
