@@ -36,13 +36,6 @@ import HighSchoolGradePage from "./pages/HighSchoolGradePage";
 import UniversityDashboard from "./pages/UniversityDashboard";
 import UniversityLearningPage from "./pages/UniversityLearningPage";
 import UniversityCourseContentPage from "./pages/UniversityCourseContentPage";
-import UniversityDetail from "./pages/UniversityDetail";
-import UniversityDepartment from "./pages/UniversityDepartment";
-import UniversityCourses from "./pages/UniversityCourses";
-import UniversityContent from "./pages/UniversityContent";
-import UniversitiesPage from "./pages/UniversitiesPage";
-import UniversityLevelPage from "./pages/UniversityLevelPage";
-import UniversityDepartmentPage from "./pages/UniversityDepartmentPage";
 
 // Course pages
 import YearSelection from "./pages/YearSelection";
@@ -52,7 +45,6 @@ import CourseDetail from "./pages/CourseDetail";
 
 // Other pages
 import CodingPage from "./pages/CodingPage";
-import DepartmentBrowser from "./pages/DepartmentBrowser";
 
 // Admin pages
 import AdminDashboard from "./pages/AdminDashboard";
@@ -198,100 +190,9 @@ function AppRoutes() {
         <Route path="university/masters/*" element={<UniversityLearningPage />} />
         <Route path="university/phd/*" element={<UniversityLearningPage />} />
 
-        <Route
-          path="university/:name/department"
-          element={<DepartmentBrowser />}
-        />
-
-        <Route
-          path="university/:name/years"
-          element={<YearSelection />}
-        />
-
-        <Route
-          path="university/:name/courses"
-          element={<CourseList />}
-        />
-
-        <Route
-          path="university/:name/course/:courseId"
-          element={<CourseDetail />}
-        />
-
-        <Route
-          path="university/:name/content"
-          element={<CourseContent />}
-        />
-
-        <Route
-          path="university/:name/content/:courseId"
-          element={<UniversityContent />}
-        />
-
-        <Route
-          path="university/:name"
-          element={<UniversityDetail />}
-        />
-
-        {/* Universities - Protected */}
-        <Route
-          path="universities"
-          element={
-            <PrivateRoute>
-              <UniversitiesPage />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="universities/:universityName/levels"
-          element={
-            <PrivateRoute>
-              <UniversityLevelPage />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="universities/:universityName/levels/:levelId"
-          element={
-            <PrivateRoute>
-              <UniversityDepartmentPage />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="university/department/:type"
-          element={<UniversityDepartmentPage />}
-        />
-
-        <Route
-          path="university/:departmentId"
-          element={
-            <PrivateRoute>
-              <YearSelection />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="university/:departmentId/:yearId"
-          element={
-            <PrivateRoute>
-              <CourseList />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="university/:departmentId/:yearId/:courseId"
-          element={
-            <PrivateRoute>
-              <CourseContent />
-            </PrivateRoute>
-          }
-        />
+        {/* Legacy university-name and university-directory URLs now return to the direct stream flow. */}
+        <Route path="university/:legacyUniversity/*" element={<Navigate to="/university" replace />} />
+        <Route path="universities/*" element={<Navigate to="/university" replace />} />
 
         {/* Coding */}
         <Route
