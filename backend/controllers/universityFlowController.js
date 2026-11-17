@@ -12,12 +12,12 @@ const approvedFilter = { status: 'approved' };
 exports.getCatalog = async (req, res) => {
   try {
     const { stream, level, department, course, kind, academicYear } = req.query;
-    if (!stream || !['Natural', 'Social'].includes(stream)) return res.status(400).json({ message: 'Choose Natural or Social stream.' });
-    if (level && !['Freshman', 'Remedial', 'Senior'].includes(level)) return res.status(400).json({ message: 'Invalid academic level.' });
-    if (!level) return res.json({ streams: ['Natural', 'Social'], levels: ['Freshman', 'Remedial', 'Senior'] });
+    if (!stream || !['Natural', 'Social', 'Health', 'Diploma'].includes(stream)) return res.status(400).json({ message: 'Choose Natural or Social stream.' });
+    if (level && !['Freshman', 'Remedial', 'Senior', 'Diploma'].includes(level)) return res.status(400).json({ message: 'Invalid academic level.' });
+    if (!level) return res.json({ streams: ['Natural', 'Social', 'Health', 'Diploma'], levels: ['Freshman', 'Remedial', 'Senior', 'Diploma'] });
     const base = { ...approvedFilter, stream, level };
     if (level === 'Senior' && !department) {
-      const category = stream === 'Natural' ? 'Natural Science' : 'Social Science';
+      const category = ({ Natural: 'Natural Science', Social: 'Social Science', Health: 'Health Science', Diploma: 'Diploma' })[stream];
       const departments = await Department.find({ category, isActive: true }).select('name').sort({ name: 1 }).lean();
       return res.json({ departments: departments.map((item) => item.name) });
     }
