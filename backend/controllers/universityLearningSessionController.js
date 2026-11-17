@@ -15,7 +15,7 @@ const clearBelowLevel = {
 };
 
 async function getSession(userId) {
-  return Session.findOneAndUpdate(
+  const session = await Session.findOneAndUpdate(
     { user: userId },
     {
       $setOnInsert: { user: userId, state: 'SELECT_STREAM' },
@@ -23,6 +23,59 @@ async function getSession(userId) {
     },
     { new: true, upsert: true, setDefaultsOnInsert: true }
   );
+
+  // Repair stale/inconsistent state left by older navigation flows.
+  const validStream = STREAMS.includes(session.stream);
+  const junior = ['Freshman', 'Remedial'].includes(session.level);
+  const senior = session.level === 'Senior';
+  const seniorNeedsDepartment = [
+    'SENIOR_LEARNING_TYPE', 'SENIOR_EXIT_EXAM',
+    'SENIOR_COURSES', 'SENIOR_MATERIALS'
+  ].includes(session.state);
+  const juniorStates = [
+    'JUNIOR_COURSES', 'JUNIOR_LEARNING_TYPE', 'EXAM_YEAR',
+    'EXAM_QUESTIONS', 'JUNIOR_MATERIALS'
+  ];
+  let repaired = false;
+
+  if (!validStream) {
+    Object.assign(session, {
+      state: 'SELECT_STREAM', stream: null, level: null,
+      ...clearBelowLevel
+    });
+    repaired = true;
+  } else if (session.state === 'SELECT_STREAM') {
+    session.state = 'SELECT_LEVEL';
+    repaired = true;
+  } else if (session.state === 'SELECT_LEVEL') {
+    if (session.level) session.level = null;
+    repaired = true;
+  } else if (session.state === 'SENIOR_DEPARTMENTS' && !senior) {
+    Object.assign(session, { state: 'SELECT_LEVEL', level: null, ...clearBelowLevel });
+    repaired = true;
+  } else if (seniorNeedsDepartment && (!senior || !session.departmentId || !session.departmentName)) {
+    Object.assign(session, {
+      state: senior ? 'SENIOR_DEPARTMENTS' : 'SELECT_LEVEL',
+      ...(senior ? {} : { level: null }),
+      departmentId: null, departmentName: null, courseId: null,
+      learningType: null, examYear: null
+    });
+    repaired = true;
+  } else if (juniorStates.includes(session.state) && !junior) {
+    Object.assign(session, { state: 'SELECT_LEVEL', level: null, ...clearBelowLevel });
+    repaired = true;
+  } else if (session.state === 'JUNIOR_COURSES' && junior) {
+    session.courseId = null;
+    session.learningType = null;
+    session.examYear = null;
+    repaired = true;
+  }
+
+  if (repaired) {
+    session.lastActivityAt = new Date();
+    await session.save();
+  }
+  return session;
 }
 
 function fail(res, status, message) {
