@@ -43,8 +43,8 @@ export const AuthProvider = ({ children }) => {
     return response.data;
   }, []);
 
-  const updateProfile = useCallback(async (formData) => {
-    const response = await api.patch('/auth/me', formData);
+  const updateProfile = useCallback(async (profileData) => {
+    const response = await api.patch('/auth/me', profileData);
     setUser(response.data.user);
     return response.data;
   }, []);
