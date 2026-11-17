@@ -71,7 +71,7 @@ const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const courseRoutes = require('./routes/courses');
 const contentRoutes = require('./routes/content');
-const courseContentRoutes = require('./routes/courseContent');
+const courseContentRoutes = require('./routes/courseContent');\nconst universityLearningSessionRoutes = require('./routes/universityLearningSession');
 const departmentRoutes = require('./routes/departments');
 const universityYearRoutes = require('./routes/universityYears');
 const universityRoutes = require('./routes/universities');
@@ -118,7 +118,7 @@ app.use('/uploads', async (req, res, next) => {
     const requestedFile = '/uploads' + req.path;
     const premiumCourse = await CourseContent.findOne({
       isPremium: true,
-      $or: [{ 'notes.fileUrl': requestedFile }, { 'ppts.fileUrl': requestedFile }]
+      $or: [{ 'notes.fileUrl': requestedFile }, { 'ppts.fileUrl': requestedFile }, { 'videos.url': requestedFile }]
     }).select('_id');
     if (!premiumCourse) return next();
     return authMiddleware(req, res, () => {
@@ -152,7 +152,7 @@ app.use('/api/content', courseContentRoutes);
 app.use('/api/content', universityContentRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/university-years', universityYearRoutes);
-app.use('/api/universities', universityRoutes);
+app.use('/api/universities', universityRoutes);\napp.use('/api/university-learning-session', universityLearningSessionRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ ok: false, error: 'Not found', path: req.originalUrl });
