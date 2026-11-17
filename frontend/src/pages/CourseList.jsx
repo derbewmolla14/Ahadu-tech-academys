@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams, useParams } from 'react-router-dom';
+import { apiFetch } from '../api/api';
 
 const sampleCourses = {
   Natural: {
@@ -119,9 +120,37 @@ export default function CourseList() {
   const level = searchParams.get('level') || searchParams.get('selection');
   const department = searchParams.get('department');
   const year = searchParams.get('year');
+  const contentType = searchParams.get('contentType') || 'course-materials';
+  const categoryName = faculty === 'Natural' ? 'Natural Science' : faculty === 'Social' ? 'Social Science' : faculty;
   const [searchTerm, setSearchTerm] = useState('');
+  const [seniorCourses, setSeniorCourses] = useState([]);
+  const [seniorLoading, setSeniorLoading] = useState(false);
+  const [seniorError, setSeniorError] = useState('');
+
+  useEffect(() => {
+    if (level !== 'Senior' || !department || !contentType) return;
+    let active = true;
+    async function loadSeniorCourses() {
+      try {
+        setSeniorLoading(true);
+        setSeniorError('');
+        const params = new URLSearchParams({ level: 'university', faculty: categoryName, studyStage: 'Senior', department, contentType });
+        const response = await apiFetch('content?' + params.toString());
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || 'Unable to load uploaded courses.');
+        if (active) setSeniorCourses(Array.isArray(result.data) ? result.data : []);
+      } catch (error) {
+        if (active) { setSeniorCourses([]); setSeniorError(error.message || 'Unable to load uploaded courses.'); }
+      } finally {
+        if (active) setSeniorLoading(false);
+      }
+    }
+    loadSeniorCourses();
+    return () => { active = false; };
+  }, [level, department, contentType, categoryName]);
 
   const allCourses = useMemo(() => {
+    if (level === 'Senior' && department) return seniorCourses.map(item => ({ id: item._id, title: item.course, description: item.description || '', courseCode: item.courseCode, year: item.year, isPremium: item.isPremium }));
     if (faculty === 'Masters' || faculty === 'PhD') {
       return sampleCourses[faculty] || [];
     }
@@ -135,7 +164,7 @@ export default function CourseList() {
     }
 
     return [];
-  }, [faculty, level, department, year]);
+  }, [faculty, level, department, year, seniorCourses]);
 
   const courses = useMemo(() => {
     if (!searchTerm) return allCourses;
@@ -153,7 +182,7 @@ export default function CourseList() {
       return `${faculty} ${level} Courses`;
     }
     if (level === 'Senior') {
-      return `${department} - ${year} Courses`;
+      return `${department} - ${contentType === 'exit-exam' ? 'Exit Exam' : 'Course Materials'}`;
     }
     return 'Courses';
   };
@@ -162,7 +191,7 @@ export default function CourseList() {
     <div className="space-y-6">
       <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-xl shadow-slate-950/50">
         <h1 className="text-3xl font-semibold text-white">{getTitle()}</h1>
-        <p className="mt-2 text-slate-400">These are sample courses based on your selected path.</p>
+        <p className="mt-2 text-slate-400">{level === 'Senior' ? 'Courses uploaded by the administrator for your selected department and category.' : 'These are sample courses based on your selected path.'}</p>
         <p className="mt-3 text-slate-300">University: {name.replace(/-/g, ' ')}</p>
         {department && <p className="mt-1 text-slate-300">Department: {department}</p>}
         {year && <p className="mt-1 text-slate-300">Year: {year}</p>}
@@ -176,6 +205,9 @@ export default function CourseList() {
           </button>
         </div>
       </div>
+
+      {level === 'Senior' && seniorLoading && <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-center text-slate-300">Loading uploaded courses…</div>}
+      {level === 'Senior' && seniorError && <div role="alert" className="rounded-2xl border border-red-800 bg-red-950/40 p-6 text-red-200">{seniorError}</div>}
 
       {/* Search Bar */}
       <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6">
@@ -196,11 +228,11 @@ export default function CourseList() {
       </div>
 
       {/* Course Grid */}
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {!seniorLoading && !seniorError && <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {courses.map((course) => (
           <Link
             key={course.id}
-            to={`/university/${name}/course/${course.id}?faculty=${encodeURIComponent(faculty)}&level=${encodeURIComponent(level)}${department ? `&department=${encodeURIComponent(department)}` : ''}${year ? `&year=${encodeURIComponent(year)}` : ''}`}
+            to={level === 'Senior' ? `/university/course/${course.id}` : `/university/${name}/course/${course.id}?faculty=${encodeURIComponent(faculty)}&level=${encodeURIComponent(level)}${department ? `&department=${encodeURIComponent(department)}` : ''}${year ? `&year=${encodeURIComponent(year)}` : ''}`}
             className="rounded-3xl border border-slate-800 bg-slate-900 p-6 text-left transition hover:border-sky-500 hover:bg-slate-800"
           >
             <div className="flex items-start justify-between mb-3">
@@ -211,15 +243,15 @@ export default function CourseList() {
             </div>
             <p className="text-slate-400">{course.description}</p>
             <div className="mt-4 flex items-center text-sm text-sky-400">
-              <span>View Course Details →</span>
+              <span>{level === 'Senior' && contentType === 'exit-exam' ? 'Open Exit Exam →' : 'View Course Materials →'}</span>
             </div>
           </Link>
         ))}
-      </div>
+      </div>}
 
-      {!courses.length ? (
+      {!seniorLoading && !seniorError && !courses.length ? (
         <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6 text-center text-slate-300">
-          {searchTerm ? `No courses found matching "${searchTerm}"` : 'No courses are available for this path yet.'}
+          {searchTerm ? `No courses found matching "${searchTerm}"` : level === 'Senior' ? 'No courses have been uploaded for this department and selection yet.' : 'No courses are available for this path yet.'}
         </div>
       ) : null}
     </div>
