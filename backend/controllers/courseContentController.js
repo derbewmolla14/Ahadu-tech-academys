@@ -221,7 +221,7 @@ const getContent = async (req, res) => {
     else if (contentType) query.contentType = contentType;
     if (courseCode) query.courseCode = new RegExp(courseCode, 'i');
     if (department) query.department = { $regex: exactDepartmentRegex(department) };
-    if (year) query.$or = [{ year: String(year).trim() }, { year: 'All Years' }, { year: '' }, { year: null }, { year: { $exists: false } }];
+    if (year) query.$and = [...(query.$and || []), { $or: [{ year: String(year).trim() }, { year: 'All Years' }, { year: '' }, { year: null }, { year: { $exists: false } }] }];
     if (course) query.course = course;
 
     const content = await CourseContent.find(query).lean();
