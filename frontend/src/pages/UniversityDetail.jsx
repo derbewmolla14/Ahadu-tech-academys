@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import AcademicSelection from './AcademicSelection';
 import LevelSelection from './LevelSelection';
 
@@ -18,6 +18,7 @@ const universityDetails = {
 export default function UniversityDetail() {
   const { name } = useParams();
   const navigate = useNavigate();
+  if (!name || name === 'undefined' || name === 'null') return <Navigate to="/universities" replace />;
   const [selectedCategory, setSelectedCategory] = useState('');
   const university = universityDetails[name] || { name: name.replace(/-/g, ' '), location: 'Ethiopia', description: 'Browse available academic tracks and start learning.' };
 
