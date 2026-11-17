@@ -66,7 +66,7 @@ export default function AdminContentApprovals() {
                     <h2 className="text-lg font-semibold">{item.course}</h2>
                     <p className="mt-1 text-sm text-slate-400">{item.level} · {item.faculty} · {item.studyStage} · {item.department}</p>
                     <p className="mt-1 text-xs text-slate-500">Uploader: {item.createdBy || 'Legacy upload'} · Type: {item.contentType || 'course-materials'}</p>
-                    <p className="mt-2 text-sm">Status: <span className={item.status === 'approved' ? 'text-green-300' : item.status === 'rejected' ? 'text-red-300' : 'text-amber-300'}>{item.status || 'legacy / unapproved'}</span></p>
+                    <p className="mt-2 text-sm">Status: <span className={(item.status === 'approved' || item.isApproved) ? 'text-green-300' : item.status === 'rejected' ? 'text-red-300' : 'text-amber-300'}>{item.isApproved || item.status === 'approved' ? 'approved' : (item.status || 'legacy / unapproved')}</span></p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button disabled={busyId === item._id || !item.createdBy} onClick={() => setStatus(item._id, 'approved')} className="rounded-lg bg-green-700 px-4 py-2 text-sm font-medium hover:bg-green-600 disabled:opacity-40">Approve</button>
