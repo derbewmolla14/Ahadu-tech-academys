@@ -18,7 +18,7 @@ const themeOptions = [
   { id: "system", label: "System default", detail: "Follow your device preference", icon: Monitor },
 ];
 const fieldClass = "mt-2 w-full rounded-xl border border-[var(--app-border)] bg-[var(--app-bg)] px-4 py-3 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-muted)] focus:border-sky-500 focus:ring-2 focus:ring-sky-500/15 disabled:cursor-not-allowed disabled:opacity-70";
-const cardClass = "rounded-2xl border border-[var(--app-border)] bg-[var(--app-card)] p-5 shadow-sm sm:p-6";
+const cardClass = "rounded-2xl border border-[var(--app-border)] bg-[var(--app-card)] p-4 shadow-sm sm:p-6";
 const buttonClass = "inline-flex items-center justify-center gap-2 rounded-xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60";
 
 function getPhotoUrl(user) {
@@ -165,13 +165,13 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-7 text-[var(--app-text)]">
-      <header className="overflow-hidden rounded-3xl border border-[var(--app-border)] bg-gradient-to-br from-sky-600/15 via-[var(--app-card)] to-[var(--app-card)] p-6 sm:p-8">
+    <div className="mx-auto max-w-5xl space-y-5 text-[var(--app-text)] sm:space-y-7">
+      <header className="overflow-hidden rounded-3xl border border-[var(--app-border)] bg-gradient-to-br from-sky-600/15 via-[var(--app-card)] to-[var(--app-card)] p-4 sm:p-6 lg:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-500">Workspace preferences</p>
-            <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Settings</h1>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--app-muted)]">
+            <h1 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">Settings</h1>
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-[var(--app-muted)]">
               Manage your account details, security, display, and language preferences.
             </p>
           </div>
@@ -187,14 +187,14 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <div className="grid gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
+      <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)] md:gap-6">
         <nav aria-label="Settings sections" className="flex gap-2 overflow-x-auto rounded-2xl border border-[var(--app-border)] bg-[var(--app-card)] p-2 md:block md:space-y-1 md:self-start">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const selected = activeTab === tab.id;
             return (
               <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} aria-current={selected ? "page" : undefined}
-                className={"flex shrink-0 items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition md:w-full " + (selected ? "bg-sky-500/10 text-sky-600" : "text-[var(--app-muted)] hover:bg-[var(--app-bg)] hover:text-[var(--app-text)]")}>
+                className={"flex shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-semibold sm:py-3 sm:text-sm transition md:w-full " + (selected ? "bg-sky-500/10 text-sky-600" : "text-[var(--app-muted)] hover:bg-[var(--app-bg)] hover:text-[var(--app-text)]")}>
                 <Icon size={18} />
                 <span>{tab.label}</span>
                 {selected && <ChevronRight className="ml-auto hidden md:block" size={16} />}
@@ -208,7 +208,7 @@ export default function SettingsPage() {
             <>
               <section className={cardClass}>
                 <div className="mb-6">
-                  <h2 className="text-lg font-bold">Profile information</h2>
+                  <h2 className="text-base font-bold sm:text-lg">Profile information</h2>
                   <p className="mt-1 text-sm text-[var(--app-muted)]">Update the name and photo shown across Ahadu Tech Academy.</p>
                 </div>
                 <form onSubmit={saveProfile} className="space-y-6">
