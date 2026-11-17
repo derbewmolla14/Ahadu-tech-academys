@@ -231,7 +231,7 @@ export default function CourseList() {
         {courses.map((course) => (
           <Link
             key={course.id}
-            to={level === 'Senior' ? `/university/course/${course.id}` : `/university/${name}/course/${course.id}?faculty=${encodeURIComponent(faculty)}&level=${encodeURIComponent(level)}${department ? `&department=${encodeURIComponent(department)}` : ''}${year ? `&year=${encodeURIComponent(year)}` : ''}`}
+            to={level === 'Senior' ? `/university/course/${course.id}?${new URLSearchParams({ faculty: categoryName, department: department || '', contentType, universityName: name || '' }).toString()}` : `/university/${name}/course/${course.id}?faculty=${encodeURIComponent(faculty)}&level=${encodeURIComponent(level)}${department ? `&department=${encodeURIComponent(department)}` : ''}${year ? `&year=${encodeURIComponent(year)}` : ''}`}
             className="rounded-3xl border border-slate-800 bg-slate-900 p-6 text-left transition hover:border-sky-500 hover:bg-slate-800"
           >
             <div className="flex items-start justify-between mb-3">
