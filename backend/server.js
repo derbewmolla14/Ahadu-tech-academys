@@ -77,6 +77,7 @@ const universityYearRoutes = require('./routes/universityYears');
 const universityRoutes = require('./routes/universities');
 const universityCourseRoutes = require('./routes/universityCourses');
 const universityContentRoutes = require('./routes/universityContent');
+const universityFlowRoutes = require('./routes/universityFlow');
 
 const app = express();
 app.disable('x-powered-by');
@@ -153,6 +154,7 @@ app.use('/api/content', universityContentRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/university-years', universityYearRoutes);
 app.use('/api/universities', universityRoutes);
+app.use('/api/university-learning', universityFlowRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ ok: false, error: 'Not found', path: req.originalUrl });
