@@ -26,8 +26,8 @@ exports.getCatalog = async (req, res) => {
     if (level === 'Senior' && department && !kind) {
       const kinds = await UniversityResource.distinct('kind', { ...base, department });
       return res.json({ options: [
-        ...(kinds.includes('exit-exam') ? [{ id: 'exit-exam', label: 'Exit Exam' }] : []),
-        ...(kinds.includes('course-material') ? [{ id: 'course-material', label: 'Course Material' }] : []),
+        { id: 'exit-exam', label: 'Exit Exam' },
+        { id: 'course-material', label: 'Course Material' },
       ] });
     }
     if (level === 'Senior' && department && kind === 'course-material' && !course) {
@@ -37,8 +37,8 @@ exports.getCatalog = async (req, res) => {
     if (level !== 'Senior' && course && !kind) {
       const kinds = await UniversityResource.distinct('kind', { ...base, course });
       return res.json({ options: [
-        ...(kinds.includes('exam-question') ? [{ id: 'exam-question', label: 'Exam Question' }] : []),
-        ...(kinds.includes('course-material') ? [{ id: 'course-material', label: 'Course Material' }] : []),
+        { id: 'exam-question', label: 'Exam Question' },
+        { id: 'course-material', label: 'Course Material' },
       ] });
     }
     if (kind === 'exam-question' && !academicYear) {
@@ -69,6 +69,11 @@ exports.adminUpload = async (req, res) => {
     if (!title || !String(title).trim()) return res.status(400).json({ message: 'Resource title is required.' });
     if (level === 'Senior' && !department) return res.status(400).json({ message: 'Senior resources require a department.' });
     if (level !== 'Senior' && !course) return res.status(400).json({ message: 'Freshman and Remedial resources require a course.' });
+    if (level === 'Senior' && kind === 'course-material' && !course) return res.status(400).json({ message: 'Senior course materials must be assigned to a department course.' });
+    if (level === 'Senior' && kind === 'exam-question') return res.status(400).json({ message: 'Use Exit Exam for Senior assessment uploads.' });
+    if (level !== 'Senior' && kind === 'exit-exam') return res.status(400).json({ message: 'Exit Exam is only available for Senior.' });
+    const allowedFormats = kind === 'course-material' ? ['pdf', 'ppt', 'video'] : ['image', 'pdf', 'text'];
+    if (!allowedFormats.includes(resourceType)) return res.status(400).json({ message: 'The selected file format does not match this learning content type.' });
     if (kind === 'exam-question' && !academicYear) return res.status(400).json({ message: 'Exam academic year is required.' });
     if (resourceType === 'text' && !String(textContent).trim()) return res.status(400).json({ message: 'Text content is required.' });
     if (resourceType !== 'text' && !req.file) return res.status(400).json({ message: 'Please select a file.' });
