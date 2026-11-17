@@ -14,6 +14,7 @@ export default function AdminUniversityResources() {
   const change = (event) => {
     const { name, value } = event.target;
     setForm((old) => {
+      if (name === 'stream') return { ...old, stream: value, department: '' };
       if (name === 'kind') {
         const resourceType = value === 'course-material' ? 'pdf' : 'image';
         return { ...old, kind: value, resourceType };
