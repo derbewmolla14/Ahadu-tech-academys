@@ -179,7 +179,7 @@ const getContent = async (req, res) => {
     const { level, university, department, year, grade, subject, technology, faculty, studyStage, contentType, examYear, course, courseCode } = req.query;
 
     // Build query object - only active courses for public access
-    const query = { isActive: true, createdBy: { $ne: null }, $or: [{ status: 'approved' }, { isApproved: true }] };
+    const query = { isActive: true, createdBy: { $ne: null }, $and: [{ $or: [{ status: 'approved' }, { isApproved: true }] }] };
     if (level) query.level = level;
     if (university) query.university = university;
     if (grade) query.grade = grade;
@@ -187,9 +187,10 @@ const getContent = async (req, res) => {
     if (technology) query.technology = technology;
     if (faculty) query.faculty = faculty;
     if (studyStage) query.studyStage = studyStage;
-    if (contentType === 'course-materials') query.$or = [{ contentType: 'course-materials' }, { contentType: { $exists: false } }];
+    if (contentType === 'course-materials') query.$and.push({ $or: [{ contentType: 'course-materials' }, { contentType: { $exists: false } }] });
     else if (contentType) query.contentType = contentType;
     if (examYear) query.examYear = String(examYear);
+    if (req.query.courseId) query._id = req.query.courseId;
     if (courseCode) query.courseCode = new RegExp(courseCode, 'i');
     if (department) query.department = department;
     if (year) query.year = year;
