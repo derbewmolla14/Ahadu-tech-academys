@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, feature/fresh-university-learning-flow]
+    branches: [main, feature/fresh-university-learning-flow, feature/academic-categories-premium-polish]
 
 jobs:
   frontend-build:
