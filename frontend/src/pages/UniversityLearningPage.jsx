@@ -89,7 +89,7 @@ export default function UniversityLearningPage() {
         } else if (session.state === 'SENIOR_EXIT_EXAM') {
           await loadCourses({ studyStage: 'Senior', department: session.departmentName, contentType: 'exit-exam' });
         } else if (session.state === 'EXAM_QUESTIONS') {
-          await loadCourses({ studyStage: session.level, contentType: 'exam-question', examYear: session.examYear, courseId: session.courseId });
+          await loadCourses({ studyStage: session.level, contentType: 'exam-question', examYear: session.examYear, course: session.courseName });
         } else if (session.state === 'JUNIOR_MATERIALS' || session.state === 'SENIOR_MATERIALS') {
           const response = await apiFetch('content/' + encodeURIComponent(session.courseId));
           const result = await response.json();
