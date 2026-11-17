@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { apiFetch } from '../api/api';
 
 const facultyValue = { 'Natural Science': 'Natural', 'Social Science': 'Social', 'Health Science': 'Health' };
 
 export default function DepartmentBrowser() {
-  const [searchParams] = useSearchParams();
+  const { name } = useParams();
   const navigate = useNavigate();
   const [departments, setDepartments] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
@@ -48,8 +48,7 @@ export default function DepartmentBrowser() {
       department: selectedDepartment.name,
       contentType
     });
-    const universityName = searchParams.get('university') || 'university';
-    navigate(`/university/${universityName}/courses?${params.toString()}`);
+    navigate(`/university/${name}/courses?${params.toString()}`);
   };
 
   return (
