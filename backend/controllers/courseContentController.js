@@ -80,13 +80,13 @@ const uploadContent = async (req, res) => {
       if (faculty === 'Natural Science' || faculty === 'Social Science' || faculty === 'Health Science') {
         if (!['Remedial', 'Freshman', 'Senior'].includes(studyStage)) return res.status(400).json({ success: false, message: 'Please select Remedial, Freshman, or Senior' });
         if (studyStage === 'Senior' && (!department || !year)) return res.status(400).json({ success: false, message: 'Department and academic year are required for Senior courses' });
-        if (studyStage === 'Senior' && !['course-materials', 'exit-exam'].includes(contentType)) return res.status(400).json({ success: false, message: 'Select Course Materials or Exit Exam.' });
+        if (studyStage === 'Senior' && !['course-materials', 'exit-exam'].includes(contentType)) return res.status(400).json({ success: false, message: 'Select Course Materials or Exit Exam.' });\n        if (['Freshman', 'Remedial'].includes(studyStage) && !['course-materials', 'exam-question'].includes(contentType)) return res.status(400).json({ success: false, message: 'Freshman and Remedial support Course Materials or Exam Questions.' });\n        if (contentType === 'exam-question' && (!/^20\\d{2}$/.test(String(examYear)) || !['text', 'image', 'pdf'].includes(questionFormat))) return res.status(400).json({ success: false, message: 'Exam questions require a valid academic year and text, image, or PDF format.' });
         if (studyStage === 'Senior') {
           const configuredDepartment = await Department.findOne({ name: department, category: faculty, isActive: true });
           if (!configuredDepartment) return res.status(400).json({ success: false, message: 'Select an active department from the selected academic category.' });
         }
         recordDepartment = studyStage === 'Senior' ? department : 'General';
-        recordYear = studyStage === 'Senior' ? year : studyStage;
+        recordYear = studyStage === 'Senior' ? year : (contentType === 'exam-question' ? String(examYear) : studyStage);
       } else {
         recordDepartment = department || 'Graduate Studies';
         recordYear = faculty === 'PhD' ? 'PhD' : 'Masters';
@@ -134,7 +134,7 @@ const uploadContent = async (req, res) => {
     };
     const existingContent = await CourseContent.findOne(identity);
     const values = {
-      ...identity, level, grade, subject, technology, faculty, studyStage, contentType: studyStage === 'Senior' ? contentType : 'course-materials', courseCode,
+      ...identity, level, grade, subject, technology, faculty, studyStage, contentType, examYear: contentType === 'exam-question' ? String(examYear) : '', questionFormat: contentType === 'exam-question' ? questionFormat : '', courseCode,
       description: description || '',
       notes: parsedNotes,
       videos: parsedVideos,
@@ -169,7 +169,7 @@ const uploadContent = async (req, res) => {
 // Get course content (public - only active courses)
 const getContent = async (req, res) => {
   try {
-    const { level, university, department, year, grade, subject, technology, faculty, studyStage, contentType, course, courseCode } = req.query;
+    const { level, university, department, year, grade, subject, technology, faculty, studyStage, contentType, examYear, course, courseCode } = req.query;
 
     // Build query object - only active courses for public access
     const query = { isActive: true };
@@ -182,7 +182,7 @@ const getContent = async (req, res) => {
     if (studyStage) query.studyStage = studyStage;
     if (contentType === 'course-materials') query.$or = [{ contentType: 'course-materials' }, { contentType: { $exists: false } }];
     else if (contentType) query.contentType = contentType;
-    if (courseCode) query.courseCode = new RegExp(courseCode, 'i');
+    if (examYear) query.examYear = String(examYear);\n    if (courseCode) query.courseCode = new RegExp(courseCode, 'i');
     if (department) query.department = department;
     if (year) query.year = year;
     if (course) query.course = course;
