@@ -191,7 +191,9 @@ function AppRoutes() {
         <Route path="university/phd/*" element={<UniversityLearningPage />} />
 
         {/* Legacy university-name and university-directory URLs now return to the direct stream flow. */}
+        <Route path="university/:legacyUniversity" element={<Navigate to="/university" replace />} />
         <Route path="university/:legacyUniversity/*" element={<Navigate to="/university" replace />} />
+        <Route path="universities" element={<Navigate to="/university" replace />} />
         <Route path="universities/*" element={<Navigate to="/university" replace />} />
 
         {/* Coding */}
