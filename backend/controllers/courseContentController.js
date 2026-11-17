@@ -47,7 +47,7 @@ const uploadContent = async (req, res) => {
   try {
     const {
       level = 'university', university = '', department = '', year = '',
-      grade = '', subject = '', technology = '', faculty = '', studyStage = '', contentType = 'course-materials', courseCode = '', course, description,
+      grade = '', subject = '', technology = '', faculty = '', studyStage = '', contentType = 'course-materials', examYear = '', questionFormat = '', courseCode = '', course, description,
       notes, videos, ppts, questions, isActive, isPremium
     } = req.body;
 
@@ -81,12 +81,14 @@ const uploadContent = async (req, res) => {
         if (!['Remedial', 'Freshman', 'Senior'].includes(studyStage)) return res.status(400).json({ success: false, message: 'Please select Remedial, Freshman, or Senior' });
         if (studyStage === 'Senior' && (!department || !year)) return res.status(400).json({ success: false, message: 'Department and academic year are required for Senior courses' });
         if (studyStage === 'Senior' && !['course-materials', 'exit-exam'].includes(contentType)) return res.status(400).json({ success: false, message: 'Select Course Materials or Exit Exam.' });
+        if (['Freshman', 'Remedial'].includes(studyStage) && !['course-materials', 'exam-question'].includes(contentType)) return res.status(400).json({ success: false, message: 'Freshman and Remedial support Course Materials or Exam Questions.' });
+        if (contentType === 'exam-question' && (!/^20\d{2}$/.test(String(examYear)) || !['text', 'image', 'pdf'].includes(questionFormat))) return res.status(400).json({ success: false, message: 'Exam questions require a valid academic year and text, image, or PDF format.' });
         if (studyStage === 'Senior') {
           const configuredDepartment = await Department.findOne({ name: department, category: faculty, isActive: true });
           if (!configuredDepartment) return res.status(400).json({ success: false, message: 'Select an active department from the selected academic category.' });
         }
         recordDepartment = studyStage === 'Senior' ? department : 'General';
-        recordYear = studyStage === 'Senior' ? year : studyStage;
+        recordYear = studyStage === 'Senior' ? year : (contentType === 'exam-question' ? String(examYear) : studyStage);
       } else {
         recordDepartment = department || 'Graduate Studies';
         recordYear = faculty === 'PhD' ? 'PhD' : 'Masters';
@@ -134,14 +136,19 @@ const uploadContent = async (req, res) => {
     };
     const existingContent = await CourseContent.findOne(identity);
     const values = {
-      ...identity, level, grade, subject, technology, faculty, studyStage, contentType: studyStage === 'Senior' ? contentType : 'course-materials', courseCode,
+      ...identity, level, grade, subject, technology, faculty, studyStage, contentType, examYear: contentType === 'exam-question' ? String(examYear) : '', questionFormat: contentType === 'exam-question' ? questionFormat : '', courseCode,
       description: description || '',
       notes: parsedNotes,
       videos: parsedVideos,
       ppts: parsedPpts,
       questions: parsedQuestions,
       isActive: isActive === undefined ? true : isActive === 'true' || isActive === true,
-      isPremium: isPremium === true || isPremium === 'true'
+      isPremium: isPremium === true || isPremium === 'true',
+      createdBy: req.user._id,
+      status: 'pending',
+      isApproved: false,
+      approvedBy: null,
+      approvedAt: null
     };
 
     let content;
@@ -169,10 +176,10 @@ const uploadContent = async (req, res) => {
 // Get course content (public - only active courses)
 const getContent = async (req, res) => {
   try {
-    const { level, university, department, year, grade, subject, technology, faculty, studyStage, contentType, course, courseCode } = req.query;
+    const { level, university, department, year, grade, subject, technology, faculty, studyStage, contentType, examYear, course, courseCode } = req.query;
 
     // Build query object - only active courses for public access
-    const query = { isActive: true };
+    const query = { isActive: true, createdBy: { $ne: null }, $and: [{ $or: [{ status: 'approved' }, { isApproved: true }] }] };
     if (level) query.level = level;
     if (university) query.university = university;
     if (grade) query.grade = grade;
@@ -180,8 +187,10 @@ const getContent = async (req, res) => {
     if (technology) query.technology = technology;
     if (faculty) query.faculty = faculty;
     if (studyStage) query.studyStage = studyStage;
-    if (contentType === 'course-materials') query.$or = [{ contentType: 'course-materials' }, { contentType: { $exists: false } }];
+    if (contentType === 'course-materials') query.$and.push({ $or: [{ contentType: 'course-materials' }, { contentType: { $exists: false } }] });
     else if (contentType) query.contentType = contentType;
+    if (examYear) query.examYear = String(examYear);
+    if (req.query.courseId) query._id = req.query.courseId;
     if (courseCode) query.courseCode = new RegExp(courseCode, 'i');
     if (department) query.department = department;
     if (year) query.year = year;
@@ -221,7 +230,7 @@ const getContentById = async (req, res) => {
 
     const content = await CourseContent.findById(id);
 
-    if (!content || !content.isActive) {
+    if (!content || !content.isActive || !(content.status === 'approved' || content.isApproved === true) || !content.createdBy) {
       return res.status(404).json({
         success: false,
         message: 'Course content not found'
@@ -260,7 +269,7 @@ const streamCourseMaterial = async (req, res) => {
   try {
     const { id, kind, index } = req.params;
     const course = await CourseContent.findById(id);
-    if (!course || !course.isActive) return res.status(404).json({ success: false, message: 'Course not found.' });
+    if (!course || !course.isActive || !(course.status === 'approved' || course.isApproved === true) || !course.createdBy) return res.status(404).json({ success: false, message: 'Approved course not found.' });
     const isAdmin = req.user?.role === 'admin';
     const isUnlocked = req.user?.unlockedCourseContents?.some((item) => String(item) === String(course._id));
     if (course.isPremium && !isAdmin && !isUnlocked) return res.status(403).json({ success: false, message: 'Administrator approval is required for this premium course.' });
@@ -302,6 +311,28 @@ const deleteContent = async (req, res) => {
       message: 'Server error while deleting content',
       error: error.message
     });
+  }
+};
+
+// Admin explicitly approves or rejects uploaded content.
+const setContentApproval = async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!['approved', 'rejected', 'pending'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Choose approved, rejected, or pending.' });
+    }
+    const content = await CourseContent.findById(req.params.id);
+    if (!content) return res.status(404).json({ success: false, message: 'Course content not found.' });
+    if (!content.createdBy) return res.status(409).json({ success: false, message: 'This legacy upload has no recorded admin uploader. Re-upload it through the admin upload form before approval.' });
+    content.status = status;
+    content.isApproved = status === 'approved';
+    content.approvedBy = status === 'approved' ? req.user._id : null;
+    content.approvedAt = status === 'approved' ? new Date() : null;
+    await content.save();
+    return res.json({ success: true, message: 'Content status updated.', data: content });
+  } catch (error) {
+    console.error('Set content approval error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to update approval status.' });
   }
 };
 
@@ -463,6 +494,7 @@ module.exports = {
   uploadContent,
   getContent,
   getContentById,
+  setContentApproval,
   streamCourseMaterial,
   deleteContent,
   getAllCourses,

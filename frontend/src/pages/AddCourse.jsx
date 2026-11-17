@@ -115,7 +115,6 @@ export default function AddCourse() {
 
       // Add category and category-specific course details.
       submitData.append('level', selectedCategory);
-      if (selectedCategory === 'university' && formData.studyStage === 'Senior') submitData.append('contentType', formData.contentType || 'course-materials');
       Object.keys(formData).forEach(key => {
         if (formData[key] !== '') submitData.append(key, formData[key]);
       });
@@ -129,9 +128,9 @@ export default function AddCourse() {
       submitData.append('notes', JSON.stringify(validNotes.map(note => ({ title: note.title.trim() }))));
       submitData.append('videos', JSON.stringify(validVideos.map(video => ({ title: video.title.trim(), url: video.url.trim() }))));
       submitData.append('ppts', JSON.stringify(validPpts.map(ppt => ({ title: ppt.title.trim() }))));
-      if (selectedCategory === 'university' && formData.studyStage === 'Senior' && formData.contentType === 'exit-exam') {
+      if (selectedCategory === 'university' && ((formData.studyStage === 'Senior' && formData.contentType === 'exit-exam') || (['Freshman', 'Remedial'].includes(formData.studyStage) && formData.contentType === 'exam-question'))) {
         let parsedQuestions;
-        try { parsedQuestions = JSON.parse(questionsJson); } catch { throw new Error('Exit Exam questions must be valid JSON.'); }
+        try { parsedQuestions = JSON.parse(questionsJson); } catch { throw new Error('Exam questions must be valid JSON.'); }
         if (!Array.isArray(parsedQuestions) || !parsedQuestions.length || parsedQuestions.some(item => !item.question || !item.answer)) throw new Error('Add at least one question with both question and answer.');
         submitData.append('questions', JSON.stringify(parsedQuestions));
       } else submitData.append('questions', JSON.stringify([]));
@@ -285,7 +284,7 @@ export default function AddCourse() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {selectedCategory === 'university' && <>
                 <SelectField label="Academic Category *" name="faculty" value={formData.faculty || ''} onChange={(event) => setFormData(prev => ({ ...prev, faculty: event.target.value, studyStage: '', department: '', year: '' }))} options={['Natural Science', 'Social Science', 'Health Science', "Master's Degree", 'PhD']} required />
-                {(formData.faculty === 'Natural Science' || formData.faculty === 'Social Science' || formData.faculty === 'Health Science') && <SelectField label="Academic Stage *" name="studyStage" value={formData.studyStage || ''} onChange={(event) => setFormData(prev => ({ ...prev, studyStage: event.target.value, department: '', year: event.target.value === 'Senior' ? '' : event.target.value }))} options={['Remedial', 'Freshman', 'Senior']} required />}
+                {(formData.faculty === 'Natural Science' || formData.faculty === 'Social Science' || formData.faculty === 'Health Science') && <SelectField label="Academic Stage *" name="studyStage" value={formData.studyStage || ''} onChange={(event) => setFormData(prev => ({ ...prev, studyStage: event.target.value, department: '', year: event.target.value === 'Senior' ? '' : event.target.value, contentType: 'course-materials', examYear: '', questionFormat: '' }))} options={['Remedial', 'Freshman', 'Senior']} required />}
                 {formData.studyStage === 'Senior' && <>
                   <SelectField label="Department *" name="department" value={formData.department} onChange={handleInputChange} options={universityDepartments.filter(item => item.category === formData.faculty).map(item => item.name)} required />
                   <SelectField label="Academic Year *" name="year" value={formData.year} onChange={handleInputChange} options={universityYears} required />
@@ -327,9 +326,9 @@ export default function AddCourse() {
             </div>
           </div>
 
-          {selectedCategory === 'university' && formData.studyStage === 'Senior' && formData.contentType === 'exit-exam' ? (
+          {selectedCategory === 'university' && ((formData.studyStage === 'Senior' && formData.contentType === 'exit-exam') || (['Freshman', 'Remedial'].includes(formData.studyStage) && formData.contentType === 'exam-question')) ? (
             <section className="rounded-xl border border-slate-800 bg-slate-900 p-6">
-              <h2 className="text-xl font-semibold">Exit Exam Questions</h2>
+              <h2 className="text-xl font-semibold">Exam Questions</h2>
               <p className="mt-2 text-sm text-slate-400">Enter a JSON array. Each item must contain question and answer fields.</p>
               <textarea value={questionsJson} onChange={event => setQuestionsJson(event.target.value)} rows={10} className="mt-4 w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 font-mono text-sm text-white focus:border-blue-500 focus:outline-none" />
             </section>

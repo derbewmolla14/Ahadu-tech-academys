@@ -7,7 +7,7 @@ export default function UniversityCourseContentPage() {
   const [searchParams] = useSearchParams();
   const faculty = searchParams.get('faculty') || 'Natural Science';
   const department = searchParams.get('department') || '';
-  const contentType = searchParams.get('contentType') || 'course-materials';
+  const contentType = searchParams.get('contentType') || 'course-materials';\n  const format = (searchParams.get('format') || '').toLowerCase();
   const universityName = searchParams.get('universityName') || 'university';
   const facultyParam = faculty === 'Natural Science' ? 'Natural' : faculty === 'Social Science' ? 'Social' : faculty === 'Health Science' ? 'Health' : faculty;
   const backToCourses = `/university/${universityName}/courses?${new URLSearchParams({ faculty: facultyParam, level: 'Senior', department, contentType }).toString()}`;
@@ -42,12 +42,12 @@ export default function UniversityCourseContentPage() {
         {course.description && <p className="mt-4 text-slate-300">{course.description}</p>}
       </section>
       {accessLocked && <section className="rounded-3xl border border-amber-500/40 bg-amber-500/10 p-8 text-amber-100"><div className="text-3xl">🔒</div><h2 className="mt-3 text-xl font-semibold">Premium course — approval required</h2><p className="mt-2 text-amber-200/90">{lockedMessage || 'An administrator must approve this course for your account before you can open its learning materials.'}</p><p className="mt-3 text-sm text-amber-200/70">The course information is visible, but videos, PDF notes, and PowerPoint files remain locked until approval.</p></section>}
-      {!accessLocked && course.contentType === 'exit-exam' && <section className="rounded-3xl border border-slate-800 bg-slate-900 p-6"><h2 className="text-xl font-semibold text-white">Exit Exam Questions</h2>{course.questions?.length ? <ol className="mt-5 space-y-5">{course.questions.map((item, index) => <li key={index} className="rounded-xl border border-slate-800 bg-slate-950 p-4"><p className="font-medium text-white">{index + 1}. {item.question}</p><p className="mt-2 text-sm text-emerald-300">Answer: {item.answer}</p></li>)}</ol> : <p className="mt-3 text-slate-400">No questions have been added yet.</p>}</section>}
-      {!accessLocked && course.contentType !== 'exit-exam' && <>
-      {course.notes?.length > 0 && <MaterialSection title="PDF Notes" items={course.notes} getUrl={(_item, index) => 'content/' + courseId + '/material/notes/' + index} protectedDownload />}
-      {course.videos?.length > 0 && <MaterialSection title="Video Lessons" items={course.videos} getUrl={(item) => item.url} />}
-      {course.ppts?.length > 0 && <MaterialSection title="PowerPoint Presentations" items={course.ppts} getUrl={(_item, index) => 'content/' + courseId + '/material/ppts/' + index} protectedDownload />}
-      {!course.notes?.length && !course.videos?.length && !course.ppts?.length && <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-300">No learning materials have been uploaded for this course yet.</div>}
+      {!accessLocked && ['exit-exam', 'exam-question'].includes(course.contentType) && <section className="rounded-3xl border border-slate-800 bg-slate-900 p-6"><h2 className="text-xl font-semibold text-white">Exit Exam Questions</h2>{course.questions?.length ? <ol className="mt-5 space-y-5">{course.questions.map((item, index) => <li key={index} className="rounded-xl border border-slate-800 bg-slate-950 p-4"><p className="font-medium text-white">{index + 1}. {item.question}</p><p className="mt-2 text-sm text-emerald-300">Answer: {item.answer}</p></li>)}</ol> : <p className="mt-3 text-slate-400">No questions have been added yet.</p>}</section>}
+      {!accessLocked && !['exit-exam', 'exam-question'].includes(course.contentType) && <>
+      {(!format || format === 'pdf') && course.notes?.length > 0 && <MaterialSection title="PDF Notes" items={course.notes} getUrl={(_item, index) => 'content/' + courseId + '/material/notes/' + index} protectedDownload />}
+      {(!format || format === 'video') && course.videos?.length > 0 && <MaterialSection title="Video Lessons" items={course.videos} getUrl={(item) => item.url} />}
+      {(!format || format === 'ppt') && course.ppts?.length > 0 && <MaterialSection title="PowerPoint Presentations" items={course.ppts} getUrl={(_item, index) => 'content/' + courseId + '/material/ppts/' + index} protectedDownload />}
+      {!(format === 'pdf' ? course.notes?.length : format === 'video' ? course.videos?.length : format === 'ppt' ? course.ppts?.length : (course.notes?.length || course.videos?.length || course.ppts?.length)) && <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-300">No learning materials have been uploaded for this course yet.</div>}
       </>}
     </div>
   );
