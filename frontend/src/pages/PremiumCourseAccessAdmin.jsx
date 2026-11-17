@@ -65,7 +65,7 @@ export default function PremiumCourseAccessAdmin() {
       <header className="rounded-3xl border border-slate-800 bg-slate-900 p-8">
         <Link to="/admin/dashboard" className="text-sm text-sky-400 hover:underline">← Admin Dashboard</Link>
         <h1 className="mt-4 text-3xl font-bold">Premium University Course Access</h1>
-        <p className="mt-2 text-slate-400">Approve or revoke each premium course separately for each student.</p>
+        <p className="mt-2 text-slate-400">After checking a student's payment receipt sent through Telegram, unlock or revoke that specific premium course for that student.</p>
       </header>
       {error && <div role="alert" className="rounded-xl border border-red-700 bg-red-950/40 p-4 text-red-200">{error}</div>}
       {message && <div role="status" className="rounded-xl border border-emerald-700 bg-emerald-950/30 p-4 text-emerald-200">{message}</div>}
@@ -88,10 +88,10 @@ export default function PremiumCourseAccessAdmin() {
                   {students.map(student => <option key={student._id} value={student._id}>{student.fullName || student.email} — {student.email}</option>)}
                 </select>
                 <button type="button" disabled={!selectedStudent[course._id] || Boolean(busyKey)} onClick={() => { const student = students.find(item => item._id === selectedStudent[course._id]); if (student) changeAccess(course, student, !hasAccess(student, course._id)); }} className="rounded-xl bg-sky-600 px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
-                  {busyKey.startsWith(course._id + ':') ? 'Updating…' : selectedStudent[course._id] && hasAccess(students.find(item => item._id === selectedStudent[course._id]) || {}, course._id) ? 'Revoke access' : 'Approve this course'}
+                  {busyKey.startsWith(course._id + ':') ? 'Updating…' : selectedStudent[course._id] && hasAccess(students.find(item => item._id === selectedStudent[course._id]) || {}, course._id) ? 'Revoke access' : 'Unlock Premium Access'}
                 </button>
               </div>
-              <p className="mt-3 text-xs text-slate-400">Access is granted only to the selected student for this specific course.</p>
+              <p className="mt-3 text-xs text-slate-400">Verify the student's bank/Telebirr receipt before unlocking. Access is granted only to the selected student for this specific course.</p>
             </section>
           ))}
         </div>
