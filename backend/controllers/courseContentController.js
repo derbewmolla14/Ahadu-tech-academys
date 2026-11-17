@@ -56,8 +56,9 @@ const uploadContent = async (req, res) => {
     if (!['elementary', 'highschool', 'university', 'coding'].includes(level)) {
       return res.status(400).json({ success: false, message: 'Please select a valid course category' });
     }
-    if (!course) {
-      return res.status(400).json({ success: false, message: 'Course name is required' });
+    const normalizedCourse = String(course || '').trim();
+    if (!normalizedCourse) {
+      return res.status(400).json({ success: false, message: 'Please enter the course name.' });
     }
 
     // Keep the legacy university/department/year fields populated so older
@@ -66,36 +67,39 @@ const uploadContent = async (req, res) => {
     let recordDepartment = department;
     let recordYear = year;
     if (level === 'elementary') {
-      if (!grade || !subject) return res.status(400).json({ success: false, message: 'Grade and subject are required for Elementary courses' });
+      if (!String(grade || '').trim()) return res.status(400).json({ success: false, message: 'Please select an Elementary grade.' });
+      if (!String(subject || '').trim()) return res.status(400).json({ success: false, message: 'Please enter the Elementary subject.' });
       recordUniversity = 'Elementary';
       recordDepartment = subject;
       recordYear = `Grade ${grade}`;
     } else if (level === 'highschool') {
-      if (!grade || !subject) return res.status(400).json({ success: false, message: 'Grade and subject are required for High School courses' });
+      if (!String(grade || '').trim()) return res.status(400).json({ success: false, message: 'Please select a High School grade.' });
+      if (!String(subject || '').trim()) return res.status(400).json({ success: false, message: 'Please enter the High School subject.' });
       recordUniversity = 'High School';
       recordDepartment = subject;
       recordYear = `Grade ${grade}`;
     } else if (level === 'university') {
-      if (!['Natural Science', 'Social Science', 'Health Science', 'Diploma', "Master's Degree", 'PhD'].includes(faculty)) return res.status(400).json({ success: false, message: 'Please select a valid university academic category' });
+      if (!['Natural Science', 'Social Science', 'Health Science', 'Diploma', "Master's Degree", 'PhD'].includes(String(faculty || '').trim())) return res.status(400).json({ success: false, message: 'Please select an Academic Category.' });
       // Include faculty in the legacy unique-key field so identical course names can exist in different academic categories.
       recordUniversity = 'University - ' + faculty;
       if (faculty === 'Natural Science' || faculty === 'Social Science' || faculty === 'Health Science' || faculty === 'Diploma') {
-        if (!['Remedial', 'Freshman', 'Senior', 'Diploma'].includes(studyStage)) return res.status(400).json({ success: false, message: 'Please select Remedial, Freshman, Senior, or Diploma' });
-        if (studyStage === 'Senior' && (!department || !year)) return res.status(400).json({ success: false, message: 'Department and academic year are required for Senior courses' });
+        if (!['Remedial', 'Freshman', 'Senior', 'Diploma'].includes(String(studyStage || '').trim())) return res.status(400).json({ success: false, message: 'Please select an Academic Stage.' });
+        if (studyStage === 'Senior' && !String(department || '').trim()) return res.status(400).json({ success: false, message: 'Please select a Department.' });
+        if (studyStage === 'Senior' && !String(year || '').trim()) return res.status(400).json({ success: false, message: 'Please select an Academic Year.' });
         if (studyStage === 'Senior' && !['course-materials', 'exit-exam'].includes(contentType)) return res.status(400).json({ success: false, message: 'Select Course Materials or Exit Exam.' });
         if (studyStage === 'Senior') {
           const configuredDepartment = await Department.findOne({ name: String(department).trim(), category: faculty, isActive: true });
           if (!configuredDepartment) return res.status(400).json({ success: false, message: 'Select an active department from the selected academic category.' });
         }
         recordDepartment = studyStage === 'Senior' ? String(department).trim() : 'General';
-        recordYear = studyStage === 'Senior' ? year : studyStage;
+        recordYear = studyStage === 'Senior' ? String(year).trim() : studyStage;
       } else {
         recordDepartment = department || 'Graduate Studies';
         recordYear = faculty === 'PhD' ? 'PhD' : 'Masters';
         studyStage = faculty === 'PhD' ? 'PhD' : 'Masters';
       }
     } else {
-      if (!technology) return res.status(400).json({ success: false, message: 'Please select a training area' });
+      if (!String(technology || '').trim()) return res.status(400).json({ success: false, message: 'Please select a Training Area.' });
       recordUniversity = 'Other Skills & Trainings';
       recordDepartment = technology;
       recordYear = year || 'All Levels';
@@ -111,7 +115,23 @@ const uploadContent = async (req, res) => {
       parsedPpts = ppts ? (typeof ppts === 'string' ? JSON.parse(ppts) : ppts) : [];
       parsedQuestions = questions ? (typeof questions === 'string' ? JSON.parse(questions) : questions) : [];
     } catch (parseError) {
-      return res.status(400).json({ success: false, message: 'Invalid JSON format in course materials' });
+      return res.status(400).json({ success: false, message: 'Course materials contain invalid JSON. Please review the notes, videos, presentations, and questions.' });
+    }
+
+    if (![parsedNotes, parsedVideos, parsedPpts, parsedQuestions].every(Array.isArray)) {
+      return res.status(400).json({ success: false, message: 'Course materials must be submitted as valid lists.' });
+    }
+    if (parsedNotes.some((item) => !String(item?.title || '').trim())) {
+      return res.status(400).json({ success: false, message: 'Every PDF note must have a title.' });
+    }
+    if (parsedPpts.some((item) => !String(item?.title || '').trim())) {
+      return res.status(400).json({ success: false, message: 'Every PowerPoint presentation must have a title.' });
+    }
+    if (parsedVideos.some((item) => !String(item?.title || '').trim() || !String(item?.url || '').trim())) {
+      return res.status(400).json({ success: false, message: 'Every video must have both a title and a video URL.' });
+    }
+    if (parsedQuestions.some((item) => !String(item?.question || '').trim() || !String(item?.answer || '').trim())) {
+      return res.status(400).json({ success: false, message: 'Every exam question must include both a question and an answer.' });
     }
 
     // Match uploaded files to their note/PPT entries in the order selected.
@@ -128,16 +148,28 @@ const uploadContent = async (req, res) => {
       }
     });
 
+    if (noteFileIndex !== parsedNotes.length || pptFileIndex !== parsedPpts.length) {
+      return res.status(400).json({ success: false, message: 'A selected PDF or PowerPoint file is missing or does not match its material entry. Please reselect the files and try again.' });
+    }
+
     const identity = {
-      university: recordUniversity,
-      department: recordDepartment,
-      year: recordYear,
-      course
+      university: String(recordUniversity || '').trim(),
+      department: String(recordDepartment || '').trim(),
+      year: String(recordYear || '').trim(),
+      course: normalizedCourse
     };
     const existingContent = await CourseContent.findOne(identity);
     const values = {
-      ...identity, level, grade, subject, technology, faculty, studyStage, contentType: studyStage === 'Senior' ? contentType : 'course-materials', courseCode,
-      description: description || '',
+      ...identity,
+      level: String(level).trim(),
+      grade: String(grade || '').trim(),
+      subject: String(subject || '').trim(),
+      technology: String(technology || '').trim(),
+      faculty: String(faculty || '').trim(),
+      studyStage: String(studyStage || '').trim(),
+      contentType: studyStage === 'Senior' ? contentType : 'course-materials',
+      courseCode: String(courseCode || '').trim(),
+      description: String(description || '').trim(),
       notes: parsedNotes,
       videos: parsedVideos,
       ppts: parsedPpts,
@@ -162,9 +194,12 @@ const uploadContent = async (req, res) => {
   } catch (error) {
     console.error('Upload content error:', error.stack || error);
     if (error.code === 11000) {
-      return res.status(400).json({ success: false, message: 'Course already exists in this category' });
+      return res.status(409).json({ success: false, message: 'A course with this name already exists for the selected category, department, and academic year.' });
     }
-    return res.status(500).json({ success: false, message: 'Server error while uploading content', error: error.message, details: error.name === 'ValidationError' ? Object.values(error.errors).map(item => item.message) : undefined });
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ success: false, message: 'Course information is incomplete or invalid. Please review the course details and materials.', details: Object.values(error.errors).map(item => item.message) });
+    }
+    return res.status(500).json({ success: false, message: 'Server error while uploading content. Please try again.', error: error.message });
   }
 };
 
