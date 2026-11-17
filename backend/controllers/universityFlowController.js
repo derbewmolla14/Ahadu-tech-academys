@@ -50,7 +50,7 @@ exports.getCatalog = async (req, res) => {
       ] });
     }
     if (level === 'Senior' && department && kind === 'course-material' && !course) {
-      const courses = await UniversityResource.distinct('course', { ...base, department: { $regex: exactDepartmentRegex(canonicalDepartment) }, kind, course, kind, course: { $nin: ['', null] } });
+      const courses = await UniversityResource.distinct('course', { ...base, department: { $regex: exactDepartmentRegex(canonicalDepartment) }, kind, course: { $nin: ['', null] } });
       return res.json({ courses: courses.sort((a, b) => a.localeCompare(b)) });
     }
     if (level !== 'Senior' && course && !kind) {
