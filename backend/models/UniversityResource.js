@@ -12,6 +12,7 @@ const universityResourceSchema = new mongoose.Schema({
   textContent: { type: String, default: '' },
   answer: { type: String, default: '' },
   solution: { type: String, default: '' },
+  accessType: { type: String, enum: ['free', 'premium'], default: 'free', index: true },
   storedFileName: { type: String, default: '' },
   originalFileName: { type: String, default: '' },
   mimeType: { type: String, default: '' },
