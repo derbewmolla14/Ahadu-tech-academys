@@ -7,6 +7,7 @@ export default function AdminUniversityResources() {
   const [form, setForm] = useState(empty);
   const [file, setFile] = useState(null);
   const [items, setItems] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -29,6 +30,13 @@ export default function AdminUniversityResources() {
     setItems(data.resources || []);
   };
   useEffect(() => { load().catch((err) => setError(err.message)); }, []);
+  useEffect(() => {
+    const category = form.stream === 'Natural' ? 'Natural Science' : 'Social Science';
+    apiFetch('departments?category=' + encodeURIComponent(category))
+      .then((response) => response.json())
+      .then((data) => setDepartments(Array.isArray(data) ? data : []))
+      .catch((err) => setError(err.message || 'Unable to load departments.'));
+  }, [form.stream]);
   const submit = async (event) => {
     event.preventDefault(); setBusy(true); setError(''); setMessage('');
     try {
@@ -55,7 +63,7 @@ export default function AdminUniversityResources() {
   return <main className="mx-auto max-w-6xl space-y-6 p-5 text-white"><h1 className="text-3xl font-bold">University Resource Uploads</h1><form onSubmit={submit} className="grid gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:grid-cols-2 lg:grid-cols-3">
     {field('Stream', 'stream', ['Natural', 'Social'])}{field('Level', 'level', ['Freshman', 'Remedial', 'Senior'])}
     {field('Content path', 'kind', ['course-material', 'exam-question', 'exit-exam'])}
-    <label className="block text-sm text-slate-300">Department<input name="department" value={form.department} onChange={change} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-3" /></label>
+    <label className="block text-sm text-slate-300">Department<select name="department" value={form.department} onChange={change} disabled={form.level !== 'Senior'} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-3 disabled:opacity-50"><option value="">Select department</option>{departments.map((item) => <option key={item._id} value={item.name}>{item.name}</option>)}</select></label>
     <label className="block text-sm text-slate-300">Course<input name="course" value={form.course} onChange={change} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-3" /></label>
     <label className="block text-sm text-slate-300">Academic year<input name="academicYear" value={form.academicYear} onChange={change} placeholder="2016" className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-3" /></label>
     {field('Format', 'resourceType', form.kind === 'course-material' ? ['pdf', 'ppt', 'video'] : ['image', 'pdf', 'text'])}
