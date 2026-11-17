@@ -5,11 +5,9 @@ const path = require('path');
 const fs = require('fs');
 
 const uploadsDirectory = path.join(__dirname, '../uploads');
-
-const escapeRegex = (value) =>
-  String(value).replace(/[.*+?^${}()|[\\]\\]/g, '\\const uploadsDirectory = path.join(__dirname, '../uploads');');
+const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\\]\\]/g, '\\$&');
+const exactInsensitive = (value) => new RegExp('^' + escapeRegex(String(value || '').trim()) + '$', 'i');
 fs.mkdirSync(uploadsDirectory, { recursive: true });
-
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -90,10 +88,10 @@ const uploadContent = async (req, res) => {
         if (studyStage === 'Senior' && !String(department || '').trim()) return res.status(400).json({ success: false, message: 'Please select a Department.' });
         if (studyStage === 'Senior' && !['course-materials', 'exit-exam'].includes(contentType)) return res.status(400).json({ success: false, message: 'Select Course Materials or Exit Exam.' });
         if (studyStage === 'Senior') {
-          const configuredDepartment = await Department.findOne({ name: String(department).trim(), category: faculty, isActive: true });
+          const configuredDepartment = await Department.findOne({ name: { $regex: exactInsensitive(department) }, category: faculty, isActive: true }).select('name').lean();
           if (!configuredDepartment) return res.status(400).json({ success: false, message: 'Select an active department from the selected academic category.' });
         }
-        recordDepartment = studyStage === 'Senior' ? String(department).trim() : 'General';
+        recordDepartment = studyStage === 'Senior' ? configuredDepartment.name : 'General';
         recordYear = studyStage === 'Senior' ? (String(year || '').trim() || 'All Years') : studyStage;
       } else {
         recordDepartment = department || 'Graduate Studies';
