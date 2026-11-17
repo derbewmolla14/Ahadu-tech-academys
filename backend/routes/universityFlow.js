@@ -15,7 +15,7 @@ const upload = multer({
 });
 
 router.get('/catalog', controller.getCatalog);
-router.get('/resources/:id/file', auth, controller.downloadApproved);
+router.get('/resources/:id/file', controller.downloadApproved);
 router.post('/admin/upload', auth, permit('admin'), upload.single('file'), controller.adminUpload);
 router.get('/admin/resources', auth, permit('admin'), controller.adminList);
 router.patch('/admin/resources/:id/approval', auth, permit('admin'), controller.setApproval);
