@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const UniversityResource = require('../models/UniversityResource');
+const Department = require('../models/Department');
 
 const PRIVATE_DIR = path.join(__dirname, '../private_uploads/university');
 fs.mkdirSync(PRIVATE_DIR, { recursive: true });
@@ -16,8 +17,9 @@ exports.getCatalog = async (req, res) => {
     if (!level) return res.json({ streams: ['Natural', 'Social'], levels: ['Freshman', 'Remedial', 'Senior'] });
     const base = { ...approvedFilter, stream, level };
     if (level === 'Senior' && !department) {
-      const departments = await UniversityResource.distinct('department', { ...base, department: { $nin: ['', null] } });
-      return res.json({ departments: departments.sort((a,b) => a.localeCompare(b)) });
+      const category = stream === 'Natural' ? 'Natural Science' : 'Social Science';
+      const departments = await Department.find({ category, isActive: true }).select('name').sort({ name: 1 }).lean();
+      return res.json({ departments: departments.map((item) => item.name) });
     }
     if (level !== 'Senior' && !course) {
       const courses = await UniversityResource.distinct('course', { ...base, course: { $nin: ['', null] }, kind: { $in: ['course-material', 'exam-question'] } });
@@ -93,27 +95,48 @@ exports.adminUpload = async (req, res) => {
 };
 
 exports.adminList = async (_req, res) => {
-  const resources = await UniversityResource.find().populate('uploadedBy', 'fullName email').populate('approvedBy', 'fullName email').sort({ createdAt: -1 });
-  res.json({ resources });
+  try {
+    const resources = await UniversityResource.find()
+      .populate('uploadedBy', 'fullName email')
+      .populate('approvedBy', 'fullName email')
+      .sort({ createdAt: -1 });
+    return res.json({ resources });
+  } catch (error) {
+    console.error('University admin list error:', error);
+    return res.status(500).json({ message: 'Unable to load uploaded resources.' });
+  }
 };
 
 exports.setApproval = async (req, res) => {
-  const { status } = req.body;
-  if (!['approved', 'rejected', 'pending'].includes(status)) return res.status(400).json({ message: 'Invalid approval status.' });
-  const item = await UniversityResource.findById(req.params.id);
-  if (!item) return res.status(404).json({ message: 'Resource not found.' });
-  item.status = status;
-  item.approvedBy = status === 'approved' ? req.user._id : null;
-  item.approvedAt = status === 'approved' ? new Date() : null;
-  await item.save();
-  res.json({ message: 'Approval status updated.', resource: item });
+  try {
+    const { status } = req.body;
+    if (!['approved', 'rejected', 'pending'].includes(status)) return res.status(400).json({ message: 'Invalid approval status.' });
+    const item = await UniversityResource.findById(req.params.id);
+    if (!item) return res.status(404).json({ message: 'Resource not found.' });
+    item.status = status;
+    item.approvedBy = status === 'approved' ? req.user._id : null;
+    item.approvedAt = status === 'approved' ? new Date() : null;
+    await item.save();
+    return res.json({ message: 'Approval status updated.', resource: item });
+  } catch (error) {
+    console.error('University approval update error:', error);
+    return res.status(500).json({ message: 'Unable to update approval status.' });
+  }
 };
 
 exports.downloadApproved = async (req, res) => {
-  const item = await UniversityResource.findOne({ _id: req.params.id, status: 'approved' });
-  if (!item) return res.status(404).json({ message: 'Approved resource not found.' });
-  if (!item.storedFileName) return res.status(404).json({ message: 'This resource has no attached file.' });
-  const filePath = path.join(PRIVATE_DIR, item.storedFileName);
-  if (!fs.existsSync(filePath)) return res.status(404).json({ message: 'File is missing.' });
-  return res.sendFile(filePath);
+  try {
+    const item = await UniversityResource.findOne({ _id: req.params.id, status: 'approved' });
+    if (!item) return res.status(404).json({ message: 'Approved resource not found.' });
+    if (!item.storedFileName) return res.status(404).json({ message: 'This resource has no attached file.' });
+    const filePath = path.join(PRIVATE_DIR, path.basename(item.storedFileName));
+    if (!fs.existsSync(filePath)) return res.status(404).json({ message: 'File is missing.' });
+    res.type(item.mimeType || 'application/octet-stream');
+    return res.sendFile(filePath, (error) => {
+      if (error && !res.headersSent) res.status(error.statusCode || 500).json({ message: 'Unable to deliver approved file.' });
+    });
+  } catch (error) {
+    console.error('Approved University download error:', error);
+    return res.status(500).json({ message: 'Unable to verify approved resource.' });
+  }
 };
