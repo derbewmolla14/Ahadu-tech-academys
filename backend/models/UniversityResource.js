@@ -6,7 +6,7 @@ const universityResourceSchema = new mongoose.Schema({
   department: { type: String, trim: true, default: '' },
   course: { type: String, trim: true, default: '' },
   kind: { type: String, enum: ['course-material', 'exam-question', 'exit-exam'], required: true, index: true },
-  academicYear: { type: String, trim: true, default: '' },
+  academicYear: { type: String, trim: true, default: 'All Years' },
   resourceType: { type: String, enum: ['pdf', 'ppt', 'video', 'image', 'text'], required: true },
   title: { type: String, required: true, trim: true },
   textContent: { type: String, default: '' },
