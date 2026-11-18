@@ -6,10 +6,23 @@ export async function downloadApprovedResource(resource, requestAccess) {
     return;
   }
 
+  // A catalog can already tell us that a Premium resource is locked.
+  // Open the payment instructions immediately instead of starting a download request.
+  if (resource.hasAccess === false || resource.isApproved === false) {
+    requestAccess?.({
+      ...resource,
+      accessType: resource.accessType || (resource.isPremium ? 'premium' : undefined),
+    });
+    return;
+  }
+
   try {
     const response = await apiFetch(resource.downloadEndpoint, { cache: 'no-store' });
     if (response.status === 403) {
-      requestAccess?.(resource);
+      requestAccess?.({
+        ...resource,
+        accessType: resource.accessType || (resource.isPremium ? 'premium' : undefined),
+      });
       return;
     }
     if (response.status === 401) {
@@ -24,7 +37,7 @@ export async function downloadApprovedResource(resource, requestAccess) {
     const objectUrl = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     const fileName = String(resource.fileName || resource.originalFileName || resource.title || 'learning-resource')
-      .replace(/[\\\\/:*?"<>|]+/g, '-');
+      .replace(/[\\/:*?"<>|]+/g, '-');
     anchor.href = objectUrl;
     anchor.download = fileName;
     document.body.appendChild(anchor);
