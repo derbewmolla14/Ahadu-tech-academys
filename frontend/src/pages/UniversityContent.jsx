@@ -54,6 +54,7 @@ export default function UniversityContent() {
                 className="h-full w-full"
               />
             </div>
+            <button type="button" onClick={() => setDownloadResource({ title: courseTitle + ' — PDF notes', type: 'PDF', accessType: 'free' })} className="mt-3 rounded-full border border-amber-500/60 px-5 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/10">Download PDF</button>
           </div>
         </div>
 
