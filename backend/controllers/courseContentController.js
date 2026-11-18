@@ -243,6 +243,7 @@ const getContent = async (req, res) => {
       { year: '' }, { year: null }, { year: { $exists: false } },
     ] });
     if (course) query.course = { $regex: exactDepartmentRegex(course) };
+    if (String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic') query.language = 'am';
 
     const content = await CourseContent.find(query).lean();
     // University listings return metadata only; lesson URLs are fetched from the protected detail endpoint.
@@ -320,12 +321,13 @@ const streamCourseMaterial = async (req, res) => {
     if (!course || !course.isActive) return res.status(404).json({ success: false, message: 'Course not found.' });
     const isAdmin = req.user?.role === 'admin';
     const isUnlocked = req.user?.unlockedCourseContents?.some((item) => String(item) === String(course._id));
-    if (course.isPremium && !isAdmin && !isUnlocked) return res.status(403).json({ success: false, message: 'Administrator approval is required for this premium course.' });
+    if (!isAdmin && !isUnlocked) return res.status(403).json({ success: false, message: 'Administrator approval is required before downloading this course material.' });
     if (!['notes', 'ppts'].includes(kind)) return res.status(400).json({ success: false, message: 'Unsupported material type.' });
     const item = course[kind]?.[Number(index)];
     if (!item?.fileUrl || !item.fileUrl.startsWith('/uploads/')) return res.status(404).json({ success: false, message: 'Material file not found.' });
     const filePath = path.join(uploadsDirectory, path.basename(item.fileUrl));
     if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, message: 'Material file is missing from the server.' });
+    if (req.query.download === '1') return res.download(filePath, path.basename(item.fileUrl));
     return res.sendFile(filePath);
   } catch (error) {
     console.error('Stream course material error:', error);
@@ -471,7 +473,7 @@ const unlockCourseForStudent = async (req, res) => {
       Promise.resolve(require('../models/User'))
     ]);
     if (!course) return res.status(404).json({ success: false, message: 'Course not found.' });
-    if (!course.isPremium) return res.status(400).json({ success: false, message: 'This course is not marked as premium.' });
+
     const student = await User.findById(userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
     if (student.role === 'admin') return res.status(400).json({ success: false, message: 'Choose a student account.' });
