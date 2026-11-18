@@ -44,11 +44,31 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const updateProfile = useCallback(async (profileData) => {
-    const response = await api.patch('/auth/me', profileData);
-    setUser(response.data.user);
-    const savedLanguage = response.data.user?.preferences?.language;
-    if (savedLanguage) localStorage.setItem('language', savedLanguage);
-    return response.data;
+    const previousLanguage = localStorage.getItem('language') || 'en';
+    const requestedLanguage = profileData?.language;
+    if (requestedLanguage === 'en' || requestedLanguage === 'am') {
+      localStorage.setItem('language', requestedLanguage);
+      setUser((current) => current ? {
+        ...current,
+        preferences: { ...current.preferences, language: requestedLanguage },
+      } : current);
+    }
+    try {
+      const response = await api.patch('/auth/me', profileData);
+      setUser(response.data.user);
+      const savedLanguage = response.data.user?.preferences?.language;
+      if (savedLanguage) localStorage.setItem('language', savedLanguage);
+      return response.data;
+    } catch (error) {
+      if (requestedLanguage === 'en' || requestedLanguage === 'am') {
+        localStorage.setItem('language', previousLanguage);
+        setUser((current) => current ? {
+          ...current,
+          preferences: { ...current.preferences, language: previousLanguage },
+        } : current);
+      }
+      throw error;
+    }
   }, []);
 
   const logout = useCallback(() => {
