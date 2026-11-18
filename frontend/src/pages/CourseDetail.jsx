@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import PaymentMethodModal from '../components/PaymentMethodModal';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 
 // Sample course materials data
@@ -199,6 +200,7 @@ const courseMaterials = {
 };
 
 export default function CourseDetail() {
+  const [downloadResource, setDownloadResource] = useState(null);
   const { name, courseId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -240,9 +242,7 @@ export default function CourseDetail() {
                       <p className="text-sm text-slate-400">{note.type} Document</p>
                     </div>
                   </div>
-                  <button className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-500">
-                    Download
-                  </button>
+                  <button type="button" onClick={() => setDownloadResource({ title: note.title, type: note.type || 'document', accessType: 'free' })} className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-500">Download</button>
                 </div>
               </div>
             ))}
@@ -320,9 +320,7 @@ export default function CourseDetail() {
                     <p className="text-sm text-slate-400">{item.type} File</p>
                   </div>
                 </div>
-                <button className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-500">
-                  Download
-                </button>
+                <button type="button" onClick={() => setDownloadResource({ title: item.title, type: item.type || 'file', accessType: 'free' })} className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-500">Download</button>
               </div>
             ))}
             {!courseData.practice.length && (
@@ -340,6 +338,7 @@ export default function CourseDetail() {
 
   return (
     <div className="space-y-6">
+      <PaymentMethodModal open={Boolean(downloadResource)} resource={downloadResource} onClose={() => setDownloadResource(null)} />
       {/* Header */}
       <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-xl shadow-slate-950/50">
         <div className="flex items-center justify-between">
