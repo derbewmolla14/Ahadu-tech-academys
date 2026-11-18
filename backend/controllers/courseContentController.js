@@ -321,7 +321,8 @@ const streamCourseMaterial = async (req, res) => {
     if (!course || !course.isActive) return res.status(404).json({ success: false, message: 'Course not found.' });
     const isAdmin = req.user?.role === 'admin';
     const isUnlocked = req.user?.unlockedCourseContents?.some((item) => String(item) === String(course._id));
-    if (!isAdmin && !isUnlocked) return res.status(403).json({ success: false, message: 'Administrator approval is required before downloading this course material.' });
+    const isApproved = req.user?.downloadApprovals?.some((entry) => entry.resourceModel === 'CourseContent' && String(entry.resourceId) === String(course._id) && entry.status === 'approved');
+    if (!isAdmin && !isUnlocked && !isApproved) return res.status(403).json({ success: false, message: 'Administrator approval is required before downloading this course material.' });
     if (!['notes', 'ppts'].includes(kind)) return res.status(400).json({ success: false, message: 'Unsupported material type.' });
     const item = course[kind]?.[Number(index)];
     if (!item?.fileUrl || !item.fileUrl.startsWith('/uploads/')) return res.status(404).json({ success: false, message: 'Material file not found.' });
@@ -478,6 +479,8 @@ const unlockCourseForStudent = async (req, res) => {
     if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
     if (student.role === 'admin') return res.status(400).json({ success: false, message: 'Choose a student account.' });
     const alreadyUnlocked = student.unlockedCourseContents.some((id) => String(id) === String(course._id));
+    student.downloadApprovals = (student.downloadApprovals || []).filter((entry) => !(entry.resourceModel === 'CourseContent' && String(entry.resourceId) === String(course._id)));
+    student.downloadApprovals.push({ resourceModel: 'CourseContent', resourceId: course._id, status: 'approved', approvedBy: req.user._id, approvedAt: new Date() });
     if (!alreadyUnlocked) {
       student.unlockedCourseContents.push(course._id);
       await student.save();
@@ -506,6 +509,7 @@ const lockCourseForStudent = async (req, res) => {
     const student = await User.findById(req.params.userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
     student.unlockedCourseContents = student.unlockedCourseContents.filter((id) => String(id) !== String(req.params.id));
+    student.downloadApprovals = (student.downloadApprovals || []).filter((entry) => !(entry.resourceModel === 'CourseContent' && String(entry.resourceId) === String(req.params.id)));
     await student.save();
     return res.json({ success: true, message: 'Premium course access revoked.' });
   } catch (error) {
