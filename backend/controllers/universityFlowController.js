@@ -162,13 +162,13 @@ exports.getCatalog = async (req, res) => {
         _id: `${item._id}:ppts:${index}`, source: 'course-content',
         courseContentId: String(item._id), materialKind: 'ppts', materialIndex: index,
         title: ppt.title, resourceType: 'ppt', originalFileName: path.basename(ppt.fileUrl || ''),
-        accessType: item.isPremium ? 'premium' : 'free', hasAccess,
+        accessType: item.isPremium ? 'premium' : 'free', pricingTier: 'university', hasAccess,
       }));
       (item.videos || []).forEach((video, index) => legacyResources.push({
         _id: `${item._id}:videos:${index}`, source: 'course-content',
         courseContentId: String(item._id), materialKind: 'video', materialIndex: index,
         title: video.title, resourceType: 'video', videoUrl: video.url,
-        accessType: item.isPremium ? 'premium' : 'free', hasAccess,
+        accessType: item.isPremium ? 'premium' : 'free', pricingTier: 'university', hasAccess,
       }));
     });
 
