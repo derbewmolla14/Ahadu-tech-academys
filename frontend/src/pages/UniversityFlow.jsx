@@ -112,7 +112,24 @@ export default function UniversityFlow() {
       return;
     }
     if (resource.source === 'course-content' && resource.resourceType === 'video') {
-      setDocumentFile({ title: resource.title || 'Video lesson', fileName: resource.originalFileName || resource.title || 'lesson.mp4', mimeType: 'video/mp4', url: resource.videoUrl, downloadEndpoint: `content/${resource.courseContentId}/video/${resource.materialIndex}/download` });
+      const endpoint = `content/${resource.courseContentId}/video/${resource.materialIndex}`;
+      if (!String(resource.videoUrl || '').startsWith('/uploads/')) {
+        setDocumentFile({ title: resource.title || 'Video lesson', fileName: resource.originalFileName || resource.title || 'lesson.mp4', mimeType: 'video/mp4', url: resource.videoUrl, downloadEndpoint: endpoint + '/download' });
+        return;
+      }
+      try {
+        const response = await apiFetch(endpoint);
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          if (response.status === 403) setDownloadResource({ ...resource, accessType: 'premium', hasAccess: false });
+          else throw new Error(data.message || 'Unable to open this video.');
+          return;
+        }
+        const blob = await response.blob();
+        setDocumentFile({ title: resource.title || 'Video lesson', fileName: resource.originalFileName || resource.title || 'lesson.mp4', mimeType: blob.type || 'video/mp4', url: URL.createObjectURL(blob), downloadEndpoint: endpoint + '/download' });
+      } catch (err) {
+        setError(err.message || 'Unable to open this video.');
+      }
       return;
     }
     try {
