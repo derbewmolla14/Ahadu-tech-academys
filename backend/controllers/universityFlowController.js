@@ -175,7 +175,7 @@ exports.getCatalog = async (req, res) => {
       (item.videos || []).forEach((video, index) => legacyResources.push({
         _id: `${item._id}:videos:${index}`, source: 'course-content',
         courseContentId: String(item._id), materialKind: 'video', materialIndex: index,
-        title: video.title, resourceType: 'video', videoUrl: video.url,
+        title: video.title, resourceType: 'video', ...(hasAccess ? { videoUrl: video.url } : {}),
         accessType: item.isPremium ? 'premium' : 'free', pricingTier: 'university', hasAccess,
       }));
     });
