@@ -246,6 +246,11 @@ const getContent = async (req, res) => {
 
 
     const content = await CourseContent.find(query).lean();
+    // Never expose private note/PPT upload paths in public catalog responses.
+    content.forEach((item) => {
+      item.notes = (item.notes || []).map(({ title }) => ({ title }));
+      item.ppts = (item.ppts || []).map(({ title }) => ({ title }));
+    });
     // University listings return metadata only; lesson URLs are fetched from the protected detail endpoint.
     if (level === 'university') {
       content.forEach((item) => {
@@ -297,10 +302,13 @@ const getContentById = async (req, res) => {
       });
     }
 
+    const safeContent = content.toObject();
+    safeContent.notes = (safeContent.notes || []).map(({ title }) => ({ title }));
+    safeContent.ppts = (safeContent.ppts || []).map(({ title }) => ({ title }));
     res.status(200).json({
       success: true,
       accessLocked: false,
-      data: content
+      data: safeContent
     });
 
   } catch (error) {
