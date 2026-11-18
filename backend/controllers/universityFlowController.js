@@ -127,11 +127,13 @@ exports.getCatalog = async (req, res) => {
 
     const unlockedUniversity = new Set((req.user?.unlockedUniversityResources || []).map((id) => String(id)));
     const unlockedCourses = new Set((req.user?.unlockedCourseContents || []).map((id) => String(id)));
+    const approvedUniversity = new Set((req.user?.downloadApprovals || []).filter((entry) => entry.resourceModel === 'UniversityResource' && entry.status === 'approved').map((entry) => String(entry.resourceId)));
+    const approvedCourses = new Set((req.user?.downloadApprovals || []).filter((entry) => entry.resourceModel === 'CourseContent' && entry.status === 'approved').map((entry) => String(entry.resourceId)));
     const isAdmin = req.user?.role === 'admin';
     const legacyResources = [];
 
     legacyCourses.forEach((item) => {
-      const hasAccess = !item.isPremium || isAdmin || unlockedCourses.has(String(item._id));
+      const hasAccess = !item.isPremium || isAdmin || unlockedCourses.has(String(item._id)) || approvedCourses.has(String(item._id));
       if (kind === 'exit-exam') {
         (item.questions || []).forEach((question, index) => {
           legacyResources.push({
@@ -174,7 +176,7 @@ exports.getCatalog = async (req, res) => {
         ...resources.map((item) => ({
           ...item,
           source: 'university-resource',
-          hasAccess: item.accessType !== 'premium' || isAdmin || unlockedUniversity.has(String(item._id)),
+          hasAccess: item.accessType !== 'premium' || isAdmin || unlockedUniversity.has(String(item._id)) || approvedUniversity.has(String(item._id)),
         })),
         ...legacyResources,
       ],
@@ -305,9 +307,10 @@ exports.downloadApproved = async (req, res) => {
     if (!item) return res.status(404).json({ message: 'Approved resource not found.' });
     const isAdmin = req.user?.role === 'admin';
     const isUnlocked = (req.user?.unlockedUniversityResources || []).some((id) => String(id) === String(item._id));
+    const isPremiumApproved = (req.user?.downloadApprovals || []).some((entry) => entry.resourceModel === 'UniversityResource' && String(entry.resourceId) === String(item._id) && entry.status === 'approved');
     const isApproved = (req.user?.downloadApprovals || []).some((entry) => entry.resourceModel === 'UniversityResource' && String(entry.resourceId) === String(item._id) && entry.status === 'approved');
-    if (req.query.download === '1' && !isAdmin && !isUnlocked && !isApproved) return res.status(403).json({ message: 'Administrator approval is required before downloading this resource.' });
-    if (req.query.download !== '1' && item.accessType === 'premium' && !isAdmin && !isUnlocked && !isApproved) return res.status(403).json({ message: 'Administrator approval is required to view this premium resource.' });
+    if (req.query.download === '1' && !isAdmin && !isUnlocked && !isApproved && !isPremiumApproved) return res.status(403).json({ message: 'Administrator approval is required before downloading this resource.' });
+    if (req.query.download !== '1' && item.accessType === 'premium' && !isAdmin && !isUnlocked && !isApproved && !isPremiumApproved) return res.status(403).json({ message: 'Administrator approval is required to view this premium resource.' });
     if (!item.storedFileName) return res.status(404).json({ message: 'This resource has no attached file.' });
     const filePath = path.join(PRIVATE_DIR, path.basename(item.storedFileName));
     if (!fs.existsSync(filePath)) return res.status(404).json({ message: 'File is missing.' });
