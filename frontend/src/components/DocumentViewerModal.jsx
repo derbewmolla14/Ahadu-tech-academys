@@ -22,7 +22,7 @@ export default function DocumentViewerModal({ file, onClose }) {
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', handleKeyDown);
-      window.scrollTo({ top: scrollY, behavior: 'instant' });
+      window.scrollTo(0, scrollY);
     };
   }, [file, onClose]);
 
@@ -32,22 +32,37 @@ export default function DocumentViewerModal({ file, onClose }) {
   const fileName = file.fileName || file.title || 'document';
   const extension = getExtension(fileName, url);
   const isPdf = extension === 'pdf' || file.mimeType === 'application/pdf';
-  const isOffice = ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(extension);
+  const isOffice = ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(extension)
+    || /officedocument|msword|ms-powerpoint|ms-excel/.test(file.mimeType || '');
   const previewUrl = isPdf && url && !url.startsWith('blob:')
     ? (url.includes('res.cloudinary.com') && !/\.pdf([?#]|$)/i.test(url)
       ? url.replace('/upload/', '/upload/fl_attachment:false/')
       : url)
     : url;
 
-  const downloadFile = () => {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+  const downloadFile = async () => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Download request failed');
+      const blobUrl = URL.createObjectURL(await response.blob());
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } catch {
+      // Cross-origin hosts may block fetch; let the browser handle the original URL.
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
   };
 
   const printFile = () => {
