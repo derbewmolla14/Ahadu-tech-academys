@@ -119,20 +119,20 @@ app.use('/uploads', async (req, res, next) => {
   try {
     const requestedFile = '/uploads' + req.path;
     const courseMaterial = await CourseContent.findOne({
-      $or: [{ 'notes.fileUrl': requestedFile }, { 'ppts.fileUrl': requestedFile }]
+      isPremium: true,
+      $or: [{ 'notes.fileUrl': requestedFile }, { 'ppts.fileUrl': requestedFile }, { videos: { $elemMatch: { url: requestedFile } } }]
     }).select('_id');
     if (!courseMaterial) return next();
 
     return authMiddleware(req, res, () => {
       const isAdmin = req.user?.role === 'admin';
-      const isUnlocked = req.user?.unlockedCourseContents?.some((item) => String(item) === String(courseMaterial._id));
       const isApproved = req.user?.downloadApprovals?.some((entry) =>
         entry.resourceModel === 'CourseContent'
         && String(entry.resourceId) === String(courseMaterial._id)
         && entry.status === 'approved'
       );
-      if (!isAdmin && !isUnlocked && !isApproved) {
-        return res.status(403).json({ success: false, message: 'Administrator approval is required before accessing this course file directly.' });
+      if (!isAdmin && !isApproved) {
+        return res.status(403).json({ success: false, accessLocked: true, isPremium: true, message: 'Administrator approval is required before accessing this premium course.' });
       }
       return next();
     });

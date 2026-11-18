@@ -10,6 +10,14 @@ const PRIVATE_DIR = path.join(__dirname, '../private_uploads/university');
 fs.mkdirSync(PRIVATE_DIR, { recursive: true });
 
 const approvedFilter = { $or: [{ status: 'approved' }, { status: { $exists: false } }, { status: null }, { status: '' }] };
+const isAdminUser = (user) => user?.role === 'admin';
+const hasApprovedResourceAccess = (user, model, id) => (user?.downloadApprovals || []).some((entry) =>
+  entry.resourceModel === model && String(entry.resourceId) === String(id) && entry.status === 'approved'
+);
+const canAccessUniversityResource = (user, item) => item.accessType !== 'premium'
+  || isAdminUser(user)
+  || hasApprovedResourceAccess(user, 'UniversityResource', item._id);
+
 
 const STREAM_CATEGORY = { Natural: 'Natural Science', Social: 'Social Science', Health: 'Health Science', Diploma: 'Diploma' };
 const exactDepartmentRegex = (value) => new RegExp('^' + String(value || '').trim().replace(/[.*+?^()|[\]\\$]/g, (character) => '\\' + character) + '$', 'i');
@@ -133,7 +141,7 @@ exports.getCatalog = async (req, res) => {
     const legacyResources = [];
 
     legacyCourses.forEach((item) => {
-      const hasAccess = !item.isPremium || isAdmin || unlockedCourses.has(String(item._id)) || approvedCourses.has(String(item._id));
+      const hasAccess = !item.isPremium || isAdmin || approvedCourses.has(String(item._id));
       if (kind === 'exit-exam') {
         (item.questions || []).forEach((question, index) => {
           legacyResources.push({
@@ -167,7 +175,7 @@ exports.getCatalog = async (req, res) => {
       (item.videos || []).forEach((video, index) => legacyResources.push({
         _id: `${item._id}:videos:${index}`, source: 'course-content',
         courseContentId: String(item._id), materialKind: 'video', materialIndex: index,
-        title: video.title, resourceType: 'video', videoUrl: video.url,
+        title: video.title, resourceType: 'video', ...(hasAccess ? { videoUrl: video.url } : {}),
         accessType: item.isPremium ? 'premium' : 'free', pricingTier: 'university', hasAccess,
       }));
     });
@@ -178,7 +186,7 @@ exports.getCatalog = async (req, res) => {
           ...item,
           source: 'university-resource',
           pricingTier: 'university',
-          hasAccess: item.accessType !== 'premium' || isAdmin || unlockedUniversity.has(String(item._id)) || approvedUniversity.has(String(item._id)),
+          hasAccess: canAccessUniversityResource(req.user, item),
         })),
         ...legacyResources,
       ],

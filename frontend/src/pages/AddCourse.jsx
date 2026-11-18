@@ -73,7 +73,7 @@ export default function AddCourse() {
 
   // Material state
   const [notes, setNotes] = useState([{ title: '', file: null }]);
-  const [videos, setVideos] = useState([{ title: '', url: '' }]);
+  const [videos, setVideos] = useState([{ title: '', url: '', file: null }]);
   const [ppts, setPpts] = useState([{ title: '', file: null }]);
   const [questionsJson, setQuestionsJson] = useState('[{"question":"","answer":""}]');
 
@@ -93,7 +93,7 @@ export default function AddCourse() {
     setNotes(updated);
   };
 
-  const addVideo = () => setVideos([...videos, { title: '', url: '' }]);
+  const addVideo = () => setVideos([...videos, { title: '', url: '', file: null }]);
   const removeVideo = (index) => setVideos(videos.filter((_, i) => i !== index));
   const updateVideo = (index, field, value) => {
     const updated = [...videos];
@@ -132,8 +132,8 @@ export default function AddCourse() {
     if (incompleteNote !== -1) return `PDF Note ${incompleteNote + 1}: enter a title and select a PDF file, or clear both fields.`;
     const incompletePpt = ppts.findIndex(ppt => (ppt.title.trim() || ppt.file) && (!ppt.title.trim() || !ppt.file));
     if (incompletePpt !== -1) return `PowerPoint ${incompletePpt + 1}: enter a title and select a PPT/PPTX file, or clear both fields.`;
-    const incompleteVideo = videos.findIndex(video => (video.title.trim() || video.url.trim()) && (!video.title.trim() || !video.url.trim()));
-    if (incompleteVideo !== -1) return `Video ${incompleteVideo + 1}: enter both a video title and video URL, or clear both fields.`;
+    const incompleteVideo = videos.findIndex(video => (video.title.trim() || video.url.trim() || video.file) && (!video.title.trim() || (!video.url.trim() && !video.file) || (video.url.trim() && video.file)));
+    if (incompleteVideo !== -1) return `Video ${incompleteVideo + 1}: enter a title and choose either a YouTube/video URL or one local video file.`;
     return '';
   };
 
@@ -168,10 +168,10 @@ export default function AddCourse() {
 
       const validNotes = notes.filter(note => note.title.trim() && note.file);
       const validPpts = ppts.filter(ppt => ppt.title.trim() && ppt.file);
-      const validVideos = videos.filter(video => video.title.trim() && video.url.trim());
+      const validVideos = videos.filter(video => video.title.trim() && (video.url.trim() || video.file));
 
       submitData.append('notes', JSON.stringify(validNotes.map(note => ({ title: note.title.trim() }))));
-      submitData.append('videos', JSON.stringify(validVideos.map(video => ({ title: video.title.trim(), url: video.url.trim() }))));
+      submitData.append('videos', JSON.stringify(validVideos.map(video => ({ title: video.title.trim(), url: video.url.trim(), fileUpload: Boolean(video.file) }))));
       submitData.append('ppts', JSON.stringify(validPpts.map(ppt => ({ title: ppt.title.trim() }))));
       if (selectedCategory === 'university' && formData.studyStage === 'Senior' && formData.contentType === 'exit-exam') {
         let parsedQuestions;
@@ -184,9 +184,10 @@ export default function AddCourse() {
         submitData.append('questions', JSON.stringify([]));
       }
 
-      // Match the backend files array: PDFs first, then PowerPoint files.
+      // Match backend upload classification by MIME type: notes, presentations, then local videos.
       validNotes.forEach(note => submitData.append('files', note.file));
       validPpts.forEach(ppt => submitData.append('files', ppt.file));
+      validVideos.filter(video => video.file).forEach(video => submitData.append('files', video.file));
 
       const response = await apiFetch('content/upload', { method: 'POST', body: submitData });
       const data = await response.json();
@@ -445,14 +446,24 @@ export default function AddCourse() {
                       className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white focus:border-blue-500 focus:outline-none"
                     />
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 space-y-2">
                     <input
                       type="url"
                       value={video.url}
                       onChange={(e) => updateVideo(index, 'url', e.target.value)}
-                      placeholder="YouTube URL or video link"
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white focus:border-blue-500 focus:outline-none"
+                      placeholder="YouTube URL (youtu.be or youtube.com/watch)"
+                      disabled={Boolean(video.file)}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white focus:border-blue-500 focus:outline-none disabled:opacity-50"
                     />
+                    <div className="text-center text-xs text-slate-500">OR upload a local video</div>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/webm,video/ogg,.mp4,.webm,.ogv"
+                      onChange={(e) => updateVideo(index, 'file', e.target.files?.[0] || null)}
+                      disabled={Boolean(video.url.trim())}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-slate-300 file:bg-slate-700 file:border-0 file:rounded file:px-3 file:py-1 file:text-white disabled:opacity-50"
+                    />
+                    {video.file && <p className="text-xs text-emerald-300">{video.file.name}</p>}
                   </div>
                   {videos.length > 1 && (
                     <button

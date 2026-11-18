@@ -7,6 +7,14 @@ const fs = require('fs');
 const uploadsDirectory = path.join(__dirname, '../uploads');
 const exactDepartmentRegex = (value) => new RegExp('^' + String(value || '').trim().replace(/[.*+?^()|[\]\\$]/g, (character) => '\\' + character) + '$', 'i');
 fs.mkdirSync(uploadsDirectory, { recursive: true });
+const isCourseAdmin = (user) => user?.role === 'admin';
+const hasApprovedCourseAccess = (user, courseId) => (user?.downloadApprovals || []).some((entry) =>
+  entry.resourceModel === 'CourseContent'
+  && String(entry.resourceId) === String(courseId)
+  && entry.status === 'approved'
+);
+const canAccessCourse = (user, course) => !course?.isPremium || isCourseAdmin(user) || hasApprovedCourseAccess(user, course?._id);
+
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -20,26 +28,30 @@ const storage = multer.diskStorage({
   }
 });
 
-// File filter to allow PDF and PPT files
+// Accept PDF, PowerPoint, and browser-playable local video formats.
 const fileFilter = (req, file, cb) => {
   const allowedMimes = [
     'application/pdf',
     'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'video/mp4',
+    'video/webm',
+    'video/ogg'
   ];
-
-  if (allowedMimes.includes(file.mimetype)) {
+  const extension = path.extname(file.originalname || '').toLowerCase();
+  const allowedVideoExtension = ['.mp4', '.webm', '.ogv', '.ogg'].includes(extension);
+  if (allowedMimes.includes(file.mimetype) && (!file.mimetype.startsWith('video/') || allowedVideoExtension)) {
     cb(null, true);
   } else {
-    cb(new Error('Only PDF and PPT files are allowed!'), false);
+    cb(new Error('Allowed files: PDF, PPT/PPTX, MP4, WebM, and OGG video.'), false);
   }
 };
 
 const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
+  storage,
+  fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
+    fileSize: 500 * 1024 * 1024 // Up to 500MB per file; configure hosting limits accordingly.
   }
 });
 
@@ -128,29 +140,37 @@ const uploadContent = async (req, res) => {
     if (parsedPpts.some((item) => !String(item?.title || '').trim())) {
       return res.status(400).json({ success: false, message: 'Every PowerPoint presentation must have a title.' });
     }
-    if (parsedVideos.some((item) => !String(item?.title || '').trim() || !String(item?.url || '').trim())) {
-      return res.status(400).json({ success: false, message: 'Every video must have both a title and a video URL.' });
+    if (parsedVideos.some((item) => !String(item?.title || '').trim() || (!String(item?.url || '').trim() && item?.fileUpload !== true))) {
+      return res.status(400).json({ success: false, message: 'Every video must have a title and either a video URL or uploaded video file.' });
     }
     if (parsedQuestions.some((item) => !String(item?.question || '').trim() || !String(item?.answer || '').trim())) {
       return res.status(400).json({ success: false, message: 'Every exam question must include both a question and an answer.' });
     }
 
-    // Match uploaded files to their note/PPT entries in the order selected.
+    // Match each uploaded file to its material by MIME type and selection order.
     let noteFileIndex = 0;
     let pptFileIndex = 0;
+    let videoFileIndex = 0;
+    const localVideoEntries = parsedVideos.filter((item) => item.fileUpload === true);
     (req.files || []).forEach((file) => {
+      const isVideo = String(file.mimetype || '').startsWith('video/');
       const isPpt = file.mimetype.includes('powerpoint') || file.mimetype.includes('presentation');
-      if (isPpt && parsedPpts[pptFileIndex]) {
+      if (isVideo && localVideoEntries[videoFileIndex]) {
+        localVideoEntries[videoFileIndex].url = `/uploads/${file.filename}`;
+        localVideoEntries[videoFileIndex].mimeType = file.mimetype;
+        delete localVideoEntries[videoFileIndex].fileUpload;
+        videoFileIndex += 1;
+      } else if (isPpt && parsedPpts[pptFileIndex]) {
         parsedPpts[pptFileIndex].fileUrl = `/uploads/${file.filename}`;
         pptFileIndex += 1;
-      } else if (!isPpt && parsedNotes[noteFileIndex]) {
+      } else if (file.mimetype === 'application/pdf' && parsedNotes[noteFileIndex]) {
         parsedNotes[noteFileIndex].fileUrl = `/uploads/${file.filename}`;
         noteFileIndex += 1;
       }
     });
 
-    if (noteFileIndex !== parsedNotes.length || pptFileIndex !== parsedPpts.length) {
-      return res.status(400).json({ success: false, message: 'A selected PDF or PowerPoint file is missing or does not match its material entry. Please reselect the files and try again.' });
+    if (noteFileIndex !== parsedNotes.length || pptFileIndex !== parsedPpts.length || videoFileIndex !== localVideoEntries.length) {
+      return res.status(400).json({ success: false, message: 'A selected PDF, PowerPoint, or video file is missing or does not match its material entry. Please reselect the files and try again.' });
     }
 
     const identity = {
@@ -251,12 +271,19 @@ const getContent = async (req, res) => {
     const approvedIds = new Set((req.user?.downloadApprovals || []).filter((entry) => entry.resourceModel === 'CourseContent' && entry.status === 'approved').map((entry) => String(entry.resourceId)));
     content.forEach((item) => {
       item.pricingTier = String(item.faculty || '').toLowerCase() === 'phd' ? 'phd' : ['elementary', 'highschool'].includes(String(item.level || '').toLowerCase()) ? String(item.level).toLowerCase() : String(item.level || '').toLowerCase() === 'coding' ? 'general' : 'university';
-      item.hasAccess = !item.isPremium || isAdmin || unlockedIds.has(String(item._id)) || approvedIds.has(String(item._id));
+      item.hasAccess = !item.isPremium || isAdmin || approvedIds.has(String(item._id));
     });
-    // Never expose private note/PPT upload paths in public catalog responses.
+    // Never expose protected file URLs or lesson links for locked Premium courses.
     content.forEach((item) => {
-      item.notes = (item.notes || []).map(({ title }) => ({ title }));
-      item.ppts = (item.ppts || []).map(({ title }) => ({ title }));
+      if (item.isPremium && !item.hasAccess) {
+        item.notes = (item.notes || []).map(({ title }) => ({ title }));
+        item.ppts = (item.ppts || []).map(({ title }) => ({ title }));
+        item.videos = (item.videos || []).map(({ title }) => ({ title }));
+        item.questions = [];
+      } else {
+        item.notes = (item.notes || []).map(({ title }) => ({ title }));
+        item.ppts = (item.ppts || []).map(({ title }) => ({ title }));
+      }
     });
     // University listings return metadata only; lesson URLs are fetched from the protected detail endpoint.
     if (level === 'university') {
@@ -366,6 +393,13 @@ const downloadCourseVideo = async (req, res) => {
     if (!isAdmin && !isUnlocked && !isApproved) return res.status(403).json({ success: false, message: 'Administrator approval is required before downloading this course video.' });
     const video = course.videos?.[Number(req.params.index)];
     if (!video?.url) return res.status(404).json({ success: false, message: 'Video not found.' });
+    if (String(video.url).startsWith('/uploads/')) {
+      const filePath = path.join(uploadsDirectory, path.basename(video.url));
+      if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, message: 'Uploaded video file is missing from the server.' });
+      res.type(video.mimeType || 'video/mp4');
+      if (req.query.download === '1') return res.download(filePath, path.basename(filePath));
+      return res.sendFile(filePath);
+    }
     let target;
     try { target = new URL(video.url); } catch { return res.status(400).json({ success: false, message: 'Video URL is invalid.' }); }
     if (!['http:', 'https:'].includes(target.protocol)) return res.status(400).json({ success: false, message: 'Unsupported video URL.' });
@@ -532,13 +566,10 @@ const unlockCourseForStudent = async (req, res) => {
     const student = await User.findById(userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
     if (student.role === 'admin') return res.status(400).json({ success: false, message: 'Choose a student account.' });
-    const alreadyUnlocked = student.unlockedCourseContents.some((id) => String(id) === String(course._id));
     student.downloadApprovals = (student.downloadApprovals || []).filter((entry) => !(entry.resourceModel === 'CourseContent' && String(entry.resourceId) === String(course._id)));
     student.downloadApprovals.push({ resourceModel: 'CourseContent', resourceId: course._id, status: 'approved', approvedBy: req.user._id, approvedAt: new Date() });
-    if (!alreadyUnlocked) {
-      student.unlockedCourseContents.push(course._id);
-      await student.save();
-    }
+    student.unlockedCourseContents = (student.unlockedCourseContents || []).filter((id) => String(id) !== String(course._id));
+    await student.save();
     return res.json({ success: true, message: 'Premium course approved for this student.' });
   } catch (error) {
     console.error('Unlock premium course error:', error);

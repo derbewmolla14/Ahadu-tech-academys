@@ -33,6 +33,7 @@ router.get('/', optionalAuth, getContent);
 router.get('/admin/all', auth, permit('admin'), getAllCourses);
 router.get('/admin/students', auth, permit('admin'), getStudentsForPremiumAccess);
 router.get('/:id/material/:kind/:index', auth, streamCourseMaterial);
+router.get('/:id/video/:index', auth, downloadCourseVideo);
 router.get('/:id/video/:index/download', auth, downloadCourseVideo);
 router.post('/:id/unlock', auth, permit('admin'), unlockCourseForStudent);
 router.delete('/:id/unlock/:userId', auth, permit('admin'), lockCourseForStudent);
