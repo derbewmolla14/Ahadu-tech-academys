@@ -46,6 +46,8 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = useCallback(async (profileData) => {
     const response = await api.patch('/auth/me', profileData);
     setUser(response.data.user);
+    const savedLanguage = response.data.user?.preferences?.language;
+    if (savedLanguage) localStorage.setItem('language', savedLanguage);
     return response.data;
   }, []);
 
@@ -58,6 +60,7 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider
       value={{
         user,
+        language: user?.preferences?.language || localStorage.getItem('language') || 'en',
         loading,
         login,
         logout,
