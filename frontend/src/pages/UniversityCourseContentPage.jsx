@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { apiFetch } from '../api/api';
+import DocumentViewerModal from '../components/DocumentViewerModal';
 
 export default function UniversityCourseContentPage() {
   const { courseId } = useParams();
@@ -58,22 +59,52 @@ export default function UniversityCourseContentPage() {
 }
 
 function MaterialSection({ title, items, getUrl, protectedDownload = false }) {
+  const [documentFile, setDocumentFile] = useState(null);
+
   const openProtectedFile = async (event, item, index) => {
     event.preventDefault();
-    const tab = window.open('about:blank', '_blank');
     try {
       const response = await apiFetch(getUrl(item, index));
       if (!response.ok) {
         const result = await response.json().catch(() => ({}));
         throw new Error(result.message || 'Unable to open this file.');
       }
-      const objectUrl = URL.createObjectURL(await response.blob());
-      if (tab) tab.location.href = objectUrl;
-      else window.location.href = objectUrl;
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const fallbackExtension = title.toLowerCase().includes('powerpoint') ? '.pptx' : '.pdf';
+      const fileName = item.fileName || item.originalFileName || item.title || (title + fallbackExtension);
+      setDocumentFile({ title: item.title || title, fileName, mimeType: blob.type, url });
     } catch (error) {
-      if (tab) tab.close();
       window.alert(error.message || 'Unable to open this file.');
     }
   };
-  return <section className="rounded-3xl border border-slate-800 bg-slate-900 p-6"><h2 className="text-xl font-semibold text-white">{title}</h2><ul className="mt-4 space-y-3">{items.map((item, index) => <li key={index}><a href={protectedDownload ? '#' : getUrl(item, index)} onClick={protectedDownload ? (event) => openProtectedFile(event, item, index) : undefined} target={protectedDownload ? undefined : '_blank'} rel="noreferrer" className="text-sky-400 hover:underline">{item.title || title} ↗</a></li>)}</ul></section>;
+
+  const closeViewer = () => {
+    if (documentFile?.url?.startsWith('blob:')) URL.revokeObjectURL(documentFile.url);
+    setDocumentFile(null);
+  };
+
+  return (
+    <>
+      <section className="rounded-3xl border border-slate-800 bg-slate-900 p-6">
+        <h2 className="text-xl font-semibold text-white">{title}</h2>
+        <ul className="mt-4 space-y-3">
+          {items.map((item, index) => (
+            <li key={index}>
+              {protectedDownload ? (
+                <button type="button" onClick={(event) => openProtectedFile(event, item, index)} className="text-left text-sky-400 hover:underline">
+                  Open {item.title || title} →
+                </button>
+              ) : (
+                <a href={getUrl(item, index)} target="_blank" rel="noreferrer" className="text-sky-400 hover:underline">
+                  {item.title || title} ↗
+                </a>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+      <DocumentViewerModal file={documentFile} onClose={closeViewer} />
+    </>
+  );
 }
