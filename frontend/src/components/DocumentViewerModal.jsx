@@ -13,7 +13,7 @@ const getYouTubeEmbedUrl = (value = '') => {
     if (host === 'youtu.be') videoId = parsed.pathname.split('/').filter(Boolean)[0] || '';
     else if (['youtube.com', 'm.youtube.com', 'youtube-nocookie.com', 'www.youtube-nocookie.com'].includes(host)) {
       if (parsed.pathname === '/watch') videoId = parsed.searchParams.get('v') || '';
-      else if (/^\\/(embed|shorts|live)\\//.test(parsed.pathname)) videoId = parsed.pathname.split('/')[2] || '';
+      else if (/^\/(embed|shorts|live)\//.test(parsed.pathname)) videoId = parsed.pathname.split('/')[2] || '';
     }
     return /^[a-zA-Z0-9_-]{11}$/.test(videoId)
       ? `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&playsinline=1`
