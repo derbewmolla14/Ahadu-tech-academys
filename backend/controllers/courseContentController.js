@@ -143,13 +143,14 @@ const uploadContent = async (req, res) => {
     let noteFileIndex = 0;
     let pptFileIndex = 0;
     let videoFileIndex = 0;
+    const localVideoEntries = parsedVideos.filter((item) => item.fileUpload === true);
     (req.files || []).forEach((file) => {
       const isVideo = String(file.mimetype || '').startsWith('video/');
       const isPpt = file.mimetype.includes('powerpoint') || file.mimetype.includes('presentation');
-      if (isVideo && parsedVideos[videoFileIndex]?.fileUpload) {
-        parsedVideos[videoFileIndex].url = `/uploads/${file.filename}`;
-        parsedVideos[videoFileIndex].mimeType = file.mimetype;
-        delete parsedVideos[videoFileIndex].fileUpload;
+      if (isVideo && localVideoEntries[videoFileIndex]) {
+        localVideoEntries[videoFileIndex].url = `/uploads/${file.filename}`;
+        localVideoEntries[videoFileIndex].mimeType = file.mimetype;
+        delete localVideoEntries[videoFileIndex].fileUpload;
         videoFileIndex += 1;
       } else if (isPpt && parsedPpts[pptFileIndex]) {
         parsedPpts[pptFileIndex].fileUrl = `/uploads/${file.filename}`;
@@ -160,8 +161,7 @@ const uploadContent = async (req, res) => {
       }
     });
 
-    const expectedVideoFiles = parsedVideos.filter((item) => item.fileUpload === true).length;
-    if (noteFileIndex !== parsedNotes.length || pptFileIndex !== parsedPpts.length || videoFileIndex !== expectedVideoFiles) {
+    if (noteFileIndex !== parsedNotes.length || pptFileIndex !== parsedPpts.length || videoFileIndex !== localVideoEntries.length) {
       return res.status(400).json({ success: false, message: 'A selected PDF, PowerPoint, or video file is missing or does not match its material entry. Please reselect the files and try again.' });
     }
 
