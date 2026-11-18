@@ -6,7 +6,8 @@ import { AuthContext } from '../context/AuthContext';
 export default function HighSchoolGradePage() {
   const { id } = useParams();
   const { user, language } = useContext(AuthContext);
-  const selectedLanguage = language || user?.preferences?.language || 'en';
+  const selectedLanguage = String(language || user?.preferences?.language || 'en').trim().toLowerCase();
+  const isAmharic = ['am', 'amharic', 'አማርኛ'].includes(selectedLanguage);
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -18,7 +19,7 @@ export default function HighSchoolGradePage() {
       setError('');
       try {
         const params = new URLSearchParams({ level: 'highschool', grade: String(id) });
-        if (selectedLanguage === 'am') params.set('language', 'am');
+        if (isAmharic) params.set('language', 'am');
         const response = await apiFetch('content?' + params.toString(), { signal: controller.signal });
         const result = await response.json();
         if (!response.ok || !result.success) throw new Error(result.message || 'Unable to load High School courses.');
@@ -40,7 +41,7 @@ export default function HighSchoolGradePage() {
       window.removeEventListener('focus', refreshWhenVisible);
       document.removeEventListener('visibilitychange', refreshWhenVisible);
     };
-  }, [id, selectedLanguage]);
+  }, [id, isAmharic]);
 
   return (
     <main className="mx-auto max-w-6xl space-y-6 p-5 text-white">
