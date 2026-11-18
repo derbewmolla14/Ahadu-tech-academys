@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const UniversityResource = require('../models/UniversityResource');
+const CourseContent = require('../models/CourseContent');
 const Department = require('../models/Department');
 const User = require('../models/User');
 
@@ -17,62 +18,166 @@ const resolveDepartment = async (stream, departmentName) => {
   const category = STREAM_CATEGORY[stream];
   const name = String(departmentName || '').trim();
   if (!category || !name) return null;
-  return Department.findOne({ category, name: { $regex: exactDepartmentRegex(name) }, isActive: true })
+  return Department.findOne({ category: { $regex: exactDepartmentRegex(category) }, name: { $regex: exactDepartmentRegex(name) }, isActive: true })
     .select('name normalizedName category').lean();
 };
 
 exports.getCatalog = async (req, res) => {
   try {
-    const { stream, level, department, course, kind, academicYear } = req.query;
-    if (!stream || !['Natural', 'Social', 'Health', 'Diploma'].includes(stream)) return res.status(400).json({ message: 'Choose a valid academic stream.' });
-    if (level && !['Freshman', 'Remedial', 'Senior', 'Diploma'].includes(level)) return res.status(400).json({ message: 'Invalid academic level.' });
-    if (!level) return res.json({ streams: ['Natural', 'Social', 'Health', 'Diploma'], levels: ['Freshman', 'Remedial', 'Senior', 'Diploma'] });
-    const base = { ...approvedFilter, stream, level };
+    const { stream, level, department, course, kind, academicYear, language } = req.query;
+    if (!stream) return res.status(400).json({ message: 'Choose a valid academic stream.' });
+    const normalizedStream = Object.keys(STREAM_CATEGORY).find((key) => key.toLowerCase() === String(stream).trim().toLowerCase());
+    const normalizedLevel = ['Freshman', 'Remedial', 'Senior', 'Diploma'].find((value) => value.toLowerCase() === String(level || '').trim().toLowerCase());
+    if (!normalizedStream) return res.status(400).json({ message: 'Choose a valid academic stream.' });
+    if (level && !normalizedLevel) return res.status(400).json({ message: 'Invalid academic level.' });
+    const selectedStream = normalizedStream;
+    const selectedLevel = normalizedLevel;
+    if (!selectedLevel) return res.json({ streams: ['Natural', 'Social', 'Health', 'Diploma'], levels: ['Freshman', 'Remedial', 'Senior', 'Diploma'] });
+    const base = {
+      ...approvedFilter,
+      ...(String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic' ? { language: 'am' } : {}),
+      stream: { $regex: exactDepartmentRegex(selectedStream) },
+      ...(selectedLevel ? { level: { $regex: exactDepartmentRegex(selectedLevel) } } : {}),
+    };
     let canonicalDepartment = '';
-    if (level === 'Senior' && department) {
-      const departmentRecord = await resolveDepartment(stream, department);
+    if (selectedLevel === 'Senior' && department) {
+      const departmentRecord = await resolveDepartment(selectedStream, department);
       if (!departmentRecord) return res.json({ courses: [], resources: [], message: 'No matching active department was found.' });
       canonicalDepartment = departmentRecord.name;
     }
-    if (level === 'Senior' && !department) {
-      const category = ({ Natural: 'Natural Science', Social: 'Social Science', Health: 'Health Science', Diploma: 'Diploma' })[stream];
-      const departments = await Department.find({ category, isActive: true }).select('name').sort({ name: 1 }).lean();
+    if (selectedLevel === 'Senior' && !department) {
+      const category = STREAM_CATEGORY[selectedStream];
+      const departments = await Department.find({ category: { $regex: exactDepartmentRegex(category) }, isActive: true }).select('name').sort({ name: 1 }).lean();
       return res.json({ departments: departments.map((item) => item.name) });
     }
-    if (level !== 'Senior' && !course) {
-      const courses = await UniversityResource.distinct('course', { ...base, course: { $nin: ['', null] }, kind: { $in: ['course-material', 'exam-question'] } });
+    if (selectedLevel !== 'Senior' && !course) {
+      const legacyBase = { level: { $regex: exactDepartmentRegex('university') }, ...(String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic' ? { language: 'am' } : {}), faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) }, studyStage: { $regex: exactDepartmentRegex(selectedLevel) }, isActive: true };
+      const [resourceCourses, legacyCourses] = await Promise.all([
+        UniversityResource.distinct('course', { ...base, course: { $nin: ['', null] }, kind: { $in: ['course-material', 'exam-question'] } }),
+        CourseContent.distinct('course', { ...legacyBase, course: { $nin: ['', null] } }),
+      ]);
+      const courses = [...new Set([...resourceCourses, ...legacyCourses].map((item) => String(item || '').trim()).filter(Boolean))];
       return res.json({ courses: courses.sort((a, b) => a.localeCompare(b)) });
     }
-    if (level === 'Senior' && department && !kind) {
+    if (selectedLevel === 'Senior' && department && !kind) {
       return res.json({ options: [
         { id: 'exit-exam', label: 'Exit Exam' },
         { id: 'course-material', label: 'Course Material' },
       ] });
     }
-    if (level === 'Senior' && department && kind === 'course-material' && !course) {
-      const courses = await UniversityResource.distinct('course', { ...base, department: { $regex: exactDepartmentRegex(canonicalDepartment) }, kind, course: { $nin: ['', null] } });
+    if (selectedLevel === 'Senior' && department && kind === 'course-material' && !course) {
+      const legacyBase = {
+        level: { $regex: exactDepartmentRegex('university') }, ...(String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic' ? { language: 'am' } : {}), faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) }, studyStage: { $regex: exactDepartmentRegex('Senior') },
+        department: { $regex: exactDepartmentRegex(canonicalDepartment) }, isActive: true,
+        course: { $nin: ['', null] },
+      };
+      const [resourceCourses, legacyCourses] = await Promise.all([
+        UniversityResource.distinct('course', { ...base, department: { $regex: exactDepartmentRegex(canonicalDepartment) }, kind, course: { $nin: ['', null] } }),
+        CourseContent.distinct('course', legacyBase),
+      ]);
+      const courses = [...new Set([...resourceCourses, ...legacyCourses].map((item) => String(item || '').trim()).filter(Boolean))];
       return res.json({ courses: courses.sort((a, b) => a.localeCompare(b)) });
     }
-    if (level !== 'Senior' && course && !kind) {
+    if (selectedLevel !== 'Senior' && course && !kind) {
       return res.json({ options: [
         { id: 'exam-question', label: 'Exam Question' },
         { id: 'course-material', label: 'Course Material' },
       ] });
     }
     const query = { ...base };
-    if (department) query.department = { $regex: exactDepartmentRegex(level === 'Senior' ? canonicalDepartment : department) };
-    if (course) query.course = course;
-    if (kind) query.kind = kind;
-    if (academicYear) query.$or = [{ academicYear: String(academicYear).trim() }, { academicYear: 'All Years' }, { academicYear: '' }, { academicYear: null }, { academicYear: { $exists: false } }];
-    const resources = await UniversityResource.find(query)
-      .select('title resourceType textContent answer solution originalFileName mimeType accessType')
-      .sort({ createdAt: -1 }).lean();
-    const unlocked = new Set((req.user?.unlockedUniversityResources || []).map((id) => String(id)));
+    if (department) query.department = { $regex: exactDepartmentRegex(selectedLevel === 'Senior' ? canonicalDepartment : department) };
+    if (course) query.course = { $regex: exactDepartmentRegex(course) };
+    if (kind) query.kind = { $regex: exactDepartmentRegex(kind) };
+    if (academicYear) query.$or = [
+      { academicYear: { $regex: exactDepartmentRegex(academicYear) } },
+      { academicYear: { $regex: exactDepartmentRegex('All Years') } },
+      { academicYear: '' }, { academicYear: null }, { academicYear: { $exists: false } },
+    ];
+
+    const legacyQuery = {
+      level: { $regex: exactDepartmentRegex('university') },
+      ...(String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic' ? { language: 'am' } : {}),
+      faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) },
+      studyStage: { $regex: exactDepartmentRegex(selectedLevel) },
+      isActive: true,
+    };
+    if (selectedLevel === 'Senior' && department) legacyQuery.department = { $regex: exactDepartmentRegex(canonicalDepartment) };
+    if (course) legacyQuery.course = { $regex: exactDepartmentRegex(course) };
+    if (academicYear && selectedLevel === 'Senior') {
+      legacyQuery.$or = [
+        { year: { $regex: exactDepartmentRegex(academicYear) } },
+        { year: { $regex: exactDepartmentRegex('All Years') } },
+        { year: '' },
+        { year: null },
+        { year: { $exists: false } },
+      ];
+    }
+    if (kind === 'course-material') legacyQuery.contentType = { $in: ['course-materials', null] };
+    else if (kind === 'exit-exam') legacyQuery.contentType = 'exit-exam';
+    else if (kind === 'exam-question') legacyQuery._id = null;
+
+    const [resources, legacyCourses] = await Promise.all([
+      UniversityResource.find(query)
+        .select('title resourceType textContent answer solution originalFileName mimeType accessType')
+        .sort({ createdAt: -1 }).lean(),
+      CourseContent.find(legacyQuery)
+        .select('course description notes videos ppts questions isPremium createdAt')
+        .sort({ createdAt: -1 }).lean(),
+    ]);
+
+    const unlockedUniversity = new Set((req.user?.unlockedUniversityResources || []).map((id) => String(id)));
+    const unlockedCourses = new Set((req.user?.unlockedCourseContents || []).map((id) => String(id)));
+    const isAdmin = req.user?.role === 'admin';
+    const legacyResources = [];
+
+    legacyCourses.forEach((item) => {
+      const hasAccess = !item.isPremium || isAdmin || unlockedCourses.has(String(item._id));
+      if (kind === 'exit-exam') {
+        (item.questions || []).forEach((question, index) => {
+          legacyResources.push({
+            _id: `${item._id}:question:${index}`,
+            source: 'course-content',
+            courseContentId: String(item._id),
+            title: `Question ${index + 1}`,
+            resourceType: 'text',
+            textContent: question.question,
+            answer: question.answer,
+            solution: '',
+            accessType: item.isPremium ? 'premium' : 'free',
+            hasAccess,
+          });
+        });
+        return;
+      }
+      (item.notes || []).forEach((note, index) => legacyResources.push({
+        _id: `${item._id}:notes:${index}`, source: 'course-content',
+        courseContentId: String(item._id), materialKind: 'notes', materialIndex: index,
+        title: note.title, resourceType: 'pdf', originalFileName: path.basename(note.fileUrl || ''),
+        accessType: item.isPremium ? 'premium' : 'free', hasAccess,
+      }));
+      (item.ppts || []).forEach((ppt, index) => legacyResources.push({
+        _id: `${item._id}:ppts:${index}`, source: 'course-content',
+        courseContentId: String(item._id), materialKind: 'ppts', materialIndex: index,
+        title: ppt.title, resourceType: 'ppt', originalFileName: path.basename(ppt.fileUrl || ''),
+        accessType: item.isPremium ? 'premium' : 'free', hasAccess,
+      }));
+      (item.videos || []).forEach((video, index) => legacyResources.push({
+        _id: `${item._id}:videos:${index}`, source: 'course-content',
+        courseContentId: String(item._id), materialKind: 'video', materialIndex: index,
+        title: video.title, resourceType: 'video', videoUrl: video.url,
+        accessType: item.isPremium ? 'premium' : 'free', hasAccess,
+      }));
+    });
+
     return res.json({
-      resources: resources.map((item) => ({
-        ...item,
-        hasAccess: item.accessType !== 'premium' || req.user?.role === 'admin' || unlocked.has(String(item._id)),
-      })),
+      resources: [
+        ...resources.map((item) => ({
+          ...item,
+          source: 'university-resource',
+          hasAccess: item.accessType !== 'premium' || isAdmin || unlockedUniversity.has(String(item._id)),
+        })),
+        ...legacyResources,
+      ],
     });
   } catch (error) {
     console.error('University catalog error:', error);
@@ -82,7 +187,7 @@ exports.getCatalog = async (req, res) => {
 
 exports.adminUpload = async (req, res) => {
   try {
-    const { stream, level, department = '', course = '', kind, academicYear = '', resourceType, title, textContent = '', answer = '', solution = '', accessType = 'free' } = req.body;
+    const { stream, level, department = '', course = '', kind, academicYear = '', resourceType, title, textContent = '', answer = '', solution = '', accessType = 'free', language = 'en' } = req.body;
     let canonicalDepartment = '';
     if (!['Natural', 'Social', 'Health', 'Diploma'].includes(stream) || !['Freshman', 'Remedial', 'Senior', 'Diploma'].includes(level)) return res.status(400).json({ message: 'Invalid stream or level.' });
     if (!['course-material', 'exam-question', 'exit-exam'].includes(kind)) return res.status(400).json({ message: 'Invalid content category.' });
@@ -111,12 +216,15 @@ exports.adminUpload = async (req, res) => {
     const storedFileName = req.file ? crypto.randomUUID() + path.extname(req.file.originalname).toLowerCase() : '';
     if (req.file) fs.writeFileSync(path.join(PRIVATE_DIR, storedFileName), req.file.buffer, { flag: 'wx' });
     const item = await UniversityResource.create({
-      stream, level, department: canonicalDepartment, course, kind, academicYear: String(academicYear || '').trim() || 'All Years', resourceType, title: String(title).trim(),
+      stream, level, language: ['am', 'amharic'].includes(String(language).trim().toLowerCase()) ? 'am' : 'en', department: canonicalDepartment, course, kind, academicYear: String(academicYear || '').trim() || 'All Years', resourceType, title: String(title).trim(),
       textContent, answer, solution, accessType, storedFileName,
       originalFileName: req.file?.originalname || '', mimeType: req.file?.mimetype || '',
-      uploadedBy: req.user._id, status: 'pending',
+      uploadedBy: req.user._id,
+      status: 'approved',
+      approvedBy: req.user._id,
+      approvedAt: new Date(),
     });
-    return res.status(201).json({ message: 'Upload received and awaiting admin approval.', resource: { id: item._id, status: item.status, accessType: item.accessType } });
+    return res.status(201).json({ message: 'Resource published successfully and is now visible to students.', resource: { id: item._id, status: item.status, accessType: item.accessType } });
   } catch (error) {
     console.error('University upload error:', error);
     return res.status(500).json({ message: 'Unable to save upload.' });
@@ -158,12 +266,16 @@ exports.setStudentAccess = async (req, res) => {
     const { userId, grant = true } = req.body;
     if (!userId) return res.status(400).json({ message: 'Student ID is required.' });
     const resource = await UniversityResource.findById(req.params.id);
-    if (!resource || resource.accessType !== 'premium' || resource.status !== 'approved') return res.status(404).json({ message: 'Approved premium resource not found.' });
+    if (!resource || resource.status !== 'approved') return res.status(404).json({ message: 'Approved resource not found.' });
     const student = await User.findById(userId);
     if (!student || student.role === 'admin') return res.status(404).json({ message: 'Student account not found.' });
-    if (grant) await User.updateOne({ _id: student._id }, { $addToSet: { unlockedUniversityResources: resource._id } });
-    else await User.updateOne({ _id: student._id }, { $pull: { unlockedUniversityResources: resource._id } });
-    return res.json({ message: grant ? 'Premium resource access granted to this student.' : 'Premium resource access revoked from this student.' });
+    if (grant) {
+      await User.updateOne({ _id: student._id }, { $addToSet: { unlockedUniversityResources: resource._id }, $pull: { downloadApprovals: { resourceModel: 'UniversityResource', resourceId: resource._id } } });
+      await User.updateOne({ _id: student._id }, { $push: { downloadApprovals: { resourceModel: 'UniversityResource', resourceId: resource._id, status: 'approved', approvedBy: req.user._id, approvedAt: new Date() } } });
+    } else {
+      await User.updateOne({ _id: student._id }, { $pull: { unlockedUniversityResources: resource._id, downloadApprovals: { resourceModel: 'UniversityResource', resourceId: resource._id } } });
+    }
+    return res.json({ message: grant ? 'Download access approved for this student.' : 'Download access revoked for this student.' });
   } catch (error) {
     console.error('University premium access update error:', error);
     return res.status(500).json({ message: 'Unable to update student access.' });
@@ -176,11 +288,14 @@ exports.downloadApproved = async (req, res) => {
     if (!item) return res.status(404).json({ message: 'Approved resource not found.' });
     const isAdmin = req.user?.role === 'admin';
     const isUnlocked = (req.user?.unlockedUniversityResources || []).some((id) => String(id) === String(item._id));
-    if (item.accessType === 'premium' && !isAdmin && !isUnlocked) return res.status(403).json({ message: 'This is a premium resource. Please complete payment or request access before opening it.' });
+    const isApproved = (req.user?.downloadApprovals || []).some((entry) => entry.resourceModel === 'UniversityResource' && String(entry.resourceId) === String(item._id) && entry.status === 'approved');
+    if (req.query.download === '1' && !isAdmin && !isUnlocked && !isApproved) return res.status(403).json({ message: 'Administrator approval is required before downloading this resource.' });
+    if (req.query.download !== '1' && item.accessType === 'premium' && !isAdmin && !isUnlocked && !isApproved) return res.status(403).json({ message: 'Administrator approval is required to view this premium resource.' });
     if (!item.storedFileName) return res.status(404).json({ message: 'This resource has no attached file.' });
     const filePath = path.join(PRIVATE_DIR, path.basename(item.storedFileName));
     if (!fs.existsSync(filePath)) return res.status(404).json({ message: 'File is missing.' });
     res.type(item.mimeType || 'application/octet-stream');
+    if (req.query.download === '1') return res.download(filePath, item.originalFileName || item.title);
     return res.sendFile(filePath, (error) => {
       if (error && !res.headersSent) res.status(error.statusCode || 500).json({ message: 'Unable to deliver approved file.' });
     });

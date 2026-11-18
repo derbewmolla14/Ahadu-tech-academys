@@ -56,6 +56,7 @@ export async function apiFetch(relativePath, options = {}) {
 
   return fetch(apiPath(relativePath), {
     ...options,
+    cache: options.cache || 'no-store',
     headers: hdr,
     credentials: options.credentials || 'include',
   });

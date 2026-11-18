@@ -117,19 +117,26 @@ app.use(express.json({ limit: '10mb' }));
 app.use('/uploads', async (req, res, next) => {
   try {
     const requestedFile = '/uploads' + req.path;
-    const premiumCourse = await CourseContent.findOne({
-      isPremium: true,
+    const courseMaterial = await CourseContent.findOne({
       $or: [{ 'notes.fileUrl': requestedFile }, { 'ppts.fileUrl': requestedFile }]
     }).select('_id');
-    if (!premiumCourse) return next();
+    if (!courseMaterial) return next();
+
     return authMiddleware(req, res, () => {
       const isAdmin = req.user?.role === 'admin';
-      const isUnlocked = req.user?.unlockedCourseContents?.some((item) => String(item) === String(premiumCourse._id));
-      if (!isAdmin && !isUnlocked) return res.status(403).json({ success: false, message: 'Administrator approval is required for this premium material.' });
+      const isUnlocked = req.user?.unlockedCourseContents?.some((item) => String(item) === String(courseMaterial._id));
+      const isApproved = req.user?.downloadApprovals?.some((entry) =>
+        entry.resourceModel === 'CourseContent'
+        && String(entry.resourceId) === String(courseMaterial._id)
+        && entry.status === 'approved'
+      );
+      if (!isAdmin && !isUnlocked && !isApproved) {
+        return res.status(403).json({ success: false, message: 'Administrator approval is required before accessing this course file directly.' });
+      }
       return next();
     });
   } catch (error) {
-    console.error('Premium upload access check failed:', error);
+    console.error('Course upload access check failed:', error);
     return res.status(500).json({ success: false, message: 'Unable to verify material access.' });
   }
 }, express.static(path.join(__dirname, 'uploads')));

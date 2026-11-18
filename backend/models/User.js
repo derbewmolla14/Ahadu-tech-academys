@@ -16,6 +16,13 @@ const userSchema = new mongoose.Schema(
     unlockedCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
     unlockedCourseContents: [{ type: mongoose.Schema.Types.ObjectId, ref: 'CourseContent' }],
     unlockedUniversityResources: [{ type: mongoose.Schema.Types.ObjectId, ref: 'UniversityResource' }],
+    downloadApprovals: [{
+      resourceModel: { type: String, enum: ['CourseContent', 'UniversityResource'], required: true },
+      resourceId: { type: mongoose.Schema.Types.ObjectId, required: true },
+      status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved' },
+      approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+      approvedAt: { type: Date, default: null },
+    }],
   },
   { timestamps: true }
 );

@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const courseContentSchema = new mongoose.Schema({
   level: { type: String, enum: ['elementary', 'highschool', 'university', 'coding'], default: 'university' },
+  language: { type: String, enum: ['en', 'am'], default: 'en', index: true },
   grade: { type: String, default: '' },
   subject: { type: String, default: '' },
   technology: { type: String, default: '' },
@@ -98,5 +99,6 @@ const courseContentSchema = new mongoose.Schema({
 
 // Compound index preserves legacy identity while allowing a shared 'All Years' course.
 courseContentSchema.index({ university: 1, department: 1, year: 1, course: 1 }, { unique: true });
+courseContentSchema.index({ level: 1, language: 1, isActive: 1 });
 
 module.exports = mongoose.model('CourseContent', courseContentSchema);

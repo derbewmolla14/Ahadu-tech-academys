@@ -1,20 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { apiFetch, apiBaseURL } from '../api/api';
-
-const getUploadedFileUrl = (fileUrl) => {
-  if (!fileUrl) return '#';
-  if (/^https?:\/\//i.test(fileUrl)) return fileUrl;
-  const backendOrigin = apiBaseURL.replace(/\/api\/?$/, '');
-  return backendOrigin + '/' + String(fileUrl).replace(/^\/+/, '');
-};
+import { apiFetch } from '../api/api';
+import DocumentViewerModal from '../components/DocumentViewerModal';
+import PaymentMethodModal from '../components/PaymentMethodModal';
+import { AuthContext } from '../context/AuthContext';
+import { downloadApprovedResource } from '../utils/downloadApprovedResource';
 
 export default function ElementaryGradePage() {
   const { id } = useParams();
+  const { user, language } = useContext(AuthContext);
+  const selectedLanguage = String(language || user?.preferences?.language || 'en').trim().toLowerCase();
+  const isAmharic = ['am', 'amharic', 'አማርኛ'].includes(selectedLanguage);
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedPdf, setSelectedPdf] = useState(null);
+  const [downloadResource, setDownloadResource] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -28,12 +29,13 @@ export default function ElementaryGradePage() {
         setLoading(true);
         setError('');
         const params = new URLSearchParams({ level: 'elementary', grade: String(id) });
+        if (isAmharic) params.set('language', 'am');
         const response = await apiFetch(`content?${params.toString()}`);
         const result = await response.json();
         if (!response.ok || !result.success) {
           throw new Error(result.message || 'Could not load courses for this grade.');
         }
-        if (active) setCourses(Array.isArray(result.data) ? result.data : []);
+        if (active) setCourses(Array.isArray(result.data) ? result.data.filter((item) => item && item.isActive !== false) : []);
       } catch (err) {
         if (active) setError(err.message || 'Unable to load courses. Please try again.');
       } finally {
@@ -42,14 +44,36 @@ export default function ElementaryGradePage() {
     };
     loadCourses();
     return () => { active = false; };
-  }, [id]);
+  }, [id, isAmharic]);
+
+  const requestDownload = (resource) => downloadApprovedResource(resource, setDownloadResource);
+
+  const openCourseFile = async (course, kind, index, item) => {
+    try {
+      const endpoint = `content/${course._id}/material/${kind}/${index}`;
+      const response = await apiFetch(endpoint);
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.message || 'Unable to open this material.');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const fileName = item.title || (kind === 'notes' ? 'note.pdf' : 'presentation.pptx');
+      setSelectedPdf({ title: item.title || 'Course material', fileName, mimeType: blob.type, url, downloadEndpoint: endpoint + '?download=1' });
+    } catch (error) {
+      window.alert(error.message || 'Unable to open this material.');
+    }
+  };
+
+  const closeViewer = () => {
+    if (selectedPdf?.url?.startsWith('blob:')) URL.revokeObjectURL(selectedPdf.url);
+    setSelectedPdf(null);
+  };
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-6">
-      {selectedPdf && <div className="fixed inset-0 z-50 flex flex-col bg-slate-950/95 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label={selectedPdf.title}>
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 pb-3"><h2 className="truncate text-lg font-semibold text-white">{selectedPdf.title}</h2><button type="button" onClick={() => setSelectedPdf(null)} className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">Close ×</button></div>
-        <iframe title={selectedPdf.title} src={selectedPdf.url} className="mx-auto min-h-0 w-full max-w-6xl flex-1 rounded-xl border border-slate-700 bg-white" />
-      </div>}
+      <DocumentViewerModal file={selectedPdf} onClose={closeViewer} onDownloadRequest={requestDownload} />
+      <PaymentMethodModal open={Boolean(downloadResource)} resource={downloadResource} onClose={() => setDownloadResource(null)} />
       <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8">
         <Link to="/elementary" className="text-sm text-blue-400 hover:text-blue-300">← All Elementary grades</Link>
         <h1 className="mt-4 text-3xl font-bold text-white">Elementary — Grade {id}</h1>
@@ -79,7 +103,7 @@ export default function ElementaryGradePage() {
                   <h3 className="mb-2 font-semibold text-slate-200">📄 Notes</h3>
                   <ul className="space-y-2">
                     {course.notes.map((note, index) => (
-                      <li key={index}><button type="button" onClick={() => setSelectedPdf({ title: note.title || 'PDF note', url: getUploadedFileUrl(note.fileUrl) })} className="text-left text-sm text-blue-400 hover:underline">{note.title || 'Open PDF note'} ↗</button></li>
+                      <li key={index} className="flex flex-wrap items-center gap-3"><button type="button" onClick={() => openCourseFile(course, 'notes', index, note)} className="text-left text-sm text-blue-400 hover:underline">{note.title || 'Open PDF note'} ↗</button><button type="button" onClick={() => requestDownload({ title: note.title || 'PDF note', fileName: note.title || 'note.pdf', type: 'PDF', downloadEndpoint: `content/${course._id}/material/notes/${index}?download=1` })} className="rounded-lg border border-amber-500/60 px-3 py-1 text-xs font-semibold text-amber-200 hover:bg-amber-500/10">Download</button></li>
                     ))}
                   </ul>
                 </section>
@@ -89,7 +113,7 @@ export default function ElementaryGradePage() {
                   <h3 className="mb-2 font-semibold text-slate-200">🎥 Videos</h3>
                   <ul className="space-y-2">
                     {course.videos.map((video, index) => (
-                      <li key={index}><a className="text-sm text-blue-400 hover:underline" href={video.url} target="_blank" rel="noreferrer">{video.title || 'Watch video'} ↗</a></li>
+                      <li key={index} className="flex flex-wrap items-center gap-3"><button type="button" onClick={() => setSelectedPdf({ title: video.title || 'Video lesson', fileName: video.fileName || video.title || 'lesson.mp4', mimeType: video.mimeType || 'video/mp4', url: video.url, downloadEndpoint: `content/${course._id}/video/${index}/download` })} className="text-left text-sm text-blue-400 hover:underline">Watch {video.title || 'video'} →</button><button type="button" onClick={() => requestDownload({ title: video.title || 'Video lesson', fileName: video.fileName || 'lesson.mp4', type: 'video', downloadEndpoint: `content/${course._id}/video/${index}/download` })} className="rounded-lg border border-amber-500/60 px-3 py-1 text-xs font-semibold text-amber-200 hover:bg-amber-500/10">Download</button></li>
                     ))}
                   </ul>
                 </section>
@@ -99,7 +123,7 @@ export default function ElementaryGradePage() {
                   <h3 className="mb-2 font-semibold text-slate-200">📊 Presentations</h3>
                   <ul className="space-y-2">
                     {course.ppts.map((ppt, index) => (
-                      <li key={index}><a className="text-sm text-blue-400 hover:underline" href={getUploadedFileUrl(ppt.fileUrl)} target="_blank" rel="noreferrer">{ppt.title || 'Open presentation'} ↗</a></li>
+                      <li key={index} className="flex flex-wrap items-center gap-3"><button type="button" onClick={() => openCourseFile(course, 'ppts', index, ppt)} className="text-left text-sm text-blue-400 hover:underline">Open {ppt.title || 'presentation'} ↗</button><button type="button" onClick={() => requestDownload({ title: ppt.title || 'Presentation', fileName: ppt.fileName || ppt.originalFileName, type: 'PPT', downloadEndpoint: `content/${course._id}/material/ppts/${index}?download=1` })} className="rounded-lg border border-amber-500/60 px-3 py-1 text-xs font-semibold text-amber-200 hover:bg-amber-500/10">Download</button></li>
                     ))}
                   </ul>
                 </section>

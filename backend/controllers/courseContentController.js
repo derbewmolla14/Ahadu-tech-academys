@@ -49,7 +49,7 @@ const uploadContent = async (req, res) => {
     const {
       level = 'university', university = '', department = '', year = '',
       grade = '', subject = '', technology = '', faculty = '', studyStage: requestedStudyStage = '', contentType = 'course-materials', courseCode = '', course, description,
-      notes, videos, ppts, questions, isActive, isPremium
+      notes, videos, ppts, questions, isActive, isPremium, language = 'en'
     } = req.body;
 
     let studyStage = requestedStudyStage;
@@ -87,8 +87,9 @@ const uploadContent = async (req, res) => {
         if (!['Remedial', 'Freshman', 'Senior', 'Diploma'].includes(String(studyStage || '').trim())) return res.status(400).json({ success: false, message: 'Please select an Academic Stage.' });
         if (studyStage === 'Senior' && !String(department || '').trim()) return res.status(400).json({ success: false, message: 'Please select a Department.' });
         if (studyStage === 'Senior' && !['course-materials', 'exit-exam'].includes(contentType)) return res.status(400).json({ success: false, message: 'Select Course Materials or Exit Exam.' });
+        let configuredDepartment = null;
         if (studyStage === 'Senior') {
-          const configuredDepartment = await Department.findOne({ name: { $regex: exactDepartmentRegex(department) }, category: faculty, isActive: true }).select('name').lean();
+          configuredDepartment = await Department.findOne({ name: { $regex: exactDepartmentRegex(department) }, category: faculty, isActive: true }).select('name').lean();
           if (!configuredDepartment) return res.status(400).json({ success: false, message: 'Select an active department from the selected academic category.' });
         }
         recordDepartment = studyStage === 'Senior' ? configuredDepartment.name : 'General';
@@ -162,6 +163,7 @@ const uploadContent = async (req, res) => {
     const values = {
       ...identity,
       level: String(level).trim(),
+      language: String(language).trim().toLowerCase() === 'am' || String(language).trim().toLowerCase() === 'amharic' ? 'am' : 'en',
       grade: String(grade || '').trim(),
       subject: String(subject || '').trim(),
       technology: String(technology || '').trim(),
@@ -206,25 +208,49 @@ const uploadContent = async (req, res) => {
 // Get course content (public - only active courses)
 const getContent = async (req, res) => {
   try {
-    const { level, university, department, year, grade, subject, technology, faculty, studyStage, contentType, course, courseCode } = req.query;
+    const { level, university, department, year, grade, subject, technology, faculty, studyStage, contentType, course, courseCode, language } = req.query;
 
-    // Build query object - only active courses for public access
+    // Build a tolerant query for legacy uploads while keeping inactive content hidden.
     const query = { isActive: true };
-    if (level) query.level = level;
-    if (university) query.university = university;
-    if (grade) query.grade = grade;
-    if (subject) query.subject = subject;
-    if (technology) query.technology = technology;
-    if (faculty) query.faculty = faculty;
-    if (studyStage) query.studyStage = studyStage;
-    if (contentType === 'course-materials') query.$or = [{ contentType: 'course-materials' }, { contentType: { $exists: false } }];
-    else if (contentType) query.contentType = contentType;
-    if (courseCode) query.courseCode = new RegExp(courseCode, 'i');
+    if (String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic') query.language = 'am';
+    const addAnd = (condition) => { query.$and = [...(query.$and || []), condition]; };
+    if (level) query.level = { $regex: exactDepartmentRegex(level) };
+    if (university) query.university = { $regex: exactDepartmentRegex(university) };
+    if (grade) {
+      const selectedGrade = String(grade).trim();
+      addAnd({ $or: [
+        { grade: { $regex: exactDepartmentRegex(selectedGrade) } },
+        { year: { $regex: exactDepartmentRegex(`Grade ${selectedGrade}`) } },
+        { year: { $regex: exactDepartmentRegex(selectedGrade) } },
+      ] });
+    }
+    if (subject) query.subject = { $regex: exactDepartmentRegex(subject) };
+    if (technology) query.technology = { $regex: exactDepartmentRegex(technology) };
+    if (faculty) query.faculty = { $regex: exactDepartmentRegex(faculty) };
+    if (studyStage) query.studyStage = { $regex: exactDepartmentRegex(studyStage) };
+    if (contentType === 'course-materials') addAnd({ $or: [
+      { contentType: { $regex: exactDepartmentRegex('course-materials') } },
+      { contentType: { $exists: false } },
+      { contentType: null },
+      { contentType: '' },
+    ] });
+    else if (contentType) query.contentType = { $regex: exactDepartmentRegex(contentType) };
+    if (courseCode) query.courseCode = { $regex: String(courseCode).trim(), $options: 'i' };
     if (department) query.department = { $regex: exactDepartmentRegex(department) };
-    if (year) query.$and = [...(query.$and || []), { $or: [{ year: String(year).trim() }, { year: 'All Years' }, { year: '' }, { year: null }, { year: { $exists: false } }] }];
-    if (course) query.course = course;
+    if (year) addAnd({ $or: [
+      { year: { $regex: exactDepartmentRegex(year) } },
+      { year: { $regex: exactDepartmentRegex('All Years') } },
+      { year: '' }, { year: null }, { year: { $exists: false } },
+    ] });
+    if (course) query.course = { $regex: exactDepartmentRegex(course) };
+
 
     const content = await CourseContent.find(query).lean();
+    // Never expose private note/PPT upload paths in public catalog responses.
+    content.forEach((item) => {
+      item.notes = (item.notes || []).map(({ title }) => ({ title }));
+      item.ppts = (item.ppts || []).map(({ title }) => ({ title }));
+    });
     // University listings return metadata only; lesson URLs are fetched from the protected detail endpoint.
     if (level === 'university') {
       content.forEach((item) => {
@@ -258,7 +284,7 @@ const getContentById = async (req, res) => {
 
     const content = await CourseContent.findById(id);
 
-    if (!content || !content.isActive) {
+    if (!content || !content.isActive || (req.user?.preferences?.language === 'am' && content.language !== 'am')) {
       return res.status(404).json({
         success: false,
         message: 'Course content not found'
@@ -276,10 +302,13 @@ const getContentById = async (req, res) => {
       });
     }
 
+    const safeContent = content.toObject();
+    safeContent.notes = (safeContent.notes || []).map(({ title }) => ({ title }));
+    safeContent.ppts = (safeContent.ppts || []).map(({ title }) => ({ title }));
     res.status(200).json({
       success: true,
       accessLocked: false,
-      data: content
+      data: safeContent
     });
 
   } catch (error) {
@@ -300,16 +329,40 @@ const streamCourseMaterial = async (req, res) => {
     if (!course || !course.isActive) return res.status(404).json({ success: false, message: 'Course not found.' });
     const isAdmin = req.user?.role === 'admin';
     const isUnlocked = req.user?.unlockedCourseContents?.some((item) => String(item) === String(course._id));
-    if (course.isPremium && !isAdmin && !isUnlocked) return res.status(403).json({ success: false, message: 'Administrator approval is required for this premium course.' });
+    const isApproved = req.user?.downloadApprovals?.some((entry) => entry.resourceModel === 'CourseContent' && String(entry.resourceId) === String(course._id) && entry.status === 'approved');
+    if (req.query.download === '1' && !isAdmin && !isUnlocked && !isApproved) return res.status(403).json({ success: false, message: 'Administrator approval is required before downloading this course material.' });
+    if (req.query.download !== '1' && course.isPremium && !isAdmin && !isUnlocked && !isApproved) return res.status(403).json({ success: false, message: 'Administrator approval is required to view this premium course.' });
     if (!['notes', 'ppts'].includes(kind)) return res.status(400).json({ success: false, message: 'Unsupported material type.' });
     const item = course[kind]?.[Number(index)];
     if (!item?.fileUrl || !item.fileUrl.startsWith('/uploads/')) return res.status(404).json({ success: false, message: 'Material file not found.' });
     const filePath = path.join(uploadsDirectory, path.basename(item.fileUrl));
     if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, message: 'Material file is missing from the server.' });
+    if (req.query.download === '1') return res.download(filePath, path.basename(item.fileUrl));
     return res.sendFile(filePath);
   } catch (error) {
     console.error('Stream course material error:', error);
     return res.status(500).json({ success: false, message: 'Unable to open course material.' });
+  }
+};
+
+// Deliver an approved course video only after verifying the student's per-course download approval.
+const downloadCourseVideo = async (req, res) => {
+  try {
+    const course = await CourseContent.findById(req.params.id);
+    if (!course || !course.isActive) return res.status(404).json({ success: false, message: 'Course not found.' });
+    const isAdmin = req.user?.role === 'admin';
+    const isUnlocked = req.user?.unlockedCourseContents?.some((item) => String(item) === String(course._id));
+    const isApproved = req.user?.downloadApprovals?.some((entry) => entry.resourceModel === 'CourseContent' && String(entry.resourceId) === String(course._id) && entry.status === 'approved');
+    if (!isAdmin && !isUnlocked && !isApproved) return res.status(403).json({ success: false, message: 'Administrator approval is required before downloading this course video.' });
+    const video = course.videos?.[Number(req.params.index)];
+    if (!video?.url) return res.status(404).json({ success: false, message: 'Video not found.' });
+    let target;
+    try { target = new URL(video.url); } catch { return res.status(400).json({ success: false, message: 'Video URL is invalid.' }); }
+    if (!['http:', 'https:'].includes(target.protocol)) return res.status(400).json({ success: false, message: 'Unsupported video URL.' });
+    return res.redirect(302, target.toString());
+  } catch (error) {
+    console.error('Download course video error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to verify video download.' });
   }
 };
 
@@ -451,11 +504,13 @@ const unlockCourseForStudent = async (req, res) => {
       Promise.resolve(require('../models/User'))
     ]);
     if (!course) return res.status(404).json({ success: false, message: 'Course not found.' });
-    if (!course.isPremium) return res.status(400).json({ success: false, message: 'This course is not marked as premium.' });
+
     const student = await User.findById(userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
     if (student.role === 'admin') return res.status(400).json({ success: false, message: 'Choose a student account.' });
     const alreadyUnlocked = student.unlockedCourseContents.some((id) => String(id) === String(course._id));
+    student.downloadApprovals = (student.downloadApprovals || []).filter((entry) => !(entry.resourceModel === 'CourseContent' && String(entry.resourceId) === String(course._id)));
+    student.downloadApprovals.push({ resourceModel: 'CourseContent', resourceId: course._id, status: 'approved', approvedBy: req.user._id, approvedAt: new Date() });
     if (!alreadyUnlocked) {
       student.unlockedCourseContents.push(course._id);
       await student.save();
@@ -484,6 +539,7 @@ const lockCourseForStudent = async (req, res) => {
     const student = await User.findById(req.params.userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
     student.unlockedCourseContents = student.unlockedCourseContents.filter((id) => String(id) !== String(req.params.id));
+    student.downloadApprovals = (student.downloadApprovals || []).filter((entry) => !(entry.resourceModel === 'CourseContent' && String(entry.resourceId) === String(req.params.id)));
     await student.save();
     return res.json({ success: true, message: 'Premium course access revoked.' });
   } catch (error) {
@@ -501,6 +557,7 @@ module.exports = {
   getContent,
   getContentById,
   streamCourseMaterial,
+  downloadCourseVideo,
   deleteContent,
   getAllCourses,
   toggleCourseStatus,

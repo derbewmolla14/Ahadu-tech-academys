@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../api/api';
+import DocumentViewerModal from '../components/DocumentViewerModal';
+import PaymentMethodModal from '../components/PaymentMethodModal';
+import { downloadApprovedResource } from '../utils/downloadApprovedResource';
 
 export default function CourseContent() {
   const { name } = useParams();
@@ -14,6 +17,25 @@ export default function CourseContent() {
   const [courseData, setCourseData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [documentFile, setDocumentFile] = useState(null);
+  const [downloadResource, setDownloadResource] = useState(null);
+  const requestDownload = (resource) => downloadApprovedResource(resource, setDownloadResource);
+
+  const openCourseFile = async (kind, index, item) => {
+    try {
+      const endpoint = `content/${courseData._id}/material/${kind}/${index}`;
+      const response = await apiFetch(endpoint);
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.message || 'Unable to open this material.');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      setDocumentFile({ title: item.title || 'Course material', fileName: item.title || (kind === 'notes' ? 'note.pdf' : 'presentation.pptx'), mimeType: blob.type, url, downloadEndpoint: endpoint + '?download=1' });
+    } catch (error) {
+      window.alert(error.message || 'Unable to open this material.');
+    }
+  };
 
   useEffect(() => {
     // If missing required parameters, redirect to university page
@@ -83,6 +105,8 @@ export default function CourseContent() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
+      <DocumentViewerModal file={documentFile} onClose={() => { if (documentFile?.url?.startsWith('blob:')) URL.revokeObjectURL(documentFile.url); setDocumentFile(null); }} onDownloadRequest={requestDownload} />
+      <PaymentMethodModal open={Boolean(downloadResource)} resource={downloadResource} onClose={() => setDownloadResource(null)} />
       {/* HEADER */}
       <div className="bg-slate-900 border-b border-slate-800 p-6">
         <div className="max-w-6xl mx-auto">
@@ -114,11 +138,8 @@ export default function CourseContent() {
             <h2 className="text-3xl font-semibold text-white mb-6">📄 Notes</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {courseData.notes.map((note, index) => (
-                <a
+                <article
                   key={index}
-                  href={note.fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   className="rounded-2xl border border-slate-700 bg-slate-800 p-4 transition hover:border-slate-600 hover:bg-slate-700"
                 >
                   <div className="flex items-center gap-3 mb-3">
@@ -128,8 +149,8 @@ export default function CourseContent() {
                       <p className="text-slate-400 text-xs mt-1">PDF Document</p>
                     </div>
                   </div>
-                  <div className="text-blue-400 text-xs">Click to open →</div>
-                </a>
+                  <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => openCourseFile('notes', index, note)} className="text-blue-400 text-xs">Open / Read →</button><button type="button" onClick={() => requestDownload({ title: note.title || 'PDF note', type: 'PDF', downloadEndpoint: `content/${courseData._id}/material/notes/${index}?download=1` })} className="rounded-lg border border-amber-500/60 px-3 py-1 text-xs font-semibold text-amber-200">Download</button></div>
+                </article>
               ))}
             </div>
           </div>
@@ -141,11 +162,8 @@ export default function CourseContent() {
             <h2 className="text-3xl font-semibold text-white mb-6">🎥 Videos</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {courseData.videos.map((video, index) => (
-                <a
+                <article
                   key={index}
-                  href={video.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   className="rounded-2xl border border-slate-700 bg-slate-800 p-4 transition hover:border-slate-600 hover:bg-slate-700"
                 >
                   <div className="flex items-center gap-3 mb-3">
@@ -155,8 +173,8 @@ export default function CourseContent() {
                       <p className="text-slate-400 text-xs mt-1">Video Content</p>
                     </div>
                   </div>
-                  <div className="text-red-400 text-xs">Watch video →</div>
-                </a>
+                  <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => setDocumentFile({ title: video.title || 'Video lesson', fileName: video.title || 'lesson.mp4', mimeType: 'video/mp4', url: video.url, downloadEndpoint: `content/${courseData._id}/video/${index}/download` })} className="text-red-400 text-xs">Watch video →</button><button type="button" onClick={() => requestDownload({ title: video.title || 'Video lesson', type: 'video', downloadEndpoint: `content/${courseData._id}/video/${index}/download` })} className="rounded-lg border border-amber-500/60 px-3 py-1 text-xs font-semibold text-amber-200">Download</button></div>
+                </article>
               ))}
             </div>
           </div>
@@ -168,11 +186,8 @@ export default function CourseContent() {
             <h2 className="text-3xl font-semibold text-white mb-6">📊 Presentations</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {courseData.ppts.map((ppt, index) => (
-                <a
+                <article
                   key={index}
-                  href={ppt.fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   className="rounded-2xl border border-slate-700 bg-slate-800 p-4 transition hover:border-slate-600 hover:bg-slate-700"
                 >
                   <div className="flex items-center gap-3 mb-3">
@@ -182,8 +197,8 @@ export default function CourseContent() {
                       <p className="text-slate-400 text-xs mt-1">PowerPoint Presentation</p>
                     </div>
                   </div>
-                  <div className="text-purple-400 text-xs">View presentation →</div>
-                </a>
+                  <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => openCourseFile('ppts', index, ppt)} className="text-purple-400 text-xs">Open / Read →</button><button type="button" onClick={() => requestDownload({ title: ppt.title || 'Presentation', type: 'PPT', downloadEndpoint: `content/${courseData._id}/material/ppts/${index}?download=1` })} className="rounded-lg border border-amber-500/60 px-3 py-1 text-xs font-semibold text-amber-200">Download</button></div>
+                </article>
               ))}
             </div>
           </div>

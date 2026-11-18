@@ -66,6 +66,7 @@ export default function AddCourse() {
     courseCode: '',
     course: '',
     description: '',
+    language: 'en',
     isActive: true,
     isPremium: false
   });
@@ -161,6 +162,7 @@ export default function AddCourse() {
         'studyStage', 'contentType', 'courseCode', 'course', 'description'].forEach(key => {
         appendIfPresent(key, formData[key]);
       });
+      submitData.append('language', formData.language || 'en');
       submitData.append('isActive', String(Boolean(formData.isActive)));
       submitData.append('isPremium', String(Boolean(formData.isPremium)));
 
@@ -346,9 +348,10 @@ export default function AddCourse() {
               </>}
               <Field label={selectedCategory === 'coding' ? 'Training / Course Name *' : selectedCategory === 'university' && formData.studyStage === 'Senior' && formData.contentType === 'exit-exam' ? 'Exam Title *' : 'Course Name *'} name="course" value={formData.course} onChange={handleInputChange} placeholder="Enter the course name" required />
             </div>
-            <div className="mt-6">
-              <label className="block text-sm font-medium text-slate-300 mb-2">Description</label>
-              <textarea name="description" value={formData.description} onChange={handleInputChange} rows={3} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white focus:border-blue-500 focus:outline-none" placeholder="Brief description of the course..." />
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <label className="block text-sm font-medium text-slate-300">Course language<select name="language" value={formData.language || 'en'} onChange={handleInputChange} className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white"><option value="en">English</option><option value="am">Amharic (አማርኛ)</option></select></label>
+              <div><label className="block text-sm font-medium text-slate-300 mb-2">Description</label>
+              <textarea name="description" value={formData.description} onChange={handleInputChange} rows={3} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white focus:border-blue-500 focus:outline-none" placeholder="Brief description of the course..." /></div>
             </div>
             {selectedCategory === 'university' && <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
               <label className="flex items-center gap-3">

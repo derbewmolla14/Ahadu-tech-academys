@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const universityResourceSchema = new mongoose.Schema({
   stream: { type: String, enum: ['Natural', 'Social', 'Health', 'Diploma'], required: true, index: true },
+  language: { type: String, enum: ['en', 'am'], default: 'en', index: true },
   level: { type: String, enum: ['Freshman', 'Remedial', 'Senior', 'Diploma'], required: true, index: true },
   department: { type: String, trim: true, default: '' },
   course: { type: String, trim: true, default: '' },
@@ -23,5 +24,6 @@ const universityResourceSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 universityResourceSchema.index({ stream: 1, level: 1, department: 1, course: 1, kind: 1, academicYear: 1, status: 1 });
+universityResourceSchema.index({ language: 1, status: 1 });
 
 module.exports = mongoose.models.UniversityResource || mongoose.model('UniversityResource', universityResourceSchema);
