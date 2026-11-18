@@ -23,7 +23,7 @@ export default function UniversityCourseContentPage() {
         const response = await apiFetch('content/' + encodeURIComponent(courseId), { cache: 'no-store' });
         const result = await response.json();
         if (!response.ok || !result.success) throw new Error(result.message || 'Unable to load this course.');
-        if (active) { setCourse(result.data); setAccessLocked(Boolean(result.accessLocked)); setLockedMessage(result.message || ''); }
+        if (active) { setCourse(result.data); setAccessLocked(Boolean(result.accessLocked)); setLockedMessage(result.message || ''); if (result.accessLocked) setDownloadResource({ title: result.data.course, type: 'course materials', accessType: 'premium', pricingTier: result.data.pricingTier || (String(result.data.faculty || '').toLowerCase() === 'phd' ? 'phd' : 'university') }); }
       } catch (err) { if (active) setError(err.message || 'Unable to load this course.'); }
       finally { if (active) setLoading(false); }
     }
