@@ -50,7 +50,7 @@ export default function ElementaryGradePage() {
 
   const openCourseFile = async (course, kind, index, item) => {
     if (course.isPremium && !course.hasAccess) {
-      setDownloadResource({ title: course.course, type: 'course materials', accessType: 'premium' });
+      setDownloadResource({ title: course.course, type: 'course materials', accessType: 'premium', pricingTier: 'elementary' });
       return;
     }
     try {
