@@ -9,12 +9,7 @@ const User = require('../models/User');
 const PRIVATE_DIR = path.join(__dirname, '../private_uploads/university');
 fs.mkdirSync(PRIVATE_DIR, { recursive: true });
 
-const approvedFilter = { $and: [{ $or: [
-  { status: 'approved' },
-  { status: { $exists: false } },
-  { status: null },
-  { status: '' },
-] }] };
+const approvedFilter = { $or: [{ status: 'approved' }, { status: { $exists: false } }, { status: null }, { status: '' }] };
 
 const STREAM_CATEGORY = { Natural: 'Natural Science', Social: 'Social Science', Health: 'Health Science', Diploma: 'Diploma' };
 const exactDepartmentRegex = (value) => new RegExp('^' + String(value || '').trim().replace(/[.*+?^()|[\]\\$]/g, (character) => '\\' + character) + '$', 'i');
@@ -40,10 +35,7 @@ exports.getCatalog = async (req, res) => {
     if (!selectedLevel) return res.json({ streams: ['Natural', 'Social', 'Health', 'Diploma'], levels: ['Freshman', 'Remedial', 'Senior', 'Diploma'] });
     const base = {
       ...approvedFilter,
-      ...(['am', 'amharic', 'አማርኛ'].includes(String(language || '').trim().toLowerCase()) ? { $and: [{ $or: [
-        { language: { $in: ['am', 'Am', 'AM', 'Amharic', 'amharic', 'አማርኛ'] } },
-        { adminLanguage: { $in: ['am', 'Am', 'AM', 'Amharic', 'amharic', 'አማርኛ'] } },
-      ] }] } : {}),
+      ...(String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic' ? { language: 'am' } : {}),
       stream: { $regex: exactDepartmentRegex(selectedStream) },
       ...(selectedLevel ? { level: { $regex: exactDepartmentRegex(selectedLevel) } } : {}),
     };
@@ -59,7 +51,7 @@ exports.getCatalog = async (req, res) => {
       return res.json({ departments: departments.map((item) => item.name) });
     }
     if (selectedLevel !== 'Senior' && !course) {
-      const legacyBase = { level: { $regex: exactDepartmentRegex('university') }, ...(['am', 'amharic', 'አማርኛ'].includes(String(language || '').trim().toLowerCase()) ? { $and: [{ $or: [{ language: { $in: ['am', 'Am', 'AM', 'Amharic', 'amharic', 'አማርኛ'] } }, { adminLanguage: { $in: ['am', 'Am', 'AM', 'Amharic', 'amharic', 'አማርኛ'] } }] }] } : {}), faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) }, studyStage: { $regex: exactDepartmentRegex(selectedLevel) }, isActive: { $ne: false } };
+      const legacyBase = { level: { $regex: exactDepartmentRegex('university') }, ...(String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic' ? { language: 'am' } : {}), faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) }, studyStage: { $regex: exactDepartmentRegex(selectedLevel) }, isActive: { $ne: false } };
       const [resourceCourses, legacyCourses] = await Promise.all([
         UniversityResource.distinct('course', { ...base, course: { $nin: ['', null] }, kind: { $in: ['course-material', 'exam-question'] } }),
         CourseContent.distinct('course', { ...legacyBase, course: { $nin: ['', null] } }),
@@ -75,7 +67,7 @@ exports.getCatalog = async (req, res) => {
     }
     if (selectedLevel === 'Senior' && department && kind === 'course-material' && !course) {
       const legacyBase = {
-        level: { $regex: exactDepartmentRegex('university') }, ...(['am', 'amharic', 'አማርኛ'].includes(String(language || '').trim().toLowerCase()) ? { $and: [{ $or: [{ language: { $in: ['am', 'Am', 'AM', 'Amharic', 'amharic', 'አማርኛ'] } }, { adminLanguage: { $in: ['am', 'Am', 'AM', 'Amharic', 'amharic', 'አማርኛ'] } }] }] } : {}), faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) }, studyStage: { $regex: exactDepartmentRegex('Senior') },
+        level: { $regex: exactDepartmentRegex('university') }, ...(String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic' ? { language: 'am' } : {}), faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) }, studyStage: { $regex: exactDepartmentRegex('Senior') },
         department: { $regex: exactDepartmentRegex(canonicalDepartment) }, isActive: { $ne: false },
         course: { $nin: ['', null] },
       };
@@ -104,7 +96,7 @@ exports.getCatalog = async (req, res) => {
 
     const legacyQuery = {
       level: { $regex: exactDepartmentRegex('university') },
-      ...(['am', 'amharic', 'አማርኛ'].includes(String(language || '').trim().toLowerCase()) ? { $and: [{ $or: [{ language: { $in: ['am', 'Am', 'AM', 'Amharic', 'amharic', 'አማርኛ'] } }, { adminLanguage: { $in: ['am', 'Am', 'AM', 'Amharic', 'amharic', 'አማርኛ'] } }] }] } : {}),
+      ...(String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic' ? { language: 'am' } : {}),
       faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) },
       studyStage: { $regex: exactDepartmentRegex(selectedLevel) },
       isActive: { $ne: false },
@@ -230,8 +222,6 @@ exports.adminUpload = async (req, res) => {
       textContent, answer, solution, accessType, storedFileName,
       originalFileName: req.file?.originalname || '', mimeType: req.file?.mimetype || '',
       uploadedBy: req.user._id,
-      isApproved: true,
-      isPublished: true,
       status: 'approved',
       approvedBy: req.user._id,
       approvedAt: new Date(),
