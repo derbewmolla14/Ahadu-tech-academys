@@ -77,7 +77,7 @@ export default function ElementaryGradePage() {
                   <h3 className="mb-2 font-semibold text-slate-200">📄 Notes</h3>
                   <ul className="space-y-2">
                     {course.notes.map((note, index) => (
-                      <li key={index}><button type="button" onClick={() => setSelectedPdf({ title: note.title || 'PDF note', fileName: /\\.pdf$/i.test(note.title || '') ? note.title : (note.title || 'note') + '.pdf', mimeType: 'application/pdf', url: getUploadedFileUrl(note.fileUrl) })} className="text-left text-sm text-blue-400 hover:underline">{note.title || 'Open PDF note'} ↗</button></li>
+                      <li key={index}><button type="button" onClick={() => setSelectedPdf({ title: note.title || 'PDF note', fileName: /\.pdf$/i.test(note.title || '') ? note.title : (note.title || 'note') + '.pdf', mimeType: 'application/pdf', url: getUploadedFileUrl(note.fileUrl) })} className="text-left text-sm text-blue-400 hover:underline">{note.title || 'Open PDF note'} ↗</button></li>
                     ))}
                   </ul>
                 </section>
@@ -97,7 +97,7 @@ export default function ElementaryGradePage() {
                   <h3 className="mb-2 font-semibold text-slate-200">📊 Presentations</h3>
                   <ul className="space-y-2">
                     {course.ppts.map((ppt, index) => (
-                      <li key={index}><button type="button" onClick={() => setSelectedPdf({ title: ppt.title || 'Presentation', fileName: ppt.fileName || ppt.originalFileName || (/\\.(ppt|pptx)$/i.test(ppt.title || '') ? ppt.title : (ppt.title || 'presentation') + '.pptx'), url: getUploadedFileUrl(ppt.fileUrl) })} className="text-left text-sm text-blue-400 hover:underline">Open {ppt.title || 'presentation'} ↗</button></li>
+                      <li key={index}><button type="button" onClick={() => setSelectedPdf({ title: ppt.title || 'Presentation', fileName: ppt.fileName || ppt.originalFileName || (/\.(ppt|pptx)$/i.test(ppt.title || '') ? ppt.title : (ppt.title || 'presentation') + '.pptx'), url: getUploadedFileUrl(ppt.fileUrl) })} className="text-left text-sm text-blue-400 hover:underline">Open {ppt.title || 'presentation'} ↗</button></li>
                     ))}
                   </ul>
                 </section>
