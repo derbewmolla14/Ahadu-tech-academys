@@ -24,7 +24,7 @@ const resolveDepartment = async (stream, departmentName) => {
 
 exports.getCatalog = async (req, res) => {
   try {
-    const { stream, level, department, course, kind, academicYear } = req.query;
+    const { stream, level, department, course, kind, academicYear, language } = req.query;
     if (!stream) return res.status(400).json({ message: 'Choose a valid academic stream.' });
     const normalizedStream = Object.keys(STREAM_CATEGORY).find((key) => key.toLowerCase() === String(stream).trim().toLowerCase());
     const normalizedLevel = ['Freshman', 'Remedial', 'Senior', 'Diploma'].find((value) => value.toLowerCase() === String(level || '').trim().toLowerCase());
@@ -35,6 +35,7 @@ exports.getCatalog = async (req, res) => {
     if (!selectedLevel) return res.json({ streams: ['Natural', 'Social', 'Health', 'Diploma'], levels: ['Freshman', 'Remedial', 'Senior', 'Diploma'] });
     const base = {
       ...approvedFilter,
+      ...(String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic' ? { language: 'am' } : {}),
       stream: { $regex: exactDepartmentRegex(selectedStream) },
       ...(selectedLevel ? { level: { $regex: exactDepartmentRegex(selectedLevel) } } : {}),
     };
@@ -95,6 +96,7 @@ exports.getCatalog = async (req, res) => {
 
     const legacyQuery = {
       level: { $regex: exactDepartmentRegex('university') },
+      ...(String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic' ? { language: 'am' } : {}),
       faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) },
       studyStage: { $regex: exactDepartmentRegex(selectedLevel) },
       isActive: true,
@@ -185,7 +187,7 @@ exports.getCatalog = async (req, res) => {
 
 exports.adminUpload = async (req, res) => {
   try {
-    const { stream, level, department = '', course = '', kind, academicYear = '', resourceType, title, textContent = '', answer = '', solution = '', accessType = 'free' } = req.body;
+    const { stream, level, department = '', course = '', kind, academicYear = '', resourceType, title, textContent = '', answer = '', solution = '', accessType = 'free', language = 'en' } = req.body;
     let canonicalDepartment = '';
     if (!['Natural', 'Social', 'Health', 'Diploma'].includes(stream) || !['Freshman', 'Remedial', 'Senior', 'Diploma'].includes(level)) return res.status(400).json({ message: 'Invalid stream or level.' });
     if (!['course-material', 'exam-question', 'exit-exam'].includes(kind)) return res.status(400).json({ message: 'Invalid content category.' });
@@ -214,7 +216,7 @@ exports.adminUpload = async (req, res) => {
     const storedFileName = req.file ? crypto.randomUUID() + path.extname(req.file.originalname).toLowerCase() : '';
     if (req.file) fs.writeFileSync(path.join(PRIVATE_DIR, storedFileName), req.file.buffer, { flag: 'wx' });
     const item = await UniversityResource.create({
-      stream, level, department: canonicalDepartment, course, kind, academicYear: String(academicYear || '').trim() || 'All Years', resourceType, title: String(title).trim(),
+      stream, level, language: ['am', 'amharic'].includes(String(language).trim().toLowerCase()) ? 'am' : 'en', department: canonicalDepartment, course, kind, academicYear: String(academicYear || '').trim() || 'All Years', resourceType, title: String(title).trim(),
       textContent, answer, solution, accessType, storedFileName,
       originalFileName: req.file?.originalname || '', mimeType: req.file?.mimetype || '',
       uploadedBy: req.user._id,
@@ -264,7 +266,7 @@ exports.setStudentAccess = async (req, res) => {
     const { userId, grant = true } = req.body;
     if (!userId) return res.status(400).json({ message: 'Student ID is required.' });
     const resource = await UniversityResource.findById(req.params.id);
-    if (!resource || resource.accessType !== 'premium' || resource.status !== 'approved') return res.status(404).json({ message: 'Approved premium resource not found.' });
+    if (!resource || resource.status !== 'approved') return res.status(404).json({ message: 'Approved resource not found.' });
     const student = await User.findById(userId);
     if (!student || student.role === 'admin') return res.status(404).json({ message: 'Student account not found.' });
     if (grant) await User.updateOne({ _id: student._id }, { $addToSet: { unlockedUniversityResources: resource._id } });
@@ -282,11 +284,12 @@ exports.downloadApproved = async (req, res) => {
     if (!item) return res.status(404).json({ message: 'Approved resource not found.' });
     const isAdmin = req.user?.role === 'admin';
     const isUnlocked = (req.user?.unlockedUniversityResources || []).some((id) => String(id) === String(item._id));
-    if (item.accessType === 'premium' && !isAdmin && !isUnlocked) return res.status(403).json({ message: 'This is a premium resource. Please complete payment or request access before opening it.' });
+    if (!isAdmin && !isUnlocked) return res.status(403).json({ message: 'Administrator approval is required before downloading this resource.' });
     if (!item.storedFileName) return res.status(404).json({ message: 'This resource has no attached file.' });
     const filePath = path.join(PRIVATE_DIR, path.basename(item.storedFileName));
     if (!fs.existsSync(filePath)) return res.status(404).json({ message: 'File is missing.' });
     res.type(item.mimeType || 'application/octet-stream');
+    if (req.query.download === '1') return res.download(filePath, item.originalFileName || item.title);
     return res.sendFile(filePath, (error) => {
       if (error && !res.headersSent) res.status(error.statusCode || 500).json({ message: 'Unable to deliver approved file.' });
     });
