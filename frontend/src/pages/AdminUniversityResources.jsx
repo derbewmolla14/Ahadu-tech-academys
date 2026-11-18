@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../api/api';
 
-const empty = { stream: 'Natural', level: 'Freshman', department: '', course: '', kind: 'course-material', academicYear: '', resourceType: 'pdf', accessType: 'free', title: '', textContent: '', answer: '', solution: '' };
+const empty = { stream: 'Natural', language: 'en', level: 'Freshman', department: '', course: '', kind: 'course-material', academicYear: '', resourceType: 'pdf', accessType: 'free', title: '', textContent: '', answer: '', solution: '' };
 
 export default function AdminUniversityResources() {
   const [form, setForm] = useState(empty);
@@ -98,6 +98,7 @@ export default function AdminUniversityResources() {
     <header className="rounded-3xl border border-slate-800 bg-slate-900 p-7"><p className="text-sm font-semibold uppercase tracking-widest text-sky-400">Admin workspace</p><h1 className="mt-2 text-3xl font-bold">University Resource Management</h1><p className="mt-2 text-slate-400">New admin uploads are published immediately. Premium resources remain visible, but each student must still be individually unlocked after payment verification.</p></header>
     <form onSubmit={submit} noValidate className="grid gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:grid-cols-2 lg:grid-cols-3">
       {field('Stream', 'stream', ['Natural', 'Social', 'Health', 'Diploma'])}
+      {field('Language', 'language', ['en', 'am'])}
       {field('Level', 'level', ['Freshman', 'Remedial', 'Senior', 'Diploma'])}
       {field('Content path', 'kind', form.level === 'Senior' ? ['exit-exam', 'course-material'] : ['exam-question', 'course-material'])}
       <label className="block text-sm text-slate-300">Department<select name="department" value={form.department} onChange={change} disabled={form.level !== 'Senior'} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 disabled:opacity-50"><option value="">Select department</option>{departments.map((item) => <option key={item._id} value={item.name}>{item.name}</option>)}</select></label>
@@ -115,7 +116,7 @@ export default function AdminUniversityResources() {
     {error && <p role="alert" className="rounded-lg bg-red-950 p-3 text-red-200">{error}</p>}
     <section className="space-y-3"><h2 className="text-xl font-semibold">Uploaded resources</h2>
       {items.map((item) => <article key={item._id} className="space-y-3 rounded-xl border border-slate-800 bg-slate-900 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3"><div><strong>{item.title}</strong><p className="text-sm text-slate-400">{item.stream} · {item.level} · {item.department || item.course} · {item.kind}</p></div><div className="flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-slate-800 px-3 py-1">{item.status}</span><span className="rounded-full bg-slate-800 px-3 py-1">{item.accessType || 'free'}</span></div></div>
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><strong>{item.title}</strong><p className="text-sm text-slate-400">{item.stream} · {item.language === 'am' ? 'Amharic' : 'English'} · {item.level} · {item.department || item.course} · {item.kind}</p></div><div className="flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-slate-800 px-3 py-1">{item.status}</span><span className="rounded-full bg-slate-800 px-3 py-1">{item.accessType || 'free'}</span></div></div>
         <div className="flex flex-wrap gap-2"><button type="button" onClick={() => approve(item._id, 'approved')} className="rounded bg-green-700 px-3 py-2 text-sm">Approve</button><button type="button" onClick={() => approve(item._id, 'rejected')} className="rounded bg-red-800 px-3 py-2 text-sm">Reject</button><button type="button" onClick={() => approve(item._id, 'pending')} className="rounded bg-slate-700 px-3 py-2 text-sm">Set pending</button></div>
         {item.accessType === 'premium' && item.status === 'approved' && <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]"><input value={studentIds[item._id] || ''} onChange={(event) => setStudentIds((old) => ({ ...old, [item._id]: event.target.value }))} placeholder="Student account ID" className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white" /><button type="button" onClick={() => changeStudentAccess(item, true)} className="rounded-lg bg-sky-700 px-4 py-2 text-sm">Unlock Premium Access</button><button type="button" onClick={() => changeStudentAccess(item, false)} className="rounded-lg bg-slate-700 px-4 py-2 text-sm">Revoke</button></div>}
       </article>)}
