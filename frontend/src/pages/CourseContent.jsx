@@ -59,7 +59,18 @@ export default function CourseContent() {
       const data = await response.json();
 
       if (data.success && data.data.length > 0) {
-        setCourseData(data.data[0]); // Get the first matching course
+        const selectedCourse = data.data[0];
+        setCourseData(selectedCourse);
+        if (selectedCourse.isPremium && selectedCourse.hasAccess === false) {
+          setDownloadResource({
+            title: selectedCourse.course,
+            type: 'course materials',
+            accessType: 'premium',
+            isPremium: true,
+            hasAccess: false,
+            pricingTier: selectedCourse.pricingTier || 'university',
+          });
+        }
       } else {
         setError('Course content not found or not available');
       }
