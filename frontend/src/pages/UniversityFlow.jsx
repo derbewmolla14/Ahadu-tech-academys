@@ -85,9 +85,16 @@ export default function UniversityFlow() {
       setError('Premium access is required. Complete the payment or subscription process with the academy administrator, then ask the administrator to unlock this resource for your account.');
       return;
     }
+    if (resource.source === 'course-content' && resource.resourceType === 'video') {
+      window.open(resource.videoUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
     const popup = window.open('about:blank', '_blank');
     try {
-      const response = await apiFetch('university-learning/resources/' + resource._id + '/file');
+      const endpoint = resource.source === 'course-content'
+        ? `content/${resource.courseContentId}/material/${resource.materialKind}/${resource.materialIndex}`
+        : 'university-learning/resources/' + resource._id + '/file';
+      const response = await apiFetch(endpoint);
       const data = response.headers.get('content-type')?.includes('application/json') ? await response.json() : null;
       if (!response.ok) throw new Error(data?.message || 'Unable to open this approved file.');
       const blob = await response.blob();
