@@ -282,6 +282,23 @@ exports.setStudentAccess = async (req, res) => {
   }
 };
 
+exports.toggleResourcePremium = async (req, res) => {
+  try {
+    const item = await UniversityResource.findById(req.params.id);
+    if (!item) return res.status(404).json({ message: 'Resource not found.' });
+    const requested = req.body.accessType;
+    if (requested !== undefined && !['free', 'premium'].includes(requested)) {
+      return res.status(400).json({ message: 'Choose Free or Premium access.' });
+    }
+    item.accessType = requested || (item.accessType === 'premium' ? 'free' : 'premium');
+    await item.save();
+    return res.json({ message: item.accessType === 'premium' ? 'Resource marked Premium.' : 'Resource set to Free.', resource: item });
+  } catch (error) {
+    console.error('Toggle University resource premium error:', error);
+    return res.status(500).json({ message: 'Unable to update resource access type.' });
+  }
+};
+
 exports.downloadApproved = async (req, res) => {
   try {
     const item = await UniversityResource.findOne({ _id: req.params.id, status: 'approved' });
