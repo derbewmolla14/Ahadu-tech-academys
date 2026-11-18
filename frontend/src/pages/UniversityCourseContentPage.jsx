@@ -4,7 +4,7 @@ import { apiFetch } from '../api/api';
 
 export default function UniversityCourseContentPage() {
   const { courseId } = useParams();
-  const backToCourses = '/university';
+  const backToCourses = course?.level === 'highschool' ? `/highschool/grade/${course.grade || ''}` : '/university';
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -24,7 +24,7 @@ export default function UniversityCourseContentPage() {
     async function load() {
       try {
         setLoading(true); setError('');
-        const response = await apiFetch('content/' + encodeURIComponent(courseId));
+        const response = await apiFetch('content/' + encodeURIComponent(courseId), { cache: 'no-store' });
         const result = await response.json();
         if (!response.ok || !result.success) throw new Error(result.message || 'Unable to load this course.');
         if (active) { setCourse(result.data); setAccessLocked(Boolean(result.accessLocked)); setLockedMessage(result.message || ''); }
