@@ -4,11 +4,11 @@ import { apiFetch } from '../api/api';
 
 export default function UniversityCourseContentPage() {
   const { courseId } = useParams();
-  const backToCourses = course?.level === 'highschool' ? `/highschool/grade/${course.grade || ''}` : '/university';
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [accessLocked, setAccessLocked] = useState(false);
+  const backToCourses = course?.level === 'highschool' ? `/highschool/grade/${course.grade || ''}` : '/university';
   const [lockedMessage, setLockedMessage] = useState('');
   const [showPayment, setShowPayment] = useState(false);
   const paymentDetails = {
