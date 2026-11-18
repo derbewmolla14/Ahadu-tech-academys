@@ -175,7 +175,7 @@ const uploadContent = async (req, res) => {
       videos: parsedVideos,
       ppts: parsedPpts,
       questions: parsedQuestions,
-      isActive: isActive === undefined ? true : isActive === 'true' || isActive === true,
+      isActive: true,
       isPremium: isPremium === true || isPremium === 'true'
     };
 
