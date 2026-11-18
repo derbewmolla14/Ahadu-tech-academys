@@ -49,7 +49,7 @@ const uploadContent = async (req, res) => {
     const {
       level = 'university', university = '', department = '', year = '',
       grade = '', subject = '', technology = '', faculty = '', studyStage: requestedStudyStage = '', contentType = 'course-materials', courseCode = '', course, description,
-      notes, videos, ppts, questions, isActive, isPremium
+      notes, videos, ppts, questions, isActive, isPremium, language = 'en'
     } = req.body;
 
     let studyStage = requestedStudyStage;
@@ -163,6 +163,7 @@ const uploadContent = async (req, res) => {
     const values = {
       ...identity,
       level: String(level).trim(),
+      language: String(language).trim().toLowerCase() === 'am' || String(language).trim().toLowerCase() === 'amharic' ? 'am' : 'en',
       grade: String(grade || '').trim(),
       subject: String(subject || '').trim(),
       technology: String(technology || '').trim(),
@@ -207,10 +208,11 @@ const uploadContent = async (req, res) => {
 // Get course content (public - only active courses)
 const getContent = async (req, res) => {
   try {
-    const { level, university, department, year, grade, subject, technology, faculty, studyStage, contentType, course, courseCode } = req.query;
+    const { level, university, department, year, grade, subject, technology, faculty, studyStage, contentType, course, courseCode, language } = req.query;
 
     // Build a tolerant query for legacy uploads while keeping inactive content hidden.
     const query = { isActive: true };
+    if (String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic') query.language = 'am';
     const addAnd = (condition) => { query.$and = [...(query.$and || []), condition]; };
     if (level) query.level = { $regex: exactDepartmentRegex(level) };
     if (university) query.university = { $regex: exactDepartmentRegex(university) };
