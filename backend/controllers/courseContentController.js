@@ -211,7 +211,7 @@ const getContent = async (req, res) => {
     const { level, university, department, year, grade, subject, technology, faculty, studyStage, contentType, course, courseCode, language } = req.query;
 
     // Build a tolerant query for legacy uploads while keeping inactive content hidden.
-    const query = { isActive: true };
+    const query = { isActive: { $ne: false } };
     if (String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic') query.language = 'am';
     const addAnd = (condition) => { query.$and = [...(query.$and || []), condition]; };
     if (level) query.level = { $regex: exactDepartmentRegex(level) };
