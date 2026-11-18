@@ -55,7 +55,16 @@ export default function UniversityFlow() {
 
   useEffect(() => {
     load(selection);
-    return () => { catalogRequestId.current += 1; };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') load(selection);
+    };
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      catalogRequestId.current += 1;
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
   }, [selection, load]);
 
   const move = (patch) => {
