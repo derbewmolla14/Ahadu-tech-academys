@@ -204,6 +204,8 @@ function AppRoutes() {
           }
         />
 
+        <Route path="admin/payment-pricing" element={<PrivateRoute><AdminPaymentPricing /></PrivateRoute>} />
+
         <Route
           path="admin/premium-course-access"
           element={
