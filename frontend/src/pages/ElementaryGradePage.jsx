@@ -1,17 +1,10 @@
 import { useContext, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { apiFetch, apiBaseURL } from '../api/api';
+import { apiFetch } from '../api/api';
 import DocumentViewerModal from '../components/DocumentViewerModal';
 import PaymentMethodModal from '../components/PaymentMethodModal';
 import { AuthContext } from '../context/AuthContext';
 import { downloadApprovedResource } from '../utils/downloadApprovedResource';
-
-const getUploadedFileUrl = (fileUrl) => {
-  if (!fileUrl) return '#';
-  if (/^https?:\/\//i.test(fileUrl)) return fileUrl;
-  const backendOrigin = apiBaseURL.replace(/\/api\/?$/, '');
-  return backendOrigin + '/' + String(fileUrl).replace(/^\/+/, '');
-};
 
 export default function ElementaryGradePage() {
   const { id } = useParams();
@@ -55,9 +48,31 @@ export default function ElementaryGradePage() {
 
   const requestDownload = (resource) => downloadApprovedResource(resource, setDownloadResource);
 
+  const openCourseFile = async (course, kind, index, item) => {
+    try {
+      const endpoint = `content/${course._id}/material/${kind}/${index}`;
+      const response = await apiFetch(endpoint);
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.message || 'Unable to open this material.');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const fileName = item.title || (kind === 'notes' ? 'note.pdf' : 'presentation.pptx');
+      setSelectedPdf({ title: item.title || 'Course material', fileName, mimeType: blob.type, url, downloadEndpoint: endpoint + '?download=1' });
+    } catch (error) {
+      window.alert(error.message || 'Unable to open this material.');
+    }
+  };
+
+  const closeViewer = () => {
+    if (selectedPdf?.url?.startsWith('blob:')) URL.revokeObjectURL(selectedPdf.url);
+    setSelectedPdf(null);
+  };
+
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-6">
-      <DocumentViewerModal file={selectedPdf} onClose={() => setSelectedPdf(null)} onDownloadRequest={requestDownload} />
+      <DocumentViewerModal file={selectedPdf} onClose={closeViewer} onDownloadRequest={requestDownload} />
       <PaymentMethodModal open={Boolean(downloadResource)} resource={downloadResource} onClose={() => setDownloadResource(null)} />
       <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8">
         <Link to="/elementary" className="text-sm text-blue-400 hover:text-blue-300">← All Elementary grades</Link>
@@ -88,7 +103,7 @@ export default function ElementaryGradePage() {
                   <h3 className="mb-2 font-semibold text-slate-200">📄 Notes</h3>
                   <ul className="space-y-2">
                     {course.notes.map((note, index) => (
-                      <li key={index} className="flex flex-wrap items-center gap-3"><button type="button" onClick={() => setSelectedPdf({ title: note.title || 'PDF note', fileName: /\.pdf$/i.test(note.title || '') ? note.title : (note.title || 'note') + '.pdf', mimeType: 'application/pdf', url: getUploadedFileUrl(note.fileUrl), downloadEndpoint: `content/${course._id}/material/notes/${index}?download=1` })} className="text-left text-sm text-blue-400 hover:underline">{note.title || 'Open PDF note'} ↗</button><button type="button" onClick={() => requestDownload({ title: note.title || 'PDF note', fileName: note.title || 'note.pdf', type: 'PDF', downloadEndpoint: `content/${course._id}/material/notes/${index}?download=1` })} className="rounded-lg border border-amber-500/60 px-3 py-1 text-xs font-semibold text-amber-200 hover:bg-amber-500/10">Download</button></li>
+                      <li key={index} className="flex flex-wrap items-center gap-3"><button type="button" onClick={() => openCourseFile(course, 'notes', index, note)} className="text-left text-sm text-blue-400 hover:underline">{note.title || 'Open PDF note'} ↗</button><button type="button" onClick={() => requestDownload({ title: note.title || 'PDF note', fileName: note.title || 'note.pdf', type: 'PDF', downloadEndpoint: `content/${course._id}/material/notes/${index}?download=1` })} className="rounded-lg border border-amber-500/60 px-3 py-1 text-xs font-semibold text-amber-200 hover:bg-amber-500/10">Download</button></li>
                     ))}
                   </ul>
                 </section>
@@ -108,7 +123,7 @@ export default function ElementaryGradePage() {
                   <h3 className="mb-2 font-semibold text-slate-200">📊 Presentations</h3>
                   <ul className="space-y-2">
                     {course.ppts.map((ppt, index) => (
-                      <li key={index} className="flex flex-wrap items-center gap-3"><button type="button" onClick={() => setSelectedPdf({ title: ppt.title || 'Presentation', fileName: ppt.fileName || ppt.originalFileName || (/\.(ppt|pptx)$/i.test(ppt.title || '') ? ppt.title : (ppt.title || 'presentation') + '.pptx'), url: getUploadedFileUrl(ppt.fileUrl), downloadEndpoint: `content/${course._id}/material/ppts/${index}?download=1` })} className="text-left text-sm text-blue-400 hover:underline">Open {ppt.title || 'presentation'} ↗</button><button type="button" onClick={() => requestDownload({ title: ppt.title || 'Presentation', fileName: ppt.fileName || ppt.originalFileName, type: 'PPT', downloadEndpoint: `content/${course._id}/material/ppts/${index}?download=1` })} className="rounded-lg border border-amber-500/60 px-3 py-1 text-xs font-semibold text-amber-200 hover:bg-amber-500/10">Download</button></li>
+                      <li key={index} className="flex flex-wrap items-center gap-3"><button type="button" onClick={() => openCourseFile(course, 'ppts', index, ppt)} className="text-left text-sm text-blue-400 hover:underline">Open {ppt.title || 'presentation'} ↗</button><button type="button" onClick={() => requestDownload({ title: ppt.title || 'Presentation', fileName: ppt.fileName || ppt.originalFileName, type: 'PPT', downloadEndpoint: `content/${course._id}/material/ppts/${index}?download=1` })} className="rounded-lg border border-amber-500/60 px-3 py-1 text-xs font-semibold text-amber-200 hover:bg-amber-500/10">Download</button></li>
                     ))}
                   </ul>
                 </section>
