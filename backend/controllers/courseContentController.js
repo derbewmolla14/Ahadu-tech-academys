@@ -273,10 +273,17 @@ const getContent = async (req, res) => {
       item.pricingTier = String(item.faculty || '').toLowerCase() === 'phd' ? 'phd' : ['elementary', 'highschool'].includes(String(item.level || '').toLowerCase()) ? String(item.level).toLowerCase() : String(item.level || '').toLowerCase() === 'coding' ? 'general' : 'university';
       item.hasAccess = !item.isPremium || isAdmin || approvedIds.has(String(item._id));
     });
-    // Never expose private note/PPT upload paths in public catalog responses.
+    // Never expose protected file URLs or lesson links for locked Premium courses.
     content.forEach((item) => {
-      item.notes = (item.notes || []).map(({ title }) => ({ title }));
-      item.ppts = (item.ppts || []).map(({ title }) => ({ title }));
+      if (item.isPremium && !item.hasAccess) {
+        item.notes = (item.notes || []).map(({ title }) => ({ title }));
+        item.ppts = (item.ppts || []).map(({ title }) => ({ title }));
+        item.videos = (item.videos || []).map(({ title }) => ({ title }));
+        item.questions = [];
+      } else {
+        item.notes = (item.notes || []).map(({ title }) => ({ title }));
+        item.ppts = (item.ppts || []).map(({ title }) => ({ title }));
+      }
     });
     // University listings return metadata only; lesson URLs are fetched from the protected detail endpoint.
     if (level === 'university') {
