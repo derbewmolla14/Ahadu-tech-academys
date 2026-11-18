@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { apiFetch } from '../api/api';
 import DocumentViewerModal from '../components/DocumentViewerModal';
 import PaymentMethodModal from '../components/PaymentMethodModal';
+import { downloadApprovedResource } from '../utils/downloadApprovedResource';
 
 export default function UniversityCourseContentPage() {
   const { courseId } = useParams();
@@ -50,18 +51,19 @@ export default function UniversityCourseContentPage() {
       {showPayment && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4" role="dialog" aria-modal="true" aria-labelledby="course-payment-title"><section className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-widest text-amber-400">Premium course</p><h2 id="course-payment-title" className="mt-2 text-2xl font-bold text-white">Payment instructions</h2></div><button type="button" onClick={() => setShowPayment(false)} className="rounded-lg px-3 py-2 text-slate-300 hover:bg-slate-800">✕</button></div><p className="mt-4 text-sm leading-6 text-slate-300">Complete payment externally using the configured bank or Telebirr details. Then send your receipt, student account email or ID, and course name to the academy on Telegram. An administrator will verify the payment and unlock this course for your account.</p><div className="mt-4 rounded-xl border border-slate-700 bg-slate-950 p-4"><h3 className="font-semibold text-white">Bank transfer</h3>{paymentDetails.bankName && <p className="mt-2 text-sm text-slate-300">Bank: <strong>{paymentDetails.bankName}</strong></p>}{paymentDetails.accountName && <p className="mt-1 text-sm text-slate-300">Account name: <strong>{paymentDetails.accountName}</strong></p>}{paymentDetails.accountNumber && <p className="mt-1 text-sm text-slate-300">Account number: <strong>{paymentDetails.accountNumber}</strong></p>}{!paymentDetails.bankName && !paymentDetails.accountNumber && <p className="mt-2 text-sm text-amber-200">Bank account details have not been configured.</p>}</div><div className="mt-3 rounded-xl border border-slate-700 bg-slate-950 p-4"><h3 className="font-semibold text-white">Telebirr</h3>{paymentDetails.telebirrName && <p className="mt-2 text-sm text-slate-300">Account name: <strong>{paymentDetails.telebirrName}</strong></p>}{paymentDetails.telebirrNumber && <p className="mt-1 text-sm text-slate-300">Telebirr number: <strong>{paymentDetails.telebirrNumber}</strong></p>}{!paymentDetails.telebirrName && !paymentDetails.telebirrNumber && <p className="mt-2 text-sm text-amber-200">Telebirr details have not been configured.</p>}</div><ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-slate-300"><li>Pay the amount communicated by the academy.</li><li>Save your transaction receipt.</li><li>Send your payment screenshot, student account email or ID, course title, and payment method to the Telegram contact.</li><li>Wait for manual verification and course unlocking.</li></ol>{paymentDetails.telegramUsername ? <a href={`https://t.me/${paymentDetails.telegramUsername}`} target="_blank" rel="noreferrer" className="mt-5 block rounded-xl bg-sky-600 px-4 py-3 text-center font-semibold text-white hover:bg-sky-500">Open Telegram to send payment screenshot & details</a> : <p className="mt-5 rounded-lg border border-amber-700 bg-amber-950/50 p-3 text-sm text-amber-200">Telegram contact is not configured. Set VITE_PAYMENT_TELEGRAM_USERNAME.</p>}<button type="button" onClick={() => setShowPayment(false)} className="mt-3 w-full rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-300 hover:bg-slate-800">Close</button></section></div>}
       {!accessLocked && course.contentType === 'exit-exam' && <section className="rounded-3xl border border-slate-800 bg-slate-900 p-6"><h2 className="text-xl font-semibold text-white">Exit Exam Questions</h2>{course.questions?.length ? <ol className="mt-5 space-y-5">{course.questions.map((item, index) => <li key={index} className="rounded-xl border border-slate-800 bg-slate-950 p-4"><p className="font-medium text-white">{index + 1}. {item.question}</p><p className="mt-2 text-sm text-emerald-300">Answer: {item.answer}</p></li>)}</ol> : <p className="mt-3 text-slate-400">No questions have been added yet.</p>}</section>}
       {!accessLocked && course.contentType !== 'exit-exam' && <>
-      {course.notes?.length > 0 && <MaterialSection title="PDF Notes" items={course.notes} getUrl={(_item, index) => 'content/' + courseId + '/material/notes/' + index} protectedDownload />}
-      {course.videos?.length > 0 && <MaterialSection title="Video Lessons" items={course.videos} getUrl={(item) => item.url} />}
-      {course.ppts?.length > 0 && <MaterialSection title="PowerPoint Presentations" items={course.ppts} getUrl={(_item, index) => 'content/' + courseId + '/material/ppts/' + index} protectedDownload />}
+      {course.notes?.length > 0 && <MaterialSection title="PDF Notes" items={course.notes} courseId={courseId} getUrl={(_item, index) => 'content/' + courseId + '/material/notes/' + index} protectedDownload onDownloadRequest={requestDownload} />}
+      {course.videos?.length > 0 && <MaterialSection title="Video Lessons" items={course.videos} courseId={courseId} getUrl={(item) => item.url} onDownloadRequest={requestDownload} />}
+      {course.ppts?.length > 0 && <MaterialSection title="PowerPoint Presentations" items={course.ppts} courseId={courseId} getUrl={(_item, index) => 'content/' + courseId + '/material/ppts/' + index} protectedDownload onDownloadRequest={requestDownload} />}
       {!course.notes?.length && !course.videos?.length && !course.ppts?.length && <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-300">No learning materials have been uploaded for this course yet.</div>}
       </>}
     </div>
   );
 }
 
-function MaterialSection({ title, items, getUrl, protectedDownload = false }) {
+function MaterialSection({ title, items, getUrl, courseId, protectedDownload = false, onDownloadRequest }) {
   const [documentFile, setDocumentFile] = useState(null);
   const [downloadResource, setDownloadResource] = useState(null);
+  const requestDownload = (resource) => downloadApprovedResource(resource, setDownloadResource);
 
   const openProtectedFile = async (event, item, index) => {
     event.preventDefault();
@@ -75,7 +77,7 @@ function MaterialSection({ title, items, getUrl, protectedDownload = false }) {
       const url = URL.createObjectURL(blob);
       const fallbackExtension = title.toLowerCase().includes('powerpoint') ? '.pptx' : '.pdf';
       const fileName = item.fileName || item.originalFileName || item.title || (title + fallbackExtension);
-      setDocumentFile({ title: item.title || title, fileName, mimeType: blob.type, url });
+      setDocumentFile({ title: item.title || title, fileName, mimeType: blob.type, url, downloadEndpoint: getUrl(item, index) + '?download=1' });
     } catch (error) {
       window.alert(error.message || 'Unable to open this file.');
     }
@@ -98,16 +100,16 @@ function MaterialSection({ title, items, getUrl, protectedDownload = false }) {
                   Open {item.title || title} →
                 </button>
               ) : (
-                <button type="button" onClick={() => setDocumentFile({ title: item.title || title, fileName: item.fileName || item.title || 'lesson.mp4', mimeType: item.mimeType || 'video/mp4', url: getUrl(item, index) })} className="text-left text-sky-400 hover:underline">
+                <button type="button" onClick={() => setDocumentFile({ title: item.title || title, fileName: item.fileName || item.title || 'lesson.mp4', mimeType: item.mimeType || 'video/mp4', url: getUrl(item, index), downloadEndpoint: `content/${courseId}/video/${index}/download` })} className="text-left text-sky-400 hover:underline">
                   Watch {item.title || title} →
                 </button>
               )}
-              <button type="button" onClick={() => setDownloadResource({ title: item.title || title, fileName: item.fileName || item.originalFileName, type: title.toLowerCase().includes('video') ? 'video' : title.toLowerCase().includes('powerpoint') ? 'presentation' : 'PDF', accessType: 'free' })} className="ml-3 rounded-lg border border-amber-500/60 px-3 py-1.5 text-xs font-semibold text-amber-200 hover:bg-amber-500/10">Download</button>
+              <button type="button" onClick={() => onDownloadRequest({ title: item.title || title, fileName: item.fileName || item.originalFileName, type: title.toLowerCase().includes('video') ? 'video' : title.toLowerCase().includes('powerpoint') ? 'presentation' : 'PDF', downloadEndpoint: title.toLowerCase().includes('video') ? `content/${courseId}/video/${index}/download` : getUrl(item, index) + '?download=1' })} className="ml-3 rounded-lg border border-amber-500/60 px-3 py-1.5 text-xs font-semibold text-amber-200 hover:bg-amber-500/10">Download</button>
             </li>
           ))}
         </ul>
       </section>
-      <DocumentViewerModal file={documentFile} onClose={closeViewer} onDownloadRequest={setDownloadResource} />
+      <DocumentViewerModal file={documentFile} onClose={closeViewer} onDownloadRequest={onDownloadRequest} />
       <PaymentMethodModal open={Boolean(downloadResource)} resource={downloadResource} onClose={() => setDownloadResource(null)} />
     </>
   );
