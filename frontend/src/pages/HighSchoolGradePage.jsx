@@ -2,6 +2,7 @@ import { useContext, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { apiFetch } from '../api/api';
 import { AuthContext } from '../context/AuthContext';
+import PaymentMethodModal from '../components/PaymentMethodModal';
 
 export default function HighSchoolGradePage() {
   const { id } = useParams();
@@ -11,6 +12,7 @@ export default function HighSchoolGradePage() {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [downloadResource, setDownloadResource] = useState(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -45,6 +47,7 @@ export default function HighSchoolGradePage() {
 
   return (
     <main className="mx-auto max-w-6xl space-y-6 p-5 text-white">
+      <PaymentMethodModal open={Boolean(downloadResource)} resource={downloadResource} onClose={() => setDownloadResource(null)} />
       <header className="rounded-3xl border border-slate-800 bg-slate-900 p-8">
         <Link to="/highschool" className="text-sm text-sky-400 hover:underline">← All High School grades</Link>
         <h1 className="mt-4 text-3xl font-bold">High School — Grade {id}</h1>
@@ -55,13 +58,12 @@ export default function HighSchoolGradePage() {
       {!loading && !error && courses.length === 0 && <p className="rounded-xl border border-slate-800 bg-slate-900 p-6 text-slate-400">No published courses are available for Grade {id} yet.</p>}
       {!loading && courses.length > 0 && <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {courses.map((course) => (
-          <Link key={course._id} to={`/university/course/${course._id}`} className="rounded-2xl border border-slate-800 bg-slate-900 p-5 transition hover:border-sky-500">
+          <div key={course._id} role="button" tabIndex={0} onClick={() => { if (course.isPremium && !course.hasAccess) setDownloadResource({ title: course.course, type: 'course materials', accessType: 'premium' }); else window.location.assign(`/university/course/${course._id}`); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); if (course.isPremium && !course.hasAccess) setDownloadResource({ title: course.course, type: 'course materials', accessType: 'premium' }); else window.location.assign(`/university/course/${course._id}`); } }} className="cursor-pointer rounded-2xl border border-slate-800 bg-slate-900 p-5 transition hover:border-sky-500">
             <p className="text-xs font-semibold uppercase tracking-widest text-sky-400">{course.subject || course.department || 'High School'}</p>
-            <h2 className="mt-2 text-xl font-semibold">{course.course}</h2>
+            <div className="mt-2 flex flex-wrap items-center gap-2"><h2 className="text-xl font-semibold">{course.course}</h2>{course.isPremium && <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-300">🔒 PREMIUM</span>}{course.isPremium && course.hasAccess && <span className="rounded-full bg-green-500/10 px-2.5 py-1 text-xs font-bold text-green-300">✓ UNLOCKED</span>}</div>
             {course.description && <p className="mt-2 line-clamp-3 text-sm text-slate-400">{course.description}</p>}
-            <p className="mt-4 text-sm text-sky-400">Open course materials →</p>
-            {course.isPremium && <span className="mt-3 inline-block rounded-full bg-amber-500/10 px-3 py-1 text-xs text-amber-300">Premium access</span>}
-          </Link>
+            <p className="mt-4 text-sm text-sky-400">{course.isPremium && !course.hasAccess ? '🔒 View payment options →' : 'Open course materials →'}</p>
+          </div>
         ))}
       </section>}
     </main>
