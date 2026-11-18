@@ -87,7 +87,11 @@ exports.getCatalog = async (req, res) => {
     if (department) query.department = { $regex: exactDepartmentRegex(selectedLevel === 'Senior' ? canonicalDepartment : department) };
     if (course) query.course = { $regex: exactDepartmentRegex(course) };
     if (kind) query.kind = { $regex: exactDepartmentRegex(kind) };
-    if (academicYear) query.$or = [{ academicYear: String(academicYear).trim() }, { academicYear: 'All Years' }, { academicYear: '' }, { academicYear: null }, { academicYear: { $exists: false } }];
+    if (academicYear) query.$or = [
+      { academicYear: { $regex: exactDepartmentRegex(academicYear) } },
+      { academicYear: { $regex: exactDepartmentRegex('All Years') } },
+      { academicYear: '' }, { academicYear: null }, { academicYear: { $exists: false } },
+    ];
 
     const legacyQuery = {
       level: { $regex: exactDepartmentRegex('university') },
@@ -99,8 +103,8 @@ exports.getCatalog = async (req, res) => {
     if (course) legacyQuery.course = { $regex: exactDepartmentRegex(course) };
     if (academicYear && selectedLevel === 'Senior') {
       legacyQuery.$or = [
-        { year: String(academicYear).trim() },
-        { year: 'All Years' },
+        { year: { $regex: exactDepartmentRegex(academicYear) } },
+        { year: { $regex: exactDepartmentRegex('All Years') } },
         { year: '' },
         { year: null },
         { year: { $exists: false } },
