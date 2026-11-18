@@ -275,7 +275,7 @@ exports.setStudentAccess = async (req, res) => {
     } else {
       await User.updateOne({ _id: student._id }, { $pull: { unlockedUniversityResources: resource._id, downloadApprovals: { resourceModel: 'UniversityResource', resourceId: resource._id } } });
     }
-    return res.json({ message: grant ? 'Premium resource access granted to this student.' : 'Premium resource access revoked from this student.' });
+    return res.json({ message: grant ? 'Download access approved for this student.' : 'Download access revoked for this student.' });
   } catch (error) {
     console.error('University premium access update error:', error);
     return res.status(500).json({ message: 'Unable to update student access.' });
