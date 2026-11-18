@@ -274,6 +274,7 @@ export default function CourseDetail() {
                     allowFullScreen
                   />
                 </div>
+                <button type="button" onClick={() => setDownloadResource({ title: video.topic, type: 'video', accessType: 'free' })} className="rounded-lg border border-amber-500/60 px-4 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/10">Download</button>
               </div>
             ))}
             {!courseData.videos.length && (
