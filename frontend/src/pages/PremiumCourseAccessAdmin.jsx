@@ -69,14 +69,14 @@ export default function PremiumCourseAccessAdmin() {
       </header>
       {error && <div role="alert" className="rounded-xl border border-red-700 bg-red-950/40 p-4 text-red-200">{error}</div>}
       {message && <div role="status" className="rounded-xl border border-emerald-700 bg-emerald-950/30 p-4 text-emerald-200">{message}</div>}
-      {loading ? <div className="rounded-2xl bg-slate-900 p-8 text-center text-slate-300">Loading premium courses and students…</div> :
+      {loading ? <div className="rounded-2xl bg-slate-900 p-8 text-center text-slate-300">Loading courses and students…</div> :
         downloadableCourses.length === 0 ? <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center text-slate-300">No active courses are available to approve yet.</div> :
         <div className="space-y-5">
-          {premiumCourses.map(course => (
+          {downloadableCourses.map(course => (
             <section key={course._id} className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">🔒 Course · {course.isActive ? 'Active' : 'Inactive'}</span>
+                  <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">Download approval · {course.isActive ? 'Active' : 'Inactive'}</span>
                   <h2 className="mt-3 text-xl font-semibold">{course.course}</h2>
                   <p className="mt-1 text-sm text-slate-400">{course.faculty} · {course.studyStage} · {course.department} · {course.year}</p>
                   {course.description && <p className="mt-2 text-sm text-slate-300">{course.description}</p>}
