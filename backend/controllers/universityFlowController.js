@@ -9,7 +9,12 @@ const User = require('../models/User');
 const PRIVATE_DIR = path.join(__dirname, '../private_uploads/university');
 fs.mkdirSync(PRIVATE_DIR, { recursive: true });
 
-const approvedFilter = { status: 'approved' };
+const approvedFilter = { $and: [{ $or: [
+  { status: 'approved' },
+  { status: { $exists: false } },
+  { status: null },
+  { status: '' },
+] }] };
 
 const STREAM_CATEGORY = { Natural: 'Natural Science', Social: 'Social Science', Health: 'Health Science', Diploma: 'Diploma' };
 const exactDepartmentRegex = (value) => new RegExp('^' + String(value || '').trim().replace(/[.*+?^()|[\]\\$]/g, (character) => '\\' + character) + '$', 'i');
@@ -35,7 +40,10 @@ exports.getCatalog = async (req, res) => {
     if (!selectedLevel) return res.json({ streams: ['Natural', 'Social', 'Health', 'Diploma'], levels: ['Freshman', 'Remedial', 'Senior', 'Diploma'] });
     const base = {
       ...approvedFilter,
-      ...(String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic' ? { language: 'am' } : {}),
+      ...(['am', 'amharic', 'አማርኛ'].includes(String(language || '').trim().toLowerCase()) ? { $or: [
+        { language: { $in: ['am', 'Am', 'AM', 'Amharic', 'amharic', 'አማርኛ'] } },
+        { adminLanguage: { $in: ['am', 'Am', 'AM', 'Amharic', 'amharic', 'አማርኛ'] } },
+      ] } : {}),
       stream: { $regex: exactDepartmentRegex(selectedStream) },
       ...(selectedLevel ? { level: { $regex: exactDepartmentRegex(selectedLevel) } } : {}),
     };
