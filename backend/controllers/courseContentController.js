@@ -87,8 +87,9 @@ const uploadContent = async (req, res) => {
         if (!['Remedial', 'Freshman', 'Senior', 'Diploma'].includes(String(studyStage || '').trim())) return res.status(400).json({ success: false, message: 'Please select an Academic Stage.' });
         if (studyStage === 'Senior' && !String(department || '').trim()) return res.status(400).json({ success: false, message: 'Please select a Department.' });
         if (studyStage === 'Senior' && !['course-materials', 'exit-exam'].includes(contentType)) return res.status(400).json({ success: false, message: 'Select Course Materials or Exit Exam.' });
+        let configuredDepartment = null;
         if (studyStage === 'Senior') {
-          const configuredDepartment = await Department.findOne({ name: { $regex: exactDepartmentRegex(department) }, category: faculty, isActive: true }).select('name').lean();
+          configuredDepartment = await Department.findOne({ name: { $regex: exactDepartmentRegex(department) }, category: faculty, isActive: true }).select('name').lean();
           if (!configuredDepartment) return res.status(400).json({ success: false, message: 'Select an active department from the selected academic category.' });
         }
         recordDepartment = studyStage === 'Senior' ? configuredDepartment.name : 'General';
@@ -212,7 +213,16 @@ const getContent = async (req, res) => {
     const query = { isActive: true };
     if (level) query.level = level;
     if (university) query.university = university;
-    if (grade) query.grade = grade;
+    if (grade) {
+      const selectedGrade = String(grade).trim();
+      query.$and = [...(query.$and || []), {
+        $or: [
+          { grade: selectedGrade },
+          { year: `Grade ${selectedGrade}` },
+          { year: selectedGrade },
+        ],
+      }];
+    }
     if (subject) query.subject = subject;
     if (technology) query.technology = technology;
     if (faculty) query.faculty = faculty;
