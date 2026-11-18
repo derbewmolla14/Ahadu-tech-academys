@@ -269,8 +269,12 @@ exports.setStudentAccess = async (req, res) => {
     if (!resource || resource.status !== 'approved') return res.status(404).json({ message: 'Approved resource not found.' });
     const student = await User.findById(userId);
     if (!student || student.role === 'admin') return res.status(404).json({ message: 'Student account not found.' });
-    if (grant) await User.updateOne({ _id: student._id }, { $addToSet: { unlockedUniversityResources: resource._id } });
-    else await User.updateOne({ _id: student._id }, { $pull: { unlockedUniversityResources: resource._id } });
+    if (grant) {
+      await User.updateOne({ _id: student._id }, { $addToSet: { unlockedUniversityResources: resource._id }, $pull: { downloadApprovals: { resourceModel: 'UniversityResource', resourceId: resource._id } } });
+      await User.updateOne({ _id: student._id }, { $push: { downloadApprovals: { resourceModel: 'UniversityResource', resourceId: resource._id, status: 'approved', approvedBy: req.user._id, approvedAt: new Date() } } });
+    } else {
+      await User.updateOne({ _id: student._id }, { $pull: { unlockedUniversityResources: resource._id, downloadApprovals: { resourceModel: 'UniversityResource', resourceId: resource._id } } });
+    }
     return res.json({ message: grant ? 'Premium resource access granted to this student.' : 'Premium resource access revoked from this student.' });
   } catch (error) {
     console.error('University premium access update error:', error);
@@ -284,7 +288,8 @@ exports.downloadApproved = async (req, res) => {
     if (!item) return res.status(404).json({ message: 'Approved resource not found.' });
     const isAdmin = req.user?.role === 'admin';
     const isUnlocked = (req.user?.unlockedUniversityResources || []).some((id) => String(id) === String(item._id));
-    if (!isAdmin && !isUnlocked) return res.status(403).json({ message: 'Administrator approval is required before downloading this resource.' });
+    const isApproved = (req.user?.downloadApprovals || []).some((entry) => entry.resourceModel === 'UniversityResource' && String(entry.resourceId) === String(item._id) && entry.status === 'approved');
+    if (!isAdmin && !isUnlocked && !isApproved) return res.status(403).json({ message: 'Administrator approval is required before downloading this resource.' });
     if (!item.storedFileName) return res.status(404).json({ message: 'This resource has no attached file.' });
     const filePath = path.join(PRIVATE_DIR, path.basename(item.storedFileName));
     if (!fs.existsSync(filePath)) return res.status(404).json({ message: 'File is missing.' });
