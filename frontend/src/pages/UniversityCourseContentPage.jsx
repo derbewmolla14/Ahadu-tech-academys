@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { apiFetch } from '../api/api';
 import DocumentViewerModal from '../components/DocumentViewerModal';
+import PaymentMethodModal from '../components/PaymentMethodModal';
 
 export default function UniversityCourseContentPage() {
   const { courseId } = useParams();
@@ -60,6 +61,7 @@ export default function UniversityCourseContentPage() {
 
 function MaterialSection({ title, items, getUrl, protectedDownload = false }) {
   const [documentFile, setDocumentFile] = useState(null);
+  const [downloadResource, setDownloadResource] = useState(null);
 
   const openProtectedFile = async (event, item, index) => {
     event.preventDefault();
@@ -96,15 +98,17 @@ function MaterialSection({ title, items, getUrl, protectedDownload = false }) {
                   Open {item.title || title} →
                 </button>
               ) : (
-                <a href={getUrl(item, index)} target="_blank" rel="noreferrer" className="text-sky-400 hover:underline">
-                  {item.title || title} ↗
-                </a>
+                <button type="button" onClick={() => setDocumentFile({ title: item.title || title, fileName: item.fileName || item.title || 'lesson.mp4', mimeType: item.mimeType || 'video/mp4', url: getUrl(item, index) })} className="text-left text-sky-400 hover:underline">
+                  Watch {item.title || title} →
+                </button>
               )}
+              <button type="button" onClick={() => setDownloadResource({ title: item.title || title, fileName: item.fileName || item.originalFileName, type: title.toLowerCase().includes('video') ? 'video' : title.toLowerCase().includes('powerpoint') ? 'presentation' : 'PDF', accessType: 'free' })} className="ml-3 rounded-lg border border-amber-500/60 px-3 py-1.5 text-xs font-semibold text-amber-200 hover:bg-amber-500/10">Download</button>
             </li>
           ))}
         </ul>
       </section>
-      <DocumentViewerModal file={documentFile} onClose={closeViewer} />
+      <DocumentViewerModal file={documentFile} onClose={closeViewer} onDownloadRequest={setDownloadResource} />
+      <PaymentMethodModal open={Boolean(downloadResource)} resource={downloadResource} onClose={() => setDownloadResource(null)} />
     </>
   );
 }
