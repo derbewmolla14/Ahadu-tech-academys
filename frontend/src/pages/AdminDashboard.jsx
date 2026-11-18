@@ -114,6 +114,12 @@ export default function AdminDashboard() {
             📚 University Uploads & Approvals
           </Link>
           <Link
+            to="/admin/payment-pricing"
+            className="bg-violet-700 hover:bg-violet-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+          >
+            💳 Access Pricing & Payment
+          </Link>
+          <Link
             to="/admin/premium-course-access"
             className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
           >
