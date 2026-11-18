@@ -1,13 +1,19 @@
+import { useContext } from 'react';
+import { AuthContext } from '../context/AuthContext';
+
 export default function PaymentMethodModal({ open, onClose, resource }) {
+  const { user } = useContext(AuthContext);
   if (!open) return null;
 
+  const telegramUsername = (import.meta.env.VITE_PAYMENT_TELEGRAM_USERNAME || '').replace(/^@/, '');
+  const telegramUrl = import.meta.env.VITE_PAYMENT_TELEGRAM_URL
+    || (telegramUsername ? `https://t.me/${telegramUsername}` : 'https://t.me/HorizonHydroOstechbot');
   const paymentDetails = {
     bankName: import.meta.env.VITE_PAYMENT_BANK_NAME || '',
     accountName: import.meta.env.VITE_PAYMENT_ACCOUNT_NAME || '',
     accountNumber: import.meta.env.VITE_PAYMENT_ACCOUNT_NUMBER || '',
     telebirrName: import.meta.env.VITE_TELEBIRR_ACCOUNT_NAME || '',
     telebirrNumber: import.meta.env.VITE_TELEBIRR_PHONE || '',
-    telegramUsername: (import.meta.env.VITE_PAYMENT_TELEGRAM_USERNAME || '').replace(/^@/, ''),
   };
 
   return (
@@ -22,29 +28,38 @@ export default function PaymentMethodModal({ open, onClose, resource }) {
           </div>
           <button type="button" onClick={onClose} className="shrink-0 rounded-lg px-3 py-2 text-slate-300 hover:bg-slate-800" aria-label="Close payment instructions">✕</button>
         </div>
-        <p className="mt-4 text-sm leading-6 text-slate-300">Downloading is handled through the academy's payment and approval process, including free resources. No file has been downloaded. Use the configured payment details and contact the academy to request download access for this resource.</p>
+        <p className="mt-4 text-sm leading-6 text-slate-300">Download access is granted only after an administrator approves your request. This applies to free and premium resources.</p>
         <div className="mt-4 space-y-3 rounded-xl border border-slate-700 bg-slate-950 p-4">
           <h3 className="font-semibold text-white">Bank transfer</h3>
           {paymentDetails.bankName && <p className="text-sm text-slate-300">Bank: <strong>{paymentDetails.bankName}</strong></p>}
           {paymentDetails.accountName && <p className="text-sm text-slate-300">Account name: <strong>{paymentDetails.accountName}</strong></p>}
           {paymentDetails.accountNumber && <p className="text-sm text-slate-300">Account number: <strong>{paymentDetails.accountNumber}</strong></p>}
-          {!paymentDetails.bankName && !paymentDetails.accountNumber && <p className="text-sm text-amber-200">Bank details have not been configured by the academy.</p>}
+          {!paymentDetails.bankName && !paymentDetails.accountNumber && <p className="text-sm text-amber-200">Bank details have not been configured.</p>}
         </div>
         <div className="mt-3 space-y-2 rounded-xl border border-slate-700 bg-slate-950 p-4">
           <h3 className="font-semibold text-white">Telebirr</h3>
           {paymentDetails.telebirrName && <p className="text-sm text-slate-300">Account name: <strong>{paymentDetails.telebirrName}</strong></p>}
           {paymentDetails.telebirrNumber && <p className="text-sm text-slate-300">Telebirr number: <strong>{paymentDetails.telebirrNumber}</strong></p>}
-          {!paymentDetails.telebirrName && !paymentDetails.telebirrNumber && <p className="text-sm text-amber-200">Telebirr details have not been configured by the academy.</p>}
+          {!paymentDetails.telebirrName && !paymentDetails.telebirrNumber && <p className="text-sm text-amber-200">Telebirr details have not been configured.</p>}
         </div>
+        <section className="mt-4 rounded-xl border border-sky-500/30 bg-sky-500/10 p-4">
+          <h3 className="font-semibold text-white">Send payment screenshot via Telegram</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-200">Send a clear receipt screenshot and include the following details in your message:</p>
+          <ul className="mt-2 space-y-1 text-sm text-slate-200">
+            <li><strong>Registered name:</strong> {user?.fullName || 'Your account name'}</li>
+            <li><strong>Registered email:</strong> {user?.email || 'Your account email'}</li>
+            <li><strong>Selected resource:</strong> {resource?.title || resource?.fileName || 'Selected learning resource'}</li>
+            <li><strong>Payment method:</strong> Bank transfer or Telebirr</li>
+          </ul>
+          <a href={telegramUrl} target="_blank" rel="noopener noreferrer" className="mt-4 block rounded-xl bg-sky-600 px-4 py-3 text-center font-semibold text-white hover:bg-sky-500">Send Payment Screenshot via Telegram</a>
+          <p className="mt-2 break-all text-xs text-slate-400">Telegram contact: {telegramUrl}</p>
+        </section>
         <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-slate-300">
-          <li>Ask the academy for the applicable download-access fee or confirmation that no payment is due.</li>
-          <li>Keep your payment receipt if a payment is required.</li>
-          <li>Send your student account details, resource title, and payment method to the academy.</li>
-          <li>Wait for the administrator to verify and approve download access.</li>
+          <li>Pay the amount communicated by the academy, or ask whether the free resource requires a fee.</li>
+          <li>Send the receipt screenshot and account/resource details through Telegram.</li>
+          <li>Wait for an administrator to verify and approve your download access.</li>
+          <li>After approval, click Download again to receive the file.</li>
         </ol>
-        {paymentDetails.telegramUsername
-          ? <a href={`https://t.me/${paymentDetails.telegramUsername}`} target="_blank" rel="noreferrer" className="mt-5 block rounded-xl bg-sky-600 px-4 py-3 text-center font-semibold text-white hover:bg-sky-500">Contact academy on Telegram</a>
-          : <p className="mt-5 rounded-lg border border-amber-700 bg-amber-950/50 p-3 text-sm text-amber-200">Telegram contact is not configured. Set VITE_PAYMENT_TELEGRAM_USERNAME.</p>}
         <button type="button" onClick={onClose} className="mt-3 w-full rounded-xl border border-slate-700 px-4 py-3 text-sm text-slate-300 hover:bg-slate-800">Close</button>
       </section>
     </div>
