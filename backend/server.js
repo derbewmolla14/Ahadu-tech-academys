@@ -119,6 +119,7 @@ app.use('/uploads', async (req, res, next) => {
   try {
     const requestedFile = '/uploads' + req.path;
     const courseMaterial = await CourseContent.findOne({
+      isPremium: true,
       $or: [{ 'notes.fileUrl': requestedFile }, { 'ppts.fileUrl': requestedFile }, { videos: { $elemMatch: { url: requestedFile } } }]
     }).select('_id');
     if (!courseMaterial) return next();
@@ -130,8 +131,7 @@ app.use('/uploads', async (req, res, next) => {
         && String(entry.resourceId) === String(courseMaterial._id)
         && entry.status === 'approved'
       );
-      const course = await CourseContent.findById(courseMaterial._id).select('isPremium').lean();
-      if (course?.isPremium && !isAdmin && !isApproved) {
+      if (!isAdmin && !isApproved) {
         return res.status(403).json({ success: false, accessLocked: true, isPremium: true, message: 'Administrator approval is required before accessing this premium course.' });
       }
       return next();
