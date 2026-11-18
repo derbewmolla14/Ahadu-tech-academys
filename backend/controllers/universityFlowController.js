@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const UniversityResource = require('../models/UniversityResource');
+const CourseContent = require('../models/CourseContent');
 const Department = require('../models/Department');
 const User = require('../models/User');
 
@@ -40,7 +41,12 @@ exports.getCatalog = async (req, res) => {
       return res.json({ departments: departments.map((item) => item.name) });
     }
     if (level !== 'Senior' && !course) {
-      const courses = await UniversityResource.distinct('course', { ...base, course: { $nin: ['', null] }, kind: { $in: ['course-material', 'exam-question'] } });
+      const legacyBase = { level: 'university', faculty: STREAM_CATEGORY[stream], studyStage: level, isActive: true };
+      const [resourceCourses, legacyCourses] = await Promise.all([
+        UniversityResource.distinct('course', { ...base, course: { $nin: ['', null] }, kind: { $in: ['course-material', 'exam-question'] } }),
+        CourseContent.distinct('course', { ...legacyBase, course: { $nin: ['', null] } }),
+      ]);
+      const courses = [...new Set([...resourceCourses, ...legacyCourses].map((item) => String(item || '').trim()).filter(Boolean))];
       return res.json({ courses: courses.sort((a, b) => a.localeCompare(b)) });
     }
     if (level === 'Senior' && department && !kind) {
@@ -50,7 +56,16 @@ exports.getCatalog = async (req, res) => {
       ] });
     }
     if (level === 'Senior' && department && kind === 'course-material' && !course) {
-      const courses = await UniversityResource.distinct('course', { ...base, department: { $regex: exactDepartmentRegex(canonicalDepartment) }, kind, course: { $nin: ['', null] } });
+      const legacyBase = {
+        level: 'university', faculty: STREAM_CATEGORY[stream], studyStage: 'Senior',
+        department: { $regex: exactDepartmentRegex(canonicalDepartment) }, isActive: true,
+        course: { $nin: ['', null] },
+      };
+      const [resourceCourses, legacyCourses] = await Promise.all([
+        UniversityResource.distinct('course', { ...base, department: { $regex: exactDepartmentRegex(canonicalDepartment) }, kind, course: { $nin: ['', null] } }),
+        CourseContent.distinct('course', legacyBase),
+      ]);
+      const courses = [...new Set([...resourceCourses, ...legacyCourses].map((item) => String(item || '').trim()).filter(Boolean))];
       return res.json({ courses: courses.sort((a, b) => a.localeCompare(b)) });
     }
     if (level !== 'Senior' && course && !kind) {
@@ -64,15 +79,90 @@ exports.getCatalog = async (req, res) => {
     if (course) query.course = course;
     if (kind) query.kind = kind;
     if (academicYear) query.$or = [{ academicYear: String(academicYear).trim() }, { academicYear: 'All Years' }, { academicYear: '' }, { academicYear: null }, { academicYear: { $exists: false } }];
-    const resources = await UniversityResource.find(query)
-      .select('title resourceType textContent answer solution originalFileName mimeType accessType')
-      .sort({ createdAt: -1 }).lean();
-    const unlocked = new Set((req.user?.unlockedUniversityResources || []).map((id) => String(id)));
+
+    const legacyQuery = {
+      level: 'university',
+      faculty: STREAM_CATEGORY[stream],
+      studyStage: level,
+      isActive: true,
+    };
+    if (level === 'Senior' && department) legacyQuery.department = { $regex: exactDepartmentRegex(canonicalDepartment) };
+    if (course) legacyQuery.course = course;
+    if (academicYear && level === 'Senior') {
+      legacyQuery.$or = [
+        { year: String(academicYear).trim() },
+        { year: 'All Years' },
+        { year: '' },
+        { year: null },
+        { year: { $exists: false } },
+      ];
+    }
+    if (kind === 'course-material') legacyQuery.contentType = { $in: ['course-materials', null] };
+    else if (kind === 'exit-exam') legacyQuery.contentType = 'exit-exam';
+    else if (kind === 'exam-question') legacyQuery._id = null;
+
+    const [resources, legacyCourses] = await Promise.all([
+      UniversityResource.find(query)
+        .select('title resourceType textContent answer solution originalFileName mimeType accessType')
+        .sort({ createdAt: -1 }).lean(),
+      CourseContent.find(legacyQuery)
+        .select('course description notes videos ppts questions isPremium createdAt')
+        .sort({ createdAt: -1 }).lean(),
+    ]);
+
+    const unlockedUniversity = new Set((req.user?.unlockedUniversityResources || []).map((id) => String(id)));
+    const unlockedCourses = new Set((req.user?.unlockedCourseContents || []).map((id) => String(id)));
+    const isAdmin = req.user?.role === 'admin';
+    const legacyResources = [];
+
+    legacyCourses.forEach((item) => {
+      const hasAccess = !item.isPremium || isAdmin || unlockedCourses.has(String(item._id));
+      if (kind === 'exit-exam') {
+        (item.questions || []).forEach((question, index) => {
+          legacyResources.push({
+            _id: `${item._id}:question:${index}`,
+            source: 'course-content',
+            courseContentId: String(item._id),
+            title: `Question ${index + 1}`,
+            resourceType: 'text',
+            textContent: question.question,
+            answer: question.answer,
+            solution: '',
+            accessType: item.isPremium ? 'premium' : 'free',
+            hasAccess,
+          });
+        });
+        return;
+      }
+      (item.notes || []).forEach((note, index) => legacyResources.push({
+        _id: `${item._id}:notes:${index}`, source: 'course-content',
+        courseContentId: String(item._id), materialKind: 'notes', materialIndex: index,
+        title: note.title, resourceType: 'pdf', originalFileName: path.basename(note.fileUrl || ''),
+        accessType: item.isPremium ? 'premium' : 'free', hasAccess,
+      }));
+      (item.ppts || []).forEach((ppt, index) => legacyResources.push({
+        _id: `${item._id}:ppts:${index}`, source: 'course-content',
+        courseContentId: String(item._id), materialKind: 'ppts', materialIndex: index,
+        title: ppt.title, resourceType: 'ppt', originalFileName: path.basename(ppt.fileUrl || ''),
+        accessType: item.isPremium ? 'premium' : 'free', hasAccess,
+      }));
+      (item.videos || []).forEach((video, index) => legacyResources.push({
+        _id: `${item._id}:videos:${index}`, source: 'course-content',
+        courseContentId: String(item._id), materialKind: 'video', materialIndex: index,
+        title: video.title, resourceType: 'video', videoUrl: video.url,
+        accessType: item.isPremium ? 'premium' : 'free', hasAccess,
+      }));
+    });
+
     return res.json({
-      resources: resources.map((item) => ({
-        ...item,
-        hasAccess: item.accessType !== 'premium' || req.user?.role === 'admin' || unlocked.has(String(item._id)),
-      })),
+      resources: [
+        ...resources.map((item) => ({
+          ...item,
+          source: 'university-resource',
+          hasAccess: item.accessType !== 'premium' || isAdmin || unlockedUniversity.has(String(item._id)),
+        })),
+        ...legacyResources,
+      ],
     });
   } catch (error) {
     console.error('University catalog error:', error);
