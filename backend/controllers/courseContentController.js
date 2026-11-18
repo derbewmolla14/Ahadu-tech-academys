@@ -336,6 +336,27 @@ const streamCourseMaterial = async (req, res) => {
   }
 };
 
+// Deliver an approved course video only after verifying the student's per-course download approval.
+const downloadCourseVideo = async (req, res) => {
+  try {
+    const course = await CourseContent.findById(req.params.id);
+    if (!course || !course.isActive) return res.status(404).json({ success: false, message: 'Course not found.' });
+    const isAdmin = req.user?.role === 'admin';
+    const isUnlocked = req.user?.unlockedCourseContents?.some((item) => String(item) === String(course._id));
+    const isApproved = req.user?.downloadApprovals?.some((entry) => entry.resourceModel === 'CourseContent' && String(entry.resourceId) === String(course._id) && entry.status === 'approved');
+    if (!isAdmin && !isUnlocked && !isApproved) return res.status(403).json({ success: false, message: 'Administrator approval is required before downloading this course video.' });
+    const video = course.videos?.[Number(req.params.index)];
+    if (!video?.url) return res.status(404).json({ success: false, message: 'Video not found.' });
+    let target;
+    try { target = new URL(video.url); } catch { return res.status(400).json({ success: false, message: 'Video URL is invalid.' }); }
+    if (!['http:', 'https:'].includes(target.protocol)) return res.status(400).json({ success: false, message: 'Unsupported video URL.' });
+    return res.redirect(302, target.toString());
+  } catch (error) {
+    console.error('Download course video error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to verify video download.' });
+  }
+};
+
 // Delete course content
 const deleteContent = async (req, res) => {
   try {
@@ -527,6 +548,7 @@ module.exports = {
   getContent,
   getContentById,
   streamCourseMaterial,
+  downloadCourseVideo,
   deleteContent,
   getAllCourses,
   toggleCourseStatus,
