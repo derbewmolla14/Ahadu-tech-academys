@@ -119,7 +119,7 @@ app.use('/uploads', async (req, res, next) => {
   try {
     const requestedFile = '/uploads' + req.path;
     const courseMaterial = await CourseContent.findOne({
-      $or: [{ 'notes.fileUrl': requestedFile }, { 'ppts.fileUrl': requestedFile }]
+      $or: [{ 'notes.fileUrl': requestedFile }, { 'ppts.fileUrl': requestedFile }, { videos: { $elemMatch: { url: requestedFile } } }]
     }).select('_id');
     if (!courseMaterial) return next();
 
