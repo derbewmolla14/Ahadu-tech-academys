@@ -298,7 +298,8 @@ const getContentById = async (req, res) => {
 
     const isAdmin = req.user?.role === 'admin';
     const isUnlocked = req.user?.unlockedCourseContents?.some((item) => String(item) === String(content._id));
-    if (content.isPremium && !isAdmin && !isUnlocked) {
+    const isApproved = (req.user?.downloadApprovals || []).some((entry) => entry.resourceModel === 'CourseContent' && String(entry.resourceId) === String(content._id) && entry.status === 'approved');
+    if (content.isPremium && !isAdmin && !isUnlocked && !isApproved) {
       return res.status(200).json({
         success: true,
         accessLocked: true,
