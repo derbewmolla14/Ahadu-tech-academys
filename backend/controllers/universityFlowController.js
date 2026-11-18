@@ -10,6 +10,17 @@ fs.mkdirSync(PRIVATE_DIR, { recursive: true });
 
 const approvedFilter = { status: 'approved' };
 
+const STREAM_CATEGORY = { Natural: 'Natural Science', Social: 'Social Science', Health: 'Health Science', Diploma: 'Diploma' };
+const exactDepartmentRegex = (value) => new RegExp('^' + String(value || '').trim().replace(/[.*+?^()|[\]\\$]/g, (character) => '\\' + character) + '$', 'i');
+
+const resolveDepartment = async (stream, departmentName) => {
+  const category = STREAM_CATEGORY[stream];
+  const name = String(departmentName || '').trim();
+  if (!category || !name) return null;
+  return Department.findOne({ category, name: { $regex: exactDepartmentRegex(name) }, isActive: true })
+    .select('name normalizedName category').lean();
+};
+
 exports.getCatalog = async (req, res) => {
   try {
     const { stream, level, department, course, kind, academicYear } = req.query;
@@ -17,6 +28,12 @@ exports.getCatalog = async (req, res) => {
     if (level && !['Freshman', 'Remedial', 'Senior', 'Diploma'].includes(level)) return res.status(400).json({ message: 'Invalid academic level.' });
     if (!level) return res.json({ streams: ['Natural', 'Social', 'Health', 'Diploma'], levels: ['Freshman', 'Remedial', 'Senior', 'Diploma'] });
     const base = { ...approvedFilter, stream, level };
+    let canonicalDepartment = '';
+    if (level === 'Senior' && department) {
+      const departmentRecord = await resolveDepartment(stream, department);
+      if (!departmentRecord) return res.json({ courses: [], resources: [], message: 'No matching active department was found.' });
+      canonicalDepartment = departmentRecord.name;
+    }
     if (level === 'Senior' && !department) {
       const category = ({ Natural: 'Natural Science', Social: 'Social Science', Health: 'Health Science', Diploma: 'Diploma' })[stream];
       const departments = await Department.find({ category, isActive: true }).select('name').sort({ name: 1 }).lean();
@@ -33,7 +50,7 @@ exports.getCatalog = async (req, res) => {
       ] });
     }
     if (level === 'Senior' && department && kind === 'course-material' && !course) {
-      const courses = await UniversityResource.distinct('course', { ...base, department, kind, course: { $nin: ['', null] } });
+      const courses = await UniversityResource.distinct('course', { ...base, department: { $regex: exactDepartmentRegex(canonicalDepartment) }, kind, course: { $nin: ['', null] } });
       return res.json({ courses: courses.sort((a, b) => a.localeCompare(b)) });
     }
     if (level !== 'Senior' && course && !kind) {
@@ -43,10 +60,10 @@ exports.getCatalog = async (req, res) => {
       ] });
     }
     const query = { ...base };
-    if (department) query.department = department;
+    if (department) query.department = { $regex: exactDepartmentRegex(level === 'Senior' ? canonicalDepartment : department) };
     if (course) query.course = course;
     if (kind) query.kind = kind;
-    if (academicYear) query.academicYear = String(academicYear);
+    if (academicYear) query.$or = [{ academicYear: String(academicYear).trim() }, { academicYear: 'All Years' }, { academicYear: '' }, { academicYear: null }, { academicYear: { $exists: false } }];
     const resources = await UniversityResource.find(query)
       .select('title resourceType textContent answer solution originalFileName mimeType accessType')
       .sort({ createdAt: -1 }).lean();
@@ -66,12 +83,18 @@ exports.getCatalog = async (req, res) => {
 exports.adminUpload = async (req, res) => {
   try {
     const { stream, level, department = '', course = '', kind, academicYear = '', resourceType, title, textContent = '', answer = '', solution = '', accessType = 'free' } = req.body;
+    let canonicalDepartment = '';
     if (!['Natural', 'Social', 'Health', 'Diploma'].includes(stream) || !['Freshman', 'Remedial', 'Senior', 'Diploma'].includes(level)) return res.status(400).json({ message: 'Invalid stream or level.' });
     if (!['course-material', 'exam-question', 'exit-exam'].includes(kind)) return res.status(400).json({ message: 'Invalid content category.' });
     if (!['pdf', 'ppt', 'video', 'image', 'text'].includes(resourceType)) return res.status(400).json({ message: 'Invalid resource format.' });
     if (!['free', 'premium'].includes(accessType)) return res.status(400).json({ message: 'Choose Free or Premium access.' });
     if (!title || !String(title).trim()) return res.status(400).json({ message: 'Resource title is required.' });
     if (level === 'Senior' && !department) return res.status(400).json({ message: 'Senior resources require a department.' });
+    if (level === 'Senior') {
+      const departmentRecord = await resolveDepartment(stream, department);
+      if (!departmentRecord) return res.status(400).json({ message: 'Select an active department from the selected academic category.' });
+      canonicalDepartment = departmentRecord.name;
+    }
     if (level !== 'Senior' && !course) return res.status(400).json({ message: 'This level requires a course.' });
     if (level === 'Senior' && kind === 'course-material' && !course) return res.status(400).json({ message: 'Senior course materials must be assigned to a department course.' });
     if (level === 'Senior' && kind === 'exam-question') return res.status(400).json({ message: 'Use Exit Exam for Senior assessment uploads.' });
@@ -88,7 +111,7 @@ exports.adminUpload = async (req, res) => {
     const storedFileName = req.file ? crypto.randomUUID() + path.extname(req.file.originalname).toLowerCase() : '';
     if (req.file) fs.writeFileSync(path.join(PRIVATE_DIR, storedFileName), req.file.buffer, { flag: 'wx' });
     const item = await UniversityResource.create({
-      stream, level, department, course, kind, academicYear, resourceType, title: String(title).trim(),
+      stream, level, department: canonicalDepartment, course, kind, academicYear: String(academicYear || '').trim() || 'All Years', resourceType, title: String(title).trim(),
       textContent, answer, solution, accessType, storedFileName,
       originalFileName: req.file?.originalname || '', mimeType: req.file?.mimetype || '',
       uploadedBy: req.user._id, status: 'pending',

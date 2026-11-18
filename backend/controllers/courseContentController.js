@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 
 const uploadsDirectory = path.join(__dirname, '../uploads');
+const exactDepartmentRegex = (value) => new RegExp('^' + String(value || '').trim().replace(/[.*+?^()|[\]\\$]/g, (character) => '\\' + character) + '$', 'i');
 fs.mkdirSync(uploadsDirectory, { recursive: true });
 
 // Configure multer for file uploads
@@ -87,10 +88,10 @@ const uploadContent = async (req, res) => {
         if (studyStage === 'Senior' && !String(department || '').trim()) return res.status(400).json({ success: false, message: 'Please select a Department.' });
         if (studyStage === 'Senior' && !['course-materials', 'exit-exam'].includes(contentType)) return res.status(400).json({ success: false, message: 'Select Course Materials or Exit Exam.' });
         if (studyStage === 'Senior') {
-          const configuredDepartment = await Department.findOne({ name: String(department).trim(), category: faculty, isActive: true });
+          const configuredDepartment = await Department.findOne({ name: { $regex: exactDepartmentRegex(department) }, category: faculty, isActive: true }).select('name').lean();
           if (!configuredDepartment) return res.status(400).json({ success: false, message: 'Select an active department from the selected academic category.' });
         }
-        recordDepartment = studyStage === 'Senior' ? String(department).trim() : 'General';
+        recordDepartment = studyStage === 'Senior' ? configuredDepartment.name : 'General';
         recordYear = studyStage === 'Senior' ? (String(year || '').trim() || 'All Years') : studyStage;
       } else {
         recordDepartment = department || 'Graduate Studies';
@@ -219,8 +220,8 @@ const getContent = async (req, res) => {
     if (contentType === 'course-materials') query.$or = [{ contentType: 'course-materials' }, { contentType: { $exists: false } }];
     else if (contentType) query.contentType = contentType;
     if (courseCode) query.courseCode = new RegExp(courseCode, 'i');
-    if (department) query.department = department;
-    if (year) query.year = year;
+    if (department) query.department = { $regex: exactDepartmentRegex(department) };
+    if (year) query.$and = [...(query.$and || []), { $or: [{ year: String(year).trim() }, { year: 'All Years' }, { year: '' }, { year: null }, { year: { $exists: false } }] }];
     if (course) query.course = course;
 
     const content = await CourseContent.find(query).lean();
