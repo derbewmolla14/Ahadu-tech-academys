@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../api/api';
 import DocumentViewerModal from '../components/DocumentViewerModal';
 import PaymentMethodModal from '../components/PaymentMethodModal';
+import { AuthContext } from '../context/AuthContext';
+import { downloadApprovedResource } from '../utils/downloadApprovedResource';
 
 const initial = { stream: '', level: '', department: '', course: '', kind: '' };
 const mainCategories = [
@@ -17,6 +19,8 @@ const mainCategories = [
 ];
 
 export default function UniversityFlow() {
+  const { user, language } = useContext(AuthContext);
+  const selectedLanguage = language || user?.preferences?.language || 'en';
   const [selection, setSelection] = useState(initial);
   const [history, setHistory] = useState([]);
   const [catalog, setCatalog] = useState({});
@@ -43,6 +47,7 @@ export default function UniversityFlow() {
     if (!next.stream) { setCatalog({}); setLoading(false); return; }
     const params = new URLSearchParams();
     Object.entries(next).forEach(([key, value]) => { if (value) params.set(key, value); });
+    if (selectedLanguage === 'am') params.set('language', 'am');
     setCatalog({});
     setLoading(true); setError('');
     try {
@@ -55,7 +60,7 @@ export default function UniversityFlow() {
     } finally {
       if (requestId === catalogRequestId.current) setLoading(false);
     }
-  }, []);
+  }, [selectedLanguage]);
 
   useEffect(() => {
     load(selection);
@@ -101,6 +106,13 @@ export default function UniversityFlow() {
   const filteredCourses = (catalog.courses || []).filter((course) => String(course || '').toLowerCase().includes(courseSearch.trim().toLowerCase()));
   const filteredDepartments = (catalog.departments || []).filter((department) => department.toLowerCase().includes(departmentSearch.trim().toLowerCase()));
   const filteredResources = resources.filter((resource) => [resource.title, resource.originalFileName, resource.resourceType, resource.textContent].join(' ').toLowerCase().includes(resourceSearch.trim().toLowerCase()));
+
+  const requestDownload = (resource) => {
+    const downloadEndpoint = resource.source === 'course-content'
+      ? (resource.resourceType === 'video' ? `content/${resource.courseContentId}/video/${resource.materialIndex}/download` : `content/${resource.courseContentId}/material/${resource.materialKind}/${resource.materialIndex}?download=1`)
+      : `university-learning/resources/${resource._id}/file?download=1`;
+    return downloadApprovedResource({ ...resource, downloadEndpoint }, setDownloadResource);
+  };
 
   const openResource = async (resource) => {
     if (!resource.hasAccess) {
@@ -180,7 +192,7 @@ export default function UniversityFlow() {
             {!resource.hasAccess && <><p className="mt-3 text-sm text-amber-200">Premium access is required. Complete payment and send your receipt for manual verification.</p><button type="button" onClick={() => setPaymentResource(resource)} className="mt-4 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500">Pay &amp; Request Access</button></>}
             {resource.resourceType !== 'text' && <div className="mt-4 flex flex-wrap gap-2">
               {resource.hasAccess && <button type="button" onClick={() => openResource(resource)} className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold hover:bg-sky-500">Open {resource.resourceType}</button>}
-              <button type="button" onClick={() => setDownloadResource(resource)} className="rounded-lg border border-amber-500/60 px-4 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/10">Download</button>
+              <button type="button" onClick={() => requestDownload(resource)} className="rounded-lg border border-amber-500/60 px-4 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/10">Download</button>
             </div>}
           </article>)}
           {resources.length > 0 && !filteredResources.length && <p className="text-slate-400">No approved resources match your search.</p>}
@@ -189,7 +201,7 @@ export default function UniversityFlow() {
       </>}
       <DocumentViewerModal
         file={documentFile}
-        onDownloadRequest={setDownloadResource}
+        onDownloadRequest={requestDownload}
         onClose={() => {
           if (documentFile?.url?.startsWith('blob:')) URL.revokeObjectURL(documentFile.url);
           setDocumentFile(null);
