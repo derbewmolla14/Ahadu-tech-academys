@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../api/api';
 import DocumentViewerModal from '../components/DocumentViewerModal';
+import PaymentMethodModal from '../components/PaymentMethodModal';
 
 const initial = { stream: '', level: '', department: '', course: '', kind: '' };
 const mainCategories = [
@@ -27,6 +28,7 @@ export default function UniversityFlow() {
   const [resourceSearch, setResourceSearch] = useState('');
   const [paymentResource, setPaymentResource] = useState(null);
   const [documentFile, setDocumentFile] = useState(null);
+  const [downloadResource, setDownloadResource] = useState(null);
   const paymentDetails = {
     bankName: import.meta.env.VITE_PAYMENT_BANK_NAME || '',
     accountName: import.meta.env.VITE_PAYMENT_ACCOUNT_NAME || '',
@@ -106,7 +108,7 @@ export default function UniversityFlow() {
       return;
     }
     if (resource.source === 'course-content' && resource.resourceType === 'video') {
-      window.open(resource.videoUrl, '_blank', 'noopener,noreferrer');
+      setDocumentFile({ title: resource.title || 'Video lesson', fileName: resource.originalFileName || resource.title || 'lesson.mp4', mimeType: 'video/mp4', url: resource.videoUrl });
       return;
     }
     try {
@@ -176,7 +178,10 @@ export default function UniversityFlow() {
             {resource.hasAccess && resource.answer && <p className="mt-3 text-slate-300"><strong>Answer:</strong> {resource.answer}</p>}
             {resource.hasAccess && resource.solution && <p className="mt-2 whitespace-pre-wrap text-slate-300"><strong>Solution:</strong> {resource.solution}</p>}
             {!resource.hasAccess && <><p className="mt-3 text-sm text-amber-200">Premium access is required. Complete payment and send your receipt for manual verification.</p><button type="button" onClick={() => setPaymentResource(resource)} className="mt-4 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500">Pay &amp; Request Access</button></>}
-            {resource.resourceType !== 'text' && resource.hasAccess && <button type="button" onClick={() => openResource(resource)} className="mt-4 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold hover:bg-sky-500">Open {resource.resourceType}</button>}
+            {resource.resourceType !== 'text' && <div className="mt-4 flex flex-wrap gap-2">
+              {resource.hasAccess && <button type="button" onClick={() => openResource(resource)} className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold hover:bg-sky-500">Open {resource.resourceType}</button>}
+              <button type="button" onClick={() => setDownloadResource(resource)} className="rounded-lg border border-amber-500/60 px-4 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/10">Download</button>
+            </div>}
           </article>)}
           {resources.length > 0 && !filteredResources.length && <p className="text-slate-400">No approved resources match your search.</p>}
           {!resources.length && <p className="text-slate-400">No approved resources are available at this step yet.</p>}
@@ -184,11 +189,13 @@ export default function UniversityFlow() {
       </>}
       <DocumentViewerModal
         file={documentFile}
+        onDownloadRequest={setDownloadResource}
         onClose={() => {
           if (documentFile?.url?.startsWith('blob:')) URL.revokeObjectURL(documentFile.url);
           setDocumentFile(null);
         }}
       />
+      <PaymentMethodModal open={Boolean(downloadResource)} resource={downloadResource} onClose={() => setDownloadResource(null)} />
       {paymentResource && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4" role="dialog" aria-modal="true" aria-labelledby="premium-payment-title">
         <section className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
           <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-widest text-amber-400">Premium resource</p><h2 id="premium-payment-title" className="mt-2 text-2xl font-bold">Payment instructions</h2><p className="mt-1 text-sm text-slate-400">{paymentResource.title}</p></div><button type="button" onClick={() => setPaymentResource(null)} className="rounded-lg px-3 py-2 text-slate-300 hover:bg-slate-800" aria-label="Close payment instructions">✕</button></div>
