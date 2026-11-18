@@ -49,6 +49,7 @@ import UniversityCourseContentPage from "./pages/UniversityCourseContentPage";
 import UniversityLearningPage from "./pages/UniversityLearningPage";
 import AdminUniversityResources from "./pages/AdminUniversityResources";
 import AdminPaymentPricing from "./pages/AdminPaymentPricing";
+import OfflineLibrary from "./pages/OfflineLibrary";
 
 // ========================================
 // PRIVATE ROUTE
@@ -103,6 +104,7 @@ function AppRoutes() {
           index
           element={<DashboardHome />}
         />
+        <Route path="offline" element={<OfflineLibrary />} />
 
         {/* Account settings */}
         <Route
