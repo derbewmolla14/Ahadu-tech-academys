@@ -246,6 +246,12 @@ const getContent = async (req, res) => {
 
 
     const content = await CourseContent.find(query).lean();
+    const isAdmin = req.user?.role === 'admin';
+    const unlockedIds = new Set((req.user?.unlockedCourseContents || []).map((id) => String(id)));
+    const approvedIds = new Set((req.user?.downloadApprovals || []).filter((entry) => entry.resourceModel === 'CourseContent' && entry.status === 'approved').map((entry) => String(entry.resourceId)));
+    content.forEach((item) => {
+      item.hasAccess = !item.isPremium || isAdmin || unlockedIds.has(String(item._id)) || approvedIds.has(String(item._id));
+    });
     // Never expose private note/PPT upload paths in public catalog responses.
     content.forEach((item) => {
       item.notes = (item.notes || []).map(({ title }) => ({ title }));
@@ -293,7 +299,8 @@ const getContentById = async (req, res) => {
 
     const isAdmin = req.user?.role === 'admin';
     const isUnlocked = req.user?.unlockedCourseContents?.some((item) => String(item) === String(content._id));
-    if (content.isPremium && !isAdmin && !isUnlocked) {
+    const isApproved = (req.user?.downloadApprovals || []).some((entry) => entry.resourceModel === 'CourseContent' && String(entry.resourceId) === String(content._id) && entry.status === 'approved');
+    if (content.isPremium && !isAdmin && !isUnlocked && !isApproved) {
       return res.status(200).json({
         success: true,
         accessLocked: true,
@@ -450,6 +457,20 @@ const toggleCourseStatus = async (req, res) => {
   }
 };
 
+// Toggle Free/Premium access for an existing course (admin only).
+const toggleCoursePremium = async (req, res) => {
+  try {
+    const course = await CourseContent.findById(req.params.id);
+    if (!course) return res.status(404).json({ success: false, message: 'Course not found.' });
+    course.isPremium = typeof req.body.isPremium === 'boolean' ? req.body.isPremium : !course.isPremium;
+    await course.save();
+    return res.json({ success: true, message: course.isPremium ? 'Course marked Premium.' : 'Course set to Free.', data: course });
+  } catch (error) {
+    console.error('Toggle course premium error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to update course access type.' });
+  }
+};
+
 // Update course details
 const updateCourse = async (req, res) => {
   try {
@@ -561,5 +582,6 @@ module.exports = {
   deleteContent,
   getAllCourses,
   toggleCourseStatus,
+  toggleCoursePremium,
   updateCourse
 };

@@ -37,6 +37,7 @@ export default function UniversityCourseContentPage() {
       <section className="rounded-3xl border border-slate-800 bg-slate-900 p-8">
         <Link to={backToCourses} className="text-sm text-sky-400 hover:text-sky-300">← Back to University Courses</Link>
         <h1 className="mt-4 text-3xl font-semibold text-white">{course.course}</h1>
+        {course.isPremium && <span className="mt-3 inline-flex rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300">🔒 PREMIUM {accessLocked ? '· LOCKED' : '· APPROVED / UNLOCKED'}</span>}
         <div className="mt-3 flex flex-wrap gap-2 text-sm text-slate-400">{course.courseCode && <span className="rounded-full bg-slate-800 px-3 py-1">Code: {course.courseCode}</span>}{course.faculty && <span className="rounded-full bg-slate-800 px-3 py-1">{course.faculty}</span>}{course.studyStage && <span className="rounded-full bg-slate-800 px-3 py-1">{course.studyStage}</span>}{course.department && <span className="rounded-full bg-slate-800 px-3 py-1">{course.department}</span>}<span className="rounded-full bg-slate-800 px-3 py-1">{course.year && course.year !== 'All Years' ? course.year : 'All academic years'}</span></div>
         {course.description && <p className="mt-4 text-slate-300">{course.description}</p>}
       </section>

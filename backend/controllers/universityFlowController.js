@@ -127,11 +127,13 @@ exports.getCatalog = async (req, res) => {
 
     const unlockedUniversity = new Set((req.user?.unlockedUniversityResources || []).map((id) => String(id)));
     const unlockedCourses = new Set((req.user?.unlockedCourseContents || []).map((id) => String(id)));
+    const approvedUniversity = new Set((req.user?.downloadApprovals || []).filter((entry) => entry.resourceModel === 'UniversityResource' && entry.status === 'approved').map((entry) => String(entry.resourceId)));
+    const approvedCourses = new Set((req.user?.downloadApprovals || []).filter((entry) => entry.resourceModel === 'CourseContent' && entry.status === 'approved').map((entry) => String(entry.resourceId)));
     const isAdmin = req.user?.role === 'admin';
     const legacyResources = [];
 
     legacyCourses.forEach((item) => {
-      const hasAccess = !item.isPremium || isAdmin || unlockedCourses.has(String(item._id));
+      const hasAccess = !item.isPremium || isAdmin || unlockedCourses.has(String(item._id)) || approvedCourses.has(String(item._id));
       if (kind === 'exit-exam') {
         (item.questions || []).forEach((question, index) => {
           legacyResources.push({
@@ -174,7 +176,7 @@ exports.getCatalog = async (req, res) => {
         ...resources.map((item) => ({
           ...item,
           source: 'university-resource',
-          hasAccess: item.accessType !== 'premium' || isAdmin || unlockedUniversity.has(String(item._id)),
+          hasAccess: item.accessType !== 'premium' || isAdmin || unlockedUniversity.has(String(item._id)) || approvedUniversity.has(String(item._id)),
         })),
         ...legacyResources,
       ],
@@ -279,6 +281,23 @@ exports.setStudentAccess = async (req, res) => {
   } catch (error) {
     console.error('University premium access update error:', error);
     return res.status(500).json({ message: 'Unable to update student access.' });
+  }
+};
+
+exports.toggleResourcePremium = async (req, res) => {
+  try {
+    const item = await UniversityResource.findById(req.params.id);
+    if (!item) return res.status(404).json({ message: 'Resource not found.' });
+    const requested = req.body.accessType;
+    if (requested !== undefined && !['free', 'premium'].includes(requested)) {
+      return res.status(400).json({ message: 'Choose Free or Premium access.' });
+    }
+    item.accessType = requested || (item.accessType === 'premium' ? 'free' : 'premium');
+    await item.save();
+    return res.json({ message: item.accessType === 'premium' ? 'Resource marked Premium.' : 'Resource set to Free.', resource: item });
+  } catch (error) {
+    console.error('Toggle University resource premium error:', error);
+    return res.status(500).json({ message: 'Unable to update resource access type.' });
   }
 };
 

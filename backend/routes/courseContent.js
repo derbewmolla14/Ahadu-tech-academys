@@ -1,5 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const optionalAuth = (req, res, next) => {
+  if (!req.headers.authorization) { req.user = null; return next(); }
+  return auth(req, res, next);
+};
 const auth = require('../middleware/auth');
 const permit = require('../middleware/roles');
 const {
@@ -12,6 +16,7 @@ const {
   deleteContent,
   getAllCourses,
   toggleCourseStatus,
+  toggleCoursePremium,
   updateCourse,
   unlockCourseForStudent,
   lockCourseForStudent,
@@ -22,7 +27,7 @@ const {
 router.post('/upload', auth, permit('admin'), upload.array('files', 10), uploadContent);
 
 // GET /api/content - Get course content with query parameters (public - only active courses)
-router.get('/', getContent);
+router.get('/', optionalAuth, getContent);
 
 // GET /api/content/admin/all - Get all courses for admin (including inactive)
 router.get('/admin/all', auth, permit('admin'), getAllCourses);
@@ -34,6 +39,7 @@ router.delete('/:id/unlock/:userId', auth, permit('admin'), lockCourseForStudent
 
 // PUT /api/content/:id/toggle-status - Toggle course active status (admin only)
 router.put('/:id/toggle-status', auth, permit('admin'), toggleCourseStatus);
+router.patch('/:id/premium', auth, permit('admin'), toggleCoursePremium);
 
 // PUT /api/content/:id - Update course details (admin only)
 router.put('/:id', auth, permit('admin'), updateCourse);

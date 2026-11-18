@@ -27,6 +27,7 @@ router.get('/resources/:id/file', auth, controller.downloadApproved);
 router.post('/admin/upload', auth, permit('admin'), upload.single('file'), controller.adminUpload);
 router.get('/admin/resources', auth, permit('admin'), controller.adminList);
 router.patch('/admin/resources/:id/approval', auth, permit('admin'), controller.setApproval);
+router.patch('/admin/resources/:id/access-type', auth, permit('admin'), controller.toggleResourcePremium);
 router.patch('/admin/resources/:id/student-access', auth, permit('admin'), controller.setStudentAccess);
 
 module.exports = router;
