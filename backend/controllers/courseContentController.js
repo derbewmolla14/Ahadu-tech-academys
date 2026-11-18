@@ -322,7 +322,8 @@ const streamCourseMaterial = async (req, res) => {
     const isAdmin = req.user?.role === 'admin';
     const isUnlocked = req.user?.unlockedCourseContents?.some((item) => String(item) === String(course._id));
     const isApproved = req.user?.downloadApprovals?.some((entry) => entry.resourceModel === 'CourseContent' && String(entry.resourceId) === String(course._id) && entry.status === 'approved');
-    if (!isAdmin && !isUnlocked && !isApproved) return res.status(403).json({ success: false, message: 'Administrator approval is required before downloading this course material.' });
+    if (req.query.download === '1' && !isAdmin && !isUnlocked && !isApproved) return res.status(403).json({ success: false, message: 'Administrator approval is required before downloading this course material.' });
+    if (req.query.download !== '1' && course.isPremium && !isAdmin && !isUnlocked && !isApproved) return res.status(403).json({ success: false, message: 'Administrator approval is required to view this premium course.' });
     if (!['notes', 'ppts'].includes(kind)) return res.status(400).json({ success: false, message: 'Unsupported material type.' });
     const item = course[kind]?.[Number(index)];
     if (!item?.fileUrl || !item.fileUrl.startsWith('/uploads/')) return res.status(404).json({ success: false, message: 'Material file not found.' });
