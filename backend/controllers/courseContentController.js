@@ -279,7 +279,7 @@ const getContentById = async (req, res) => {
 
     const content = await CourseContent.findById(id);
 
-    if (!content || !content.isActive) {
+    if (!content || !content.isActive || (req.user?.preferences?.language === 'am' && content.language !== 'am')) {
       return res.status(404).json({
         success: false,
         message: 'Course content not found'
