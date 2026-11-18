@@ -59,7 +59,7 @@ exports.getCatalog = async (req, res) => {
       return res.json({ departments: departments.map((item) => item.name) });
     }
     if (selectedLevel !== 'Senior' && !course) {
-      const legacyBase = { level: { $regex: exactDepartmentRegex('university') }, ...(String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic' ? { language: 'am' } : {}), faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) }, studyStage: { $regex: exactDepartmentRegex(selectedLevel) }, isActive: true };
+      const legacyBase = { level: { $regex: exactDepartmentRegex('university') }, ...(['am', 'amharic', 'አማርኛ'].includes(String(language || '').trim().toLowerCase()) ? { $and: [{ $or: [{ language: { $in: ['am', 'Am', 'AM', 'Amharic', 'amharic', 'አማርኛ'] } }, { adminLanguage: { $in: ['am', 'Am', 'AM', 'Amharic', 'amharic', 'አማርኛ'] } }] }] } : {}), faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) }, studyStage: { $regex: exactDepartmentRegex(selectedLevel) }, isActive: { $ne: false } };
       const [resourceCourses, legacyCourses] = await Promise.all([
         UniversityResource.distinct('course', { ...base, course: { $nin: ['', null] }, kind: { $in: ['course-material', 'exam-question'] } }),
         CourseContent.distinct('course', { ...legacyBase, course: { $nin: ['', null] } }),
@@ -75,8 +75,8 @@ exports.getCatalog = async (req, res) => {
     }
     if (selectedLevel === 'Senior' && department && kind === 'course-material' && !course) {
       const legacyBase = {
-        level: { $regex: exactDepartmentRegex('university') }, ...(String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic' ? { language: 'am' } : {}), faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) }, studyStage: { $regex: exactDepartmentRegex('Senior') },
-        department: { $regex: exactDepartmentRegex(canonicalDepartment) }, isActive: true,
+        level: { $regex: exactDepartmentRegex('university') }, ...(['am', 'amharic', 'አማርኛ'].includes(String(language || '').trim().toLowerCase()) ? { $and: [{ $or: [{ language: { $in: ['am', 'Am', 'AM', 'Amharic', 'amharic', 'አማርኛ'] } }, { adminLanguage: { $in: ['am', 'Am', 'AM', 'Amharic', 'amharic', 'አማርኛ'] } }] }] } : {}), faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) }, studyStage: { $regex: exactDepartmentRegex('Senior') },
+        department: { $regex: exactDepartmentRegex(canonicalDepartment) }, isActive: { $ne: false },
         course: { $nin: ['', null] },
       };
       const [resourceCourses, legacyCourses] = await Promise.all([
@@ -104,10 +104,10 @@ exports.getCatalog = async (req, res) => {
 
     const legacyQuery = {
       level: { $regex: exactDepartmentRegex('university') },
-      ...(String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic' ? { language: 'am' } : {}),
+      ...(['am', 'amharic', 'አማርኛ'].includes(String(language || '').trim().toLowerCase()) ? { $and: [{ $or: [{ language: { $in: ['am', 'Am', 'AM', 'Amharic', 'amharic', 'አማርኛ'] } }, { adminLanguage: { $in: ['am', 'Am', 'AM', 'Amharic', 'amharic', 'አማርኛ'] } }] }] } : {}),
       faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) },
       studyStage: { $regex: exactDepartmentRegex(selectedLevel) },
-      isActive: true,
+      isActive: { $ne: false },
     };
     if (selectedLevel === 'Senior' && department) legacyQuery.department = { $regex: exactDepartmentRegex(canonicalDepartment) };
     if (course) legacyQuery.course = { $regex: exactDepartmentRegex(course) };
