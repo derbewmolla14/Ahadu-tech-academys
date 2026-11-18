@@ -209,30 +209,38 @@ const getContent = async (req, res) => {
   try {
     const { level, university, department, year, grade, subject, technology, faculty, studyStage, contentType, course, courseCode } = req.query;
 
-    // Build query object - only active courses for public access
+    // Build a tolerant query for legacy uploads while keeping inactive content hidden.
     const query = { isActive: true };
-    if (level) query.level = level;
-    if (university) query.university = university;
+    const addAnd = (condition) => { query.$and = [...(query.$and || []), condition]; };
+    if (level) query.level = { $regex: exactDepartmentRegex(level) };
+    if (university) query.university = { $regex: exactDepartmentRegex(university) };
     if (grade) {
       const selectedGrade = String(grade).trim();
-      query.$and = [...(query.$and || []), {
-        $or: [
-          { grade: selectedGrade },
-          { year: `Grade ${selectedGrade}` },
-          { year: selectedGrade },
-        ],
-      }];
+      addAnd({ $or: [
+        { grade: { $regex: exactDepartmentRegex(selectedGrade) } },
+        { year: { $regex: exactDepartmentRegex(`Grade ${selectedGrade}`) } },
+        { year: { $regex: exactDepartmentRegex(selectedGrade) } },
+      ] });
     }
-    if (subject) query.subject = subject;
-    if (technology) query.technology = technology;
-    if (faculty) query.faculty = faculty;
-    if (studyStage) query.studyStage = studyStage;
-    if (contentType === 'course-materials') query.$or = [{ contentType: 'course-materials' }, { contentType: { $exists: false } }];
-    else if (contentType) query.contentType = contentType;
-    if (courseCode) query.courseCode = new RegExp(courseCode, 'i');
+    if (subject) query.subject = { $regex: exactDepartmentRegex(subject) };
+    if (technology) query.technology = { $regex: exactDepartmentRegex(technology) };
+    if (faculty) query.faculty = { $regex: exactDepartmentRegex(faculty) };
+    if (studyStage) query.studyStage = { $regex: exactDepartmentRegex(studyStage) };
+    if (contentType === 'course-materials') addAnd({ $or: [
+      { contentType: { $regex: exactDepartmentRegex('course-materials') } },
+      { contentType: { $exists: false } },
+      { contentType: null },
+      { contentType: '' },
+    ] });
+    else if (contentType) query.contentType = { $regex: exactDepartmentRegex(contentType) };
+    if (courseCode) query.courseCode = { $regex: String(courseCode).trim(), $options: 'i' };
     if (department) query.department = { $regex: exactDepartmentRegex(department) };
-    if (year) query.$and = [...(query.$and || []), { $or: [{ year: String(year).trim() }, { year: 'All Years' }, { year: '' }, { year: null }, { year: { $exists: false } }] }];
-    if (course) query.course = course;
+    if (year) addAnd({ $or: [
+      { year: { $regex: exactDepartmentRegex(year) } },
+      { year: { $regex: exactDepartmentRegex('All Years') } },
+      { year: '' }, { year: null }, { year: { $exists: false } },
+    ] });
+    if (course) query.course = { $regex: exactDepartmentRegex(course) };
 
     const content = await CourseContent.find(query).lean();
     // University listings return metadata only; lesson URLs are fetched from the protected detail endpoint.
