@@ -9,7 +9,15 @@ const User = require('../models/User');
 const PRIVATE_DIR = path.join(__dirname, '../private_uploads/university');
 fs.mkdirSync(PRIVATE_DIR, { recursive: true });
 
-const approvedFilter = { $or: [{ status: 'approved' }, { status: { $exists: false } }, { status: null }, { status: '' }] };
+const approvedCondition = { $or: [{ status: 'approved' }, { status: { $exists: false } }, { status: null }, { status: '' }] };
+const isAmharicRequest = (language) => ['am', 'amharic', 'አማርኛ'].includes(String(language || '').trim().toLowerCase());
+const legacyLanguageCondition = (language) => isAmharicRequest(language)
+  ? { $or: [{ language: 'am' }, { language: { $exists: false } }, { language: null }, { language: '' }] }
+  : null;
+const addAndCondition = (query, condition) => {
+  if (!condition) return;
+  query.$and = [...(query.$and || []), condition];
+};
 
 const STREAM_CATEGORY = { Natural: 'Natural Science', Social: 'Social Science', Health: 'Health Science', Diploma: 'Diploma' };
 const exactDepartmentRegex = (value) => new RegExp('^' + String(value || '').trim().replace(/[.*+?^()|[\]\\$]/g, (character) => '\\' + character) + '$', 'i');
@@ -34,24 +42,42 @@ exports.getCatalog = async (req, res) => {
     const selectedLevel = normalizedLevel;
     if (!selectedLevel) return res.json({ streams: ['Natural', 'Social', 'Health', 'Diploma'], levels: ['Freshman', 'Remedial', 'Senior', 'Diploma'] });
     const base = {
-      ...approvedFilter,
-      ...(String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic' ? { language: 'am' } : {}),
-      stream: { $regex: exactDepartmentRegex(selectedStream) },
-      ...(selectedLevel ? { level: { $regex: exactDepartmentRegex(selectedLevel) } } : {}),
+      $and: [
+        approvedCondition,
+        { stream: { $regex: exactDepartmentRegex(selectedStream) } },
+        ...(selectedLevel ? [{ level: { $regex: exactDepartmentRegex(selectedLevel) } }] : []),
+        ...(legacyLanguageCondition(language) ? [legacyLanguageCondition(language)] : []),
+      ],
     };
     let canonicalDepartment = '';
     if (selectedLevel === 'Senior' && department) {
       const departmentRecord = await resolveDepartment(selectedStream, department);
-      if (!departmentRecord) return res.json({ courses: [], resources: [], message: 'No matching active department was found.' });
-      canonicalDepartment = departmentRecord.name;
+      // Older uploads may reference a department name that is no longer in the active Department list.
+      canonicalDepartment = departmentRecord?.name || String(department).trim();
     }
     if (selectedLevel === 'Senior' && !department) {
       const category = STREAM_CATEGORY[selectedStream];
-      const departments = await Department.find({ category: { $regex: exactDepartmentRegex(category) }, isActive: true }).select('name').sort({ name: 1 }).lean();
-      return res.json({ departments: departments.map((item) => item.name) });
+      const [departments, legacyDepartments] = await Promise.all([
+        Department.find({ category: { $regex: exactDepartmentRegex(category) }, isActive: true }).select('name').sort({ name: 1 }).lean(),
+        CourseContent.distinct('department', {
+          level: { $regex: exactDepartmentRegex('university') },
+          faculty: { $regex: exactDepartmentRegex(category) },
+          studyStage: { $regex: exactDepartmentRegex(selectedLevel) },
+          isActive: { $ne: false },
+          department: { $nin: ['', null] },
+        }),
+      ]);
+      const names = [...new Set([...departments.map((item) => item.name), ...legacyDepartments].map((name) => String(name || '').trim()).filter(Boolean))];
+      return res.json({ departments: names.sort((a, b) => a.localeCompare(b)) });
     }
     if (selectedLevel !== 'Senior' && !course) {
-      const legacyBase = { level: { $regex: exactDepartmentRegex('university') }, ...(String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic' ? { language: 'am' } : {}), faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) }, studyStage: { $regex: exactDepartmentRegex(selectedLevel) }, isActive: { $ne: false } };
+      const legacyBase = {
+        level: { $regex: exactDepartmentRegex('university') },
+        faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) },
+        studyStage: { $regex: exactDepartmentRegex(selectedLevel) },
+        isActive: { $ne: false },
+      };
+      addAndCondition(legacyBase, legacyLanguageCondition(language));
       const [resourceCourses, legacyCourses] = await Promise.all([
         UniversityResource.distinct('course', { ...base, course: { $nin: ['', null] }, kind: { $in: ['course-material', 'exam-question'] } }),
         CourseContent.distinct('course', { ...legacyBase, course: { $nin: ['', null] } }),
@@ -67,10 +93,14 @@ exports.getCatalog = async (req, res) => {
     }
     if (selectedLevel === 'Senior' && department && kind === 'course-material' && !course) {
       const legacyBase = {
-        level: { $regex: exactDepartmentRegex('university') }, ...(String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic' ? { language: 'am' } : {}), faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) }, studyStage: { $regex: exactDepartmentRegex('Senior') },
-        department: { $regex: exactDepartmentRegex(canonicalDepartment) }, isActive: { $ne: false },
+        level: { $regex: exactDepartmentRegex('university') },
+        faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) },
+        studyStage: { $regex: exactDepartmentRegex('Senior') },
+        department: { $regex: exactDepartmentRegex(canonicalDepartment) },
+        isActive: { $ne: false },
         course: { $nin: ['', null] },
       };
+      addAndCondition(legacyBase, legacyLanguageCondition(language));
       const [resourceCourses, legacyCourses] = await Promise.all([
         UniversityResource.distinct('course', { ...base, department: { $regex: exactDepartmentRegex(canonicalDepartment) }, kind, course: { $nin: ['', null] } }),
         CourseContent.distinct('course', legacyBase),
@@ -84,33 +114,33 @@ exports.getCatalog = async (req, res) => {
         { id: 'course-material', label: 'Course Material' },
       ] });
     }
-    const query = { ...base };
+    const query = { ...base, $and: [...base.$and] };
     if (department) query.department = { $regex: exactDepartmentRegex(selectedLevel === 'Senior' ? canonicalDepartment : department) };
     if (course) query.course = { $regex: exactDepartmentRegex(course) };
     if (kind) query.kind = { $regex: exactDepartmentRegex(kind) };
-    if (academicYear) query.$or = [
+    if (academicYear) addAndCondition(query, { $or: [
       { academicYear: { $regex: exactDepartmentRegex(academicYear) } },
       { academicYear: { $regex: exactDepartmentRegex('All Years') } },
       { academicYear: '' }, { academicYear: null }, { academicYear: { $exists: false } },
-    ];
+    ] });
 
     const legacyQuery = {
       level: { $regex: exactDepartmentRegex('university') },
-      ...(String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic' ? { language: 'am' } : {}),
       faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) },
       studyStage: { $regex: exactDepartmentRegex(selectedLevel) },
       isActive: { $ne: false },
     };
+    addAndCondition(legacyQuery, legacyLanguageCondition(language));
     if (selectedLevel === 'Senior' && department) legacyQuery.department = { $regex: exactDepartmentRegex(canonicalDepartment) };
     if (course) legacyQuery.course = { $regex: exactDepartmentRegex(course) };
     if (academicYear && selectedLevel === 'Senior') {
-      legacyQuery.$or = [
+      addAndCondition(legacyQuery, { $or: [
         { year: { $regex: exactDepartmentRegex(academicYear) } },
         { year: { $regex: exactDepartmentRegex('All Years') } },
         { year: '' },
         { year: null },
         { year: { $exists: false } },
-      ];
+      ] });
     }
     if (kind === 'course-material') legacyQuery.contentType = { $in: ['course-materials', null] };
     else if (kind === 'exit-exam') legacyQuery.contentType = 'exit-exam';
