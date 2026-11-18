@@ -40,10 +40,10 @@ exports.getCatalog = async (req, res) => {
     if (!selectedLevel) return res.json({ streams: ['Natural', 'Social', 'Health', 'Diploma'], levels: ['Freshman', 'Remedial', 'Senior', 'Diploma'] });
     const base = {
       ...approvedFilter,
-      ...(['am', 'amharic', 'አማርኛ'].includes(String(language || '').trim().toLowerCase()) ? { $or: [
+      ...(['am', 'amharic', 'አማርኛ'].includes(String(language || '').trim().toLowerCase()) ? { $and: [{ $or: [
         { language: { $in: ['am', 'Am', 'AM', 'Amharic', 'amharic', 'አማርኛ'] } },
         { adminLanguage: { $in: ['am', 'Am', 'AM', 'Amharic', 'amharic', 'አማርኛ'] } },
-      ] } : {}),
+      ] }] } : {}),
       stream: { $regex: exactDepartmentRegex(selectedStream) },
       ...(selectedLevel ? { level: { $regex: exactDepartmentRegex(selectedLevel) } } : {}),
     };
@@ -230,6 +230,8 @@ exports.adminUpload = async (req, res) => {
       textContent, answer, solution, accessType, storedFileName,
       originalFileName: req.file?.originalname || '', mimeType: req.file?.mimetype || '',
       uploadedBy: req.user._id,
+      isApproved: true,
+      isPublished: true,
       status: 'approved',
       approvedBy: req.user._id,
       approvedAt: new Date(),
