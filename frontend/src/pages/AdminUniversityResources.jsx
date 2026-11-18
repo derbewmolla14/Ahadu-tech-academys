@@ -67,6 +67,17 @@ export default function AdminUniversityResources() {
     finally { setBusy(false); }
   };
 
+  const togglePremium = async (item) => {
+    setError(''); setMessage('');
+    try {
+      const accessType = item.accessType === 'premium' ? 'free' : 'premium';
+      const response = await apiFetch('university-learning/admin/resources/' + item._id + '/access-type', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessType }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Unable to change resource access type.');
+      setMessage(data.message); await load();
+    } catch (err) { setError(err.message); }
+  };
+
   const approve = async (id, status) => {
     setError(''); setMessage('');
     try {
@@ -117,7 +128,7 @@ export default function AdminUniversityResources() {
     <section className="space-y-3"><h2 className="text-xl font-semibold">Uploaded resources</h2>
       {items.map((item) => <article key={item._id} className="space-y-3 rounded-xl border border-slate-800 bg-slate-900 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3"><div><strong>{item.title}</strong><p className="text-sm text-slate-400">{item.stream} · {item.language === 'am' ? 'Amharic' : 'English'} · {item.level} · {item.department || item.course} · {item.kind}</p></div><div className="flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-slate-800 px-3 py-1">{item.status}</span><span className="rounded-full bg-slate-800 px-3 py-1">{item.accessType || 'free'}</span></div></div>
-        <div className="flex flex-wrap gap-2"><button type="button" onClick={() => approve(item._id, 'approved')} className="rounded bg-green-700 px-3 py-2 text-sm">Approve</button><button type="button" onClick={() => approve(item._id, 'rejected')} className="rounded bg-red-800 px-3 py-2 text-sm">Reject</button><button type="button" onClick={() => approve(item._id, 'pending')} className="rounded bg-slate-700 px-3 py-2 text-sm">Set pending</button></div>
+        <div className="flex flex-wrap gap-2"><button type="button" onClick={() => approve(item._id, 'approved')} className="rounded bg-green-700 px-3 py-2 text-sm">Approve</button><button type="button" onClick={() => approve(item._id, 'rejected')} className="rounded bg-red-800 px-3 py-2 text-sm">Reject</button><button type="button" onClick={() => approve(item._id, 'pending')} className="rounded bg-slate-700 px-3 py-2 text-sm">Set pending</button><button type="button" onClick={() => togglePremium(item)} className="rounded bg-amber-700 px-3 py-2 text-sm">{item.accessType === 'premium' ? 'Set Free' : 'Make Premium'}</button></div>
         {item.status === 'approved' && <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]"><input value={studentIds[item._id] || ''} onChange={(event) => setStudentIds((old) => ({ ...old, [item._id]: event.target.value }))} placeholder="Student account ID" className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white" /><button type="button" onClick={() => changeStudentAccess(item, true)} className="rounded-lg bg-sky-700 px-4 py-2 text-sm">Approve Download Access</button><button type="button" onClick={() => changeStudentAccess(item, false)} className="rounded-lg bg-slate-700 px-4 py-2 text-sm">Revoke</button></div>}
       </article>)}
       {!items.length && <p className="rounded-xl border border-slate-800 bg-slate-900 p-6 text-slate-400">No resources uploaded yet.</p>}
