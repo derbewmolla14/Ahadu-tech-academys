@@ -146,6 +146,7 @@ exports.getCatalog = async (req, res) => {
             answer: question.answer,
             solution: '',
             accessType: item.isPremium ? 'premium' : 'free',
+            pricingTier: 'university',
             hasAccess,
           });
         });
@@ -155,7 +156,7 @@ exports.getCatalog = async (req, res) => {
         _id: `${item._id}:notes:${index}`, source: 'course-content',
         courseContentId: String(item._id), materialKind: 'notes', materialIndex: index,
         title: note.title, resourceType: 'pdf', originalFileName: path.basename(note.fileUrl || ''),
-        accessType: item.isPremium ? 'premium' : 'free', hasAccess,
+        accessType: item.isPremium ? 'premium' : 'free', pricingTier: 'university', hasAccess,
       }));
       (item.ppts || []).forEach((ppt, index) => legacyResources.push({
         _id: `${item._id}:ppts:${index}`, source: 'course-content',
@@ -176,6 +177,7 @@ exports.getCatalog = async (req, res) => {
         ...resources.map((item) => ({
           ...item,
           source: 'university-resource',
+          pricingTier: 'university',
           hasAccess: item.accessType !== 'premium' || isAdmin || unlockedUniversity.has(String(item._id)) || approvedUniversity.has(String(item._id)),
         })),
         ...legacyResources,
