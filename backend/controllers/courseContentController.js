@@ -566,13 +566,10 @@ const unlockCourseForStudent = async (req, res) => {
     const student = await User.findById(userId);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
     if (student.role === 'admin') return res.status(400).json({ success: false, message: 'Choose a student account.' });
-    const alreadyUnlocked = student.unlockedCourseContents.some((id) => String(id) === String(course._id));
     student.downloadApprovals = (student.downloadApprovals || []).filter((entry) => !(entry.resourceModel === 'CourseContent' && String(entry.resourceId) === String(course._id)));
     student.downloadApprovals.push({ resourceModel: 'CourseContent', resourceId: course._id, status: 'approved', approvedBy: req.user._id, approvedAt: new Date() });
-    if (!alreadyUnlocked) {
-      student.unlockedCourseContents.push(course._id);
-      await student.save();
-    }
+    student.unlockedCourseContents = (student.unlockedCourseContents || []).filter((id) => String(id) !== String(course._id));
+    await student.save();
     return res.json({ success: true, message: 'Premium course approved for this student.' });
   } catch (error) {
     console.error('Unlock premium course error:', error);
