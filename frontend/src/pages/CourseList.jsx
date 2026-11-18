@@ -150,7 +150,7 @@ export default function CourseList() {
   }, [level, department, contentType, categoryName]);
 
   const allCourses = useMemo(() => {
-    if (level === 'Senior' && department) return seniorCourses.map(item => ({ id: item._id, title: item.course, description: item.description || '', courseCode: item.courseCode, year: item.year, isPremium: item.isPremium }));
+    if (level === 'Senior' && department) return seniorCourses.map(item => ({ id: item._id, title: item.course, description: item.description || '', courseCode: item.courseCode, year: item.year, isPremium: item.isPremium, hasAccess: item.hasAccess }));
     if (faculty === 'Masters' || faculty === 'PhD') {
       return sampleCourses[faculty] || [];
     }
