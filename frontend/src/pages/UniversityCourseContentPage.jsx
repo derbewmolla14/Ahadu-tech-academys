@@ -14,6 +14,8 @@ export default function UniversityCourseContentPage() {
   const backToCourses = course?.level === 'highschool' ? `/highschool/grade/${course.grade || ''}` : '/university';
   const [lockedMessage, setLockedMessage] = useState('');
   const [showPayment, setShowPayment] = useState(false);
+  const [downloadResource, setDownloadResource] = useState(null);
+  const requestDownload = (resource) => downloadApprovedResource(resource, setDownloadResource);
   const paymentDetails = {
     bankName: import.meta.env.VITE_PAYMENT_BANK_NAME || '',
     accountName: import.meta.env.VITE_PAYMENT_ACCOUNT_NAME || '',
@@ -62,8 +64,6 @@ export default function UniversityCourseContentPage() {
 
 function MaterialSection({ title, items, getUrl, courseId, protectedDownload = false, onDownloadRequest }) {
   const [documentFile, setDocumentFile] = useState(null);
-  const [downloadResource, setDownloadResource] = useState(null);
-  const requestDownload = (resource) => downloadApprovedResource(resource, setDownloadResource);
 
   const openProtectedFile = async (event, item, index) => {
     event.preventDefault();
