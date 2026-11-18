@@ -87,8 +87,6 @@ export default function CourseContent() {
   if (error || !courseData) {
     return (
       <div className="min-h-screen bg-slate-950 text-white">
-      <DocumentViewerModal file={documentFile} onClose={() => setDocumentFile(null)} onDownloadRequest={requestDownload} />
-      <PaymentMethodModal open={Boolean(downloadResource)} resource={downloadResource} onClose={() => setDownloadResource(null)} />
         <div className="max-w-4xl mx-auto p-6">
           <div className="bg-red-900/50 border border-red-700 text-red-200 p-6 rounded-xl">
             <h2 className="text-xl font-semibold mb-2">Content Not Available</h2>
@@ -107,6 +105,8 @@ export default function CourseContent() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
+      <DocumentViewerModal file={documentFile} onClose={() => { if (documentFile?.url?.startsWith('blob:')) URL.revokeObjectURL(documentFile.url); setDocumentFile(null); }} onDownloadRequest={requestDownload} />
+      <PaymentMethodModal open={Boolean(downloadResource)} resource={downloadResource} onClose={() => setDownloadResource(null)} />
       {/* HEADER */}
       <div className="bg-slate-900 border-b border-slate-800 p-6">
         <div className="max-w-6xl mx-auto">
