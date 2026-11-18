@@ -389,7 +389,9 @@ const downloadCourseVideo = async (req, res) => {
     if (String(video.url).startsWith('/uploads/')) {
       const filePath = path.join(uploadsDirectory, path.basename(video.url));
       if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, message: 'Uploaded video file is missing from the server.' });
-      return res.download(filePath, path.basename(filePath));
+      res.type(video.mimeType || 'video/mp4');
+      if (req.query.download === '1') return res.download(filePath, path.basename(filePath));
+      return res.sendFile(filePath);
     }
     let target;
     try { target = new URL(video.url); } catch { return res.status(400).json({ success: false, message: 'Video URL is invalid.' }); }
