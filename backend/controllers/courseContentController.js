@@ -250,6 +250,7 @@ const getContent = async (req, res) => {
     const unlockedIds = new Set((req.user?.unlockedCourseContents || []).map((id) => String(id)));
     const approvedIds = new Set((req.user?.downloadApprovals || []).filter((entry) => entry.resourceModel === 'CourseContent' && entry.status === 'approved').map((entry) => String(entry.resourceId)));
     content.forEach((item) => {
+      item.pricingTier = String(item.faculty || '').toLowerCase() === 'phd' ? 'phd' : ['elementary', 'highschool'].includes(String(item.level || '').toLowerCase()) ? String(item.level).toLowerCase() : String(item.level || '').toLowerCase() === 'coding' ? 'general' : 'university';
       item.hasAccess = !item.isPremium || isAdmin || unlockedIds.has(String(item._id)) || approvedIds.has(String(item._id));
     });
     // Never expose private note/PPT upload paths in public catalog responses.
@@ -297,6 +298,7 @@ const getContentById = async (req, res) => {
       });
     }
 
+    const pricingTier = String(content.faculty || '').toLowerCase() === 'phd' ? 'phd' : ['elementary', 'highschool'].includes(String(content.level || '').toLowerCase()) ? String(content.level).toLowerCase() : String(content.level || '').toLowerCase() === 'coding' ? 'general' : 'university';
     const isAdmin = req.user?.role === 'admin';
     const isUnlocked = req.user?.unlockedCourseContents?.some((item) => String(item) === String(content._id));
     const isApproved = (req.user?.downloadApprovals || []).some((entry) => entry.resourceModel === 'CourseContent' && String(entry.resourceId) === String(content._id) && entry.status === 'approved');
@@ -305,11 +307,12 @@ const getContentById = async (req, res) => {
         success: true,
         accessLocked: true,
         message: 'This premium course is locked. Please contact the administrator for approval.',
-        data: { ...content.toObject(), notes: [], videos: [], ppts: [], questions: [] }
+        data: { ...content.toObject(), pricingTier, notes: [], videos: [], ppts: [], questions: [] }
       });
     }
 
     const safeContent = content.toObject();
+    safeContent.pricingTier = pricingTier;
     safeContent.notes = (safeContent.notes || []).map(({ title }) => ({ title }));
     safeContent.ppts = (safeContent.ppts || []).map(({ title }) => ({ title }));
     res.status(200).json({
