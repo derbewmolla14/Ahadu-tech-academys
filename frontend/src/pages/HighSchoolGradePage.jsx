@@ -1,11 +1,12 @@
 import { useContext, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiFetch } from '../api/api';
 import { AuthContext } from '../context/AuthContext';
 import PaymentMethodModal from '../components/PaymentMethodModal';
 
 export default function HighSchoolGradePage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user, language } = useContext(AuthContext);
   const selectedLanguage = String(language || user?.preferences?.language || 'en').trim().toLowerCase();
   const isAmharic = ['am', 'amharic', 'አማርኛ'].includes(selectedLanguage);
@@ -58,7 +59,7 @@ export default function HighSchoolGradePage() {
       {!loading && !error && courses.length === 0 && <p className="rounded-xl border border-slate-800 bg-slate-900 p-6 text-slate-400">No published courses are available for Grade {id} yet.</p>}
       {!loading && courses.length > 0 && <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {courses.map((course) => (
-          <div key={course._id} role="button" tabIndex={0} onClick={() => { if (course.isPremium && !course.hasAccess) setDownloadResource({ title: course.course, type: 'course materials', accessType: 'premium' }); else window.location.assign(`/university/course/${course._id}`); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); if (course.isPremium && !course.hasAccess) setDownloadResource({ title: course.course, type: 'course materials', accessType: 'premium' }); else window.location.assign(`/university/course/${course._id}`); } }} className="cursor-pointer rounded-2xl border border-slate-800 bg-slate-900 p-5 transition hover:border-sky-500">
+          <div key={course._id} role="button" tabIndex={0} onClick={() => { if (course.isPremium && !course.hasAccess) setDownloadResource({ title: course.course, type: 'course materials', accessType: 'premium' }); else navigate(`/university/course/${course._id}`); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); if (course.isPremium && !course.hasAccess) setDownloadResource({ title: course.course, type: 'course materials', accessType: 'premium' }); else window.location.assign(`/university/course/${course._id}`); } }} className="cursor-pointer rounded-2xl border border-slate-800 bg-slate-900 p-5 transition hover:border-sky-500">
             <p className="text-xs font-semibold uppercase tracking-widest text-sky-400">{course.subject || course.department || 'High School'}</p>
             <div className="mt-2 flex flex-wrap items-center gap-2"><h2 className="text-xl font-semibold">{course.course}</h2>{course.isPremium && <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-300">🔒 PREMIUM</span>}{course.isPremium && course.hasAccess && <span className="rounded-full bg-green-500/10 px-2.5 py-1 text-xs font-bold text-green-300">✓ UNLOCKED</span>}</div>
             {course.description && <p className="mt-2 line-clamp-3 text-sm text-slate-400">{course.description}</p>}
