@@ -65,7 +65,7 @@ export default function PremiumCourseAccessAdmin() {
       <header className="rounded-3xl border border-slate-800 bg-slate-900 p-8">
         <Link to="/admin/dashboard" className="text-sm text-sky-400 hover:underline">← Admin Dashboard</Link>
         <h1 className="mt-4 text-3xl font-bold">Course Download Access Approval</h1>
-        <p className="mt-2 text-slate-400">After checking a student's payment receipt sent through Telegram, unlock or revoke that specific course for that student.</p>
+        <p className="mt-2 text-slate-400">After checking a student's payment receipt sent through Telegram, approve or revoke downloads for that specific course for that student.</p>
       </header>
       {error && <div role="alert" className="rounded-xl border border-red-700 bg-red-950/40 p-4 text-red-200">{error}</div>}
       {message && <div role="status" className="rounded-xl border border-emerald-700 bg-emerald-950/30 p-4 text-emerald-200">{message}</div>}
