@@ -31,17 +31,8 @@ export default function UniversityFlow() {
   const [courseSearch, setCourseSearch] = useState('');
   const [departmentSearch, setDepartmentSearch] = useState('');
   const [resourceSearch, setResourceSearch] = useState('');
-  const [paymentResource, setPaymentResource] = useState(null);
   const [documentFile, setDocumentFile] = useState(null);
   const [downloadResource, setDownloadResource] = useState(null);
-  const paymentDetails = {
-    bankName: import.meta.env.VITE_PAYMENT_BANK_NAME || '',
-    accountName: import.meta.env.VITE_PAYMENT_ACCOUNT_NAME || '',
-    accountNumber: import.meta.env.VITE_PAYMENT_ACCOUNT_NUMBER || '',
-    telebirrName: import.meta.env.VITE_TELEBIRR_ACCOUNT_NAME || '',
-    telebirrNumber: import.meta.env.VITE_TELEBIRR_PHONE || '',
-    telegramUsername: (import.meta.env.VITE_PAYMENT_TELEGRAM_USERNAME || '').replace(/^@/, ''),
-  };
 
   const load = useCallback(async (next) => {
     const requestId = ++catalogRequestId.current;
