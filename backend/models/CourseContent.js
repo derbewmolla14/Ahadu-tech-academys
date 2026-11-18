@@ -88,6 +88,9 @@ const courseContentSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  isApproved: { type: Boolean, default: true, index: true },
+  isPublished: { type: Boolean, default: true, index: true },
+  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved', index: true },
   isPremium: {
     type: Boolean,
     default: false,
