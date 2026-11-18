@@ -243,7 +243,7 @@ const getContent = async (req, res) => {
       { year: '' }, { year: null }, { year: { $exists: false } },
     ] });
     if (course) query.course = { $regex: exactDepartmentRegex(course) };
-    if (String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic') query.language = 'am';
+
 
     const content = await CourseContent.find(query).lean();
     // University listings return metadata only; lesson URLs are fetched from the protected detail endpoint.
