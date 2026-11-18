@@ -120,7 +120,7 @@ export default function UniversityFlow() {
       return;
     }
     if (resource.source === 'course-content' && resource.resourceType === 'video') {
-      setDocumentFile({ title: resource.title || 'Video lesson', fileName: resource.originalFileName || resource.title || 'lesson.mp4', mimeType: 'video/mp4', url: resource.videoUrl });
+      setDocumentFile({ title: resource.title || 'Video lesson', fileName: resource.originalFileName || resource.title || 'lesson.mp4', mimeType: 'video/mp4', url: resource.videoUrl, downloadEndpoint: `content/${resource.courseContentId}/video/${resource.materialIndex}/download` });
       return;
     }
     try {
@@ -137,6 +137,7 @@ export default function UniversityFlow() {
         fileName: resource.originalFileName || resource.title || 'document',
         mimeType: blob.type,
         url,
+        downloadEndpoint: resource.source === 'course-content' ? `content/${resource.courseContentId}/material/${resource.materialKind}/${resource.materialIndex}?download=1` : `university-learning/resources/${resource._id}/file?download=1`,
       });
     } catch (err) {
       setError(err.message);
