@@ -48,6 +48,7 @@ import UniversityFlow from "./pages/UniversityFlow";
 import UniversityCourseContentPage from "./pages/UniversityCourseContentPage";
 import UniversityLearningPage from "./pages/UniversityLearningPage";
 import AdminUniversityResources from "./pages/AdminUniversityResources";
+import AdminPaymentPricing from "./pages/AdminPaymentPricing";
 
 // ========================================
 // PRIVATE ROUTE
@@ -202,6 +203,8 @@ function AppRoutes() {
             </PrivateRoute>
           }
         />
+
+        <Route path="admin/payment-pricing" element={<PrivateRoute><AdminPaymentPricing /></PrivateRoute>} />
 
         <Route
           path="admin/premium-course-access"

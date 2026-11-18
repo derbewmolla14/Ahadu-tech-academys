@@ -69,6 +69,7 @@ if (!fs.existsSync(profilesDir)) {
 
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
+const paymentPricingRoutes = require('./routes/paymentPricing');
 const courseRoutes = require('./routes/courses');
 const contentRoutes = require('./routes/content');
 const courseContentRoutes = require('./routes/courseContent');
@@ -153,6 +154,7 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/payment-pricing', paymentPricingRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/courses', universityCourseRoutes);
 app.use('/api/content', contentRoutes);

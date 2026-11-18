@@ -50,7 +50,7 @@ export default function ElementaryGradePage() {
 
   const openCourseFile = async (course, kind, index, item) => {
     if (course.isPremium && !course.hasAccess) {
-      setDownloadResource({ title: course.course, type: 'course materials', accessType: 'premium' });
+      setDownloadResource({ title: course.course, type: 'course materials', accessType: 'premium', pricingTier: 'elementary' });
       return;
     }
     try {
@@ -102,7 +102,7 @@ export default function ElementaryGradePage() {
               <h2 className="mt-2 text-xl font-semibold text-white">{course.course}</h2>
               {course.description && <p className="mt-2 text-sm text-slate-400">{course.description}</p>}
               <div className="mt-3 flex flex-wrap items-center gap-2">{course.isPremium ? <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300">🔒 PREMIUM</span> : <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">FREE</span>}{course.isPremium && course.hasAccess && <span className="rounded-full bg-green-500/10 px-3 py-1 text-xs font-semibold text-green-300">✓ APPROVED / UNLOCKED</span>}</div>
-              {course.isPremium && !course.hasAccess && <button type="button" onClick={() => setDownloadResource({ title: course.course, type: 'course materials', accessType: 'premium' })} className="mt-3 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white">🔒 View payment options</button>}
+              {course.isPremium && !course.hasAccess && <button type="button" onClick={() => setDownloadResource({ title: course.course, type: 'course materials', accessType: 'premium', pricingTier: 'elementary' })} className="mt-3 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white">🔒 View payment options</button>}
 
               {course.notes?.length > 0 && (
                 <section className="mt-5">
@@ -119,7 +119,7 @@ export default function ElementaryGradePage() {
                   <h3 className="mb-2 font-semibold text-slate-200">🎥 Videos</h3>
                   <ul className="space-y-2">
                     {course.videos.map((video, index) => (
-                      <li key={index} className="flex flex-wrap items-center gap-3"><button type="button" onClick={() => { if (course.isPremium && !course.hasAccess) { setDownloadResource({ title: course.course, type: 'video lesson', accessType: 'premium' }); return; } setSelectedPdf({ title: video.title || 'Video lesson', fileName: video.fileName || video.title || 'lesson.mp4', mimeType: video.mimeType || 'video/mp4', url: video.url, downloadEndpoint: `content/${course._id}/video/${index}/download` }); }} className="text-left text-sm text-blue-400 hover:underline">Watch {video.title || 'video'} →</button><button type="button" onClick={() => requestDownload({ title: video.title || 'Video lesson', fileName: video.fileName || 'lesson.mp4', type: 'video', downloadEndpoint: `content/${course._id}/video/${index}/download` })} className="rounded-lg border border-amber-500/60 px-3 py-1 text-xs font-semibold text-amber-200 hover:bg-amber-500/10">Download</button></li>
+                      <li key={index} className="flex flex-wrap items-center gap-3"><button type="button" onClick={() => { if (course.isPremium && !course.hasAccess) { setDownloadResource({ title: course.course, type: 'video lesson', accessType: 'premium', pricingTier: 'elementary' }); return; } setSelectedPdf({ title: video.title || 'Video lesson', fileName: video.fileName || video.title || 'lesson.mp4', mimeType: video.mimeType || 'video/mp4', url: video.url, downloadEndpoint: `content/${course._id}/video/${index}/download` }); }} className="text-left text-sm text-blue-400 hover:underline">Watch {video.title || 'video'} →</button><button type="button" onClick={() => requestDownload({ title: video.title || 'Video lesson', fileName: video.fileName || 'lesson.mp4', type: 'video', downloadEndpoint: `content/${course._id}/video/${index}/download` })} className="rounded-lg border border-amber-500/60 px-3 py-1 text-xs font-semibold text-amber-200 hover:bg-amber-500/10">Download</button></li>
                     ))}
                   </ul>
                 </section>

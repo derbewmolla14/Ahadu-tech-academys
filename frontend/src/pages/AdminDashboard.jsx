@@ -100,7 +100,7 @@ export default function AdminDashboard() {
       {/* MAIN CONTENT */}
       <div className="max-w-7xl mx-auto p-6">
         {/* ACTION BUTTONS */}
-        <div className="mb-8 flex gap-4">
+        <div className="mb-8 flex flex-wrap gap-4">
           <Link
             to="/admin/university-departments"
             className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
@@ -112,6 +112,12 @@ export default function AdminDashboard() {
             className="bg-emerald-700 hover:bg-emerald-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
           >
             📚 University Uploads & Approvals
+          </Link>
+          <Link
+            to="/admin/payment-pricing"
+            className="bg-violet-700 hover:bg-violet-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+          >
+            💳 Access Pricing & Payment
           </Link>
           <Link
             to="/admin/premium-course-access"
