@@ -18,7 +18,7 @@ const resolveDepartment = async (stream, departmentName) => {
   const category = STREAM_CATEGORY[stream];
   const name = String(departmentName || '').trim();
   if (!category || !name) return null;
-  return Department.findOne({ category, name: { $regex: exactDepartmentRegex(name) }, isActive: true })
+  return Department.findOne({ category: { $regex: exactDepartmentRegex(category) }, name: { $regex: exactDepartmentRegex(name) }, isActive: true })
     .select('name normalizedName category').lean();
 };
 
@@ -46,7 +46,7 @@ exports.getCatalog = async (req, res) => {
     }
     if (selectedLevel === 'Senior' && !department) {
       const category = STREAM_CATEGORY[selectedStream];
-      const departments = await Department.find({ category, isActive: true }).select('name').sort({ name: 1 }).lean();
+      const departments = await Department.find({ category: { $regex: exactDepartmentRegex(category) }, isActive: true }).select('name').sort({ name: 1 }).lean();
       return res.json({ departments: departments.map((item) => item.name) });
     }
     if (selectedLevel !== 'Senior' && !course) {
@@ -66,7 +66,7 @@ exports.getCatalog = async (req, res) => {
     }
     if (selectedLevel === 'Senior' && department && kind === 'course-material' && !course) {
       const legacyBase = {
-        level: 'university', faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) }, studyStage: { $regex: exactDepartmentRegex('Senior') },
+        level: { $regex: exactDepartmentRegex('university') }, faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) }, studyStage: { $regex: exactDepartmentRegex('Senior') },
         department: { $regex: exactDepartmentRegex(canonicalDepartment) }, isActive: true,
         course: { $nin: ['', null] },
       };
