@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import PaymentMethodModal from './PaymentMethodModal';
 
 const getExtension = (name = '', url = '') => {
   const clean = String(name || url).split('?')[0].split('#')[0];
@@ -70,7 +69,7 @@ export default function DocumentViewerModal({ file, onClose, onDownloadRequest }
       </header>
       <section className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 overflow-hidden rounded-b-xl border-x border-b border-slate-700 bg-slate-800">
         {isVideo && url ? (
-          <video controls playsInline src={url} className="h-full w-full bg-black" />
+          <video controls controlsList="nodownload" playsInline src={url} className="h-full w-full bg-black" />
         ) : url && !isOffice ? (
           <iframe ref={frameRef} title={file.title || fileName} src={previewUrl} className="h-full min-h-0 w-full bg-white" allow="fullscreen" />
         ) : (
