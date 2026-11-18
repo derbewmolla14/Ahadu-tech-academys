@@ -33,7 +33,7 @@ export default function ElementaryGradePage() {
         if (!response.ok || !result.success) {
           throw new Error(result.message || 'Could not load courses for this grade.');
         }
-        if (active) setCourses(Array.isArray(result.data) ? result.data : []);
+        if (active) setCourses(Array.isArray(result.data) ? result.data.filter((item) => item && item.isActive !== false) : []);
       } catch (err) {
         if (active) setError(err.message || 'Unable to load courses. Please try again.');
       } finally {
