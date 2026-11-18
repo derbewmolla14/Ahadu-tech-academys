@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { apiFetch, apiBaseURL } from '../api/api';
 import DocumentViewerModal from '../components/DocumentViewerModal';
+import PaymentMethodModal from '../components/PaymentMethodModal';
 
 const getUploadedFileUrl = (fileUrl) => {
   if (!fileUrl) return '#';
@@ -16,6 +17,7 @@ export default function ElementaryGradePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedPdf, setSelectedPdf] = useState(null);
+  const [downloadResource, setDownloadResource] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -47,7 +49,8 @@ export default function ElementaryGradePage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-6">
-      <DocumentViewerModal file={selectedPdf} onClose={() => setSelectedPdf(null)} />
+      <DocumentViewerModal file={selectedPdf} onClose={() => setSelectedPdf(null)} onDownloadRequest={setDownloadResource} />
+      <PaymentMethodModal open={Boolean(downloadResource)} resource={downloadResource} onClose={() => setDownloadResource(null)} />
       <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8">
         <Link to="/elementary" className="text-sm text-blue-400 hover:text-blue-300">← All Elementary grades</Link>
         <h1 className="mt-4 text-3xl font-bold text-white">Elementary — Grade {id}</h1>
@@ -87,7 +90,7 @@ export default function ElementaryGradePage() {
                   <h3 className="mb-2 font-semibold text-slate-200">🎥 Videos</h3>
                   <ul className="space-y-2">
                     {course.videos.map((video, index) => (
-                      <li key={index}><a className="text-sm text-blue-400 hover:underline" href={video.url} target="_blank" rel="noreferrer">{video.title || 'Watch video'} ↗</a></li>
+                      <li key={index}><button type="button" onClick={() => setSelectedPdf({ title: video.title || 'Video lesson', fileName: video.fileName || video.title || 'lesson.mp4', mimeType: video.mimeType || 'video/mp4', url: video.url })} className="text-left text-sm text-blue-400 hover:underline">Watch {video.title || 'video'} →</button></li>
                     ))}
                   </ul>
                 </section>
