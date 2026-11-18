@@ -1,12 +1,14 @@
 import { useEffect, useRef } from 'react';
+import PaymentMethodModal from './PaymentMethodModal';
 
 const getExtension = (name = '', url = '') => {
   const clean = String(name || url).split('?')[0].split('#')[0];
   return clean.includes('.') ? clean.split('.').pop().toLowerCase() : '';
 };
 
-export default function DocumentViewerModal({ file, onClose }) {
+export default function DocumentViewerModal({ file, onClose, onDownloadRequest }) {
   const frameRef = useRef(null);
+  const isVideo = Boolean(file && (String(file.mimeType || '').startsWith('video/') || /\\.(mp4|webm|mov|m4v)([?#]|$)/i.test(file.url || file.fileName || '')));
 
   useEffect(() => {
     if (!file) return undefined;
@@ -40,29 +42,8 @@ export default function DocumentViewerModal({ file, onClose }) {
       : url)
     : url;
 
-  const downloadFile = async () => {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Download request failed');
-      const blobUrl = URL.createObjectURL(await response.blob());
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-    } catch {
-      // Cross-origin hosts may block fetch; let the browser handle the original URL.
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    }
+  const downloadFile = () => {
+    onDownloadRequest?.({ title: file.title || fileName, fileName, type: isVideo ? 'video' : extension || 'document', resourceType: isVideo ? 'video' : extension, accessType: file.accessType });
   };
 
   const printFile = () => {
@@ -88,7 +69,9 @@ export default function DocumentViewerModal({ file, onClose }) {
         </div>
       </header>
       <section className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 overflow-hidden rounded-b-xl border-x border-b border-slate-700 bg-slate-800">
-        {url && !isOffice ? (
+        {isVideo && url ? (
+          <video controls playsInline src={url} className="h-full w-full bg-black" />
+        ) : url && !isOffice ? (
           <iframe ref={frameRef} title={file.title || fileName} src={previewUrl} className="h-full min-h-0 w-full bg-white" allow="fullscreen" />
         ) : (
           <div className="m-auto max-w-lg p-6 text-center text-slate-200">
