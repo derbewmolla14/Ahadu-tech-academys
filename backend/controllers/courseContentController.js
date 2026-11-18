@@ -7,6 +7,14 @@ const fs = require('fs');
 const uploadsDirectory = path.join(__dirname, '../uploads');
 const exactDepartmentRegex = (value) => new RegExp('^' + String(value || '').trim().replace(/[.*+?^()|[\]\\$]/g, (character) => '\\' + character) + '$', 'i');
 fs.mkdirSync(uploadsDirectory, { recursive: true });
+const isCourseAdmin = (user) => user?.role === 'admin';
+const hasApprovedCourseAccess = (user, courseId) => (user?.downloadApprovals || []).some((entry) =>
+  entry.resourceModel === 'CourseContent'
+  && String(entry.resourceId) === String(courseId)
+  && entry.status === 'approved'
+);
+const canAccessCourse = (user, course) => !course?.isPremium || isCourseAdmin(user) || hasApprovedCourseAccess(user, course?._id);
+
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -263,7 +271,7 @@ const getContent = async (req, res) => {
     const approvedIds = new Set((req.user?.downloadApprovals || []).filter((entry) => entry.resourceModel === 'CourseContent' && entry.status === 'approved').map((entry) => String(entry.resourceId)));
     content.forEach((item) => {
       item.pricingTier = String(item.faculty || '').toLowerCase() === 'phd' ? 'phd' : ['elementary', 'highschool'].includes(String(item.level || '').toLowerCase()) ? String(item.level).toLowerCase() : String(item.level || '').toLowerCase() === 'coding' ? 'general' : 'university';
-      item.hasAccess = !item.isPremium || isAdmin || unlockedIds.has(String(item._id)) || approvedIds.has(String(item._id));
+      item.hasAccess = !item.isPremium || isAdmin || approvedIds.has(String(item._id));
     });
     // Never expose private note/PPT upload paths in public catalog responses.
     content.forEach((item) => {
