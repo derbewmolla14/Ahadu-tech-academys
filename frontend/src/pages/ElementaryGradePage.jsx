@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { apiFetch, apiBaseURL } from '../api/api';
+import DocumentViewerModal from '../components/DocumentViewerModal';
 
 const getUploadedFileUrl = (fileUrl) => {
   if (!fileUrl) return '#';
@@ -46,10 +47,7 @@ export default function ElementaryGradePage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-6">
-      {selectedPdf && <div className="fixed inset-0 z-50 flex flex-col bg-slate-950/95 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label={selectedPdf.title}>
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 pb-3"><h2 className="truncate text-lg font-semibold text-white">{selectedPdf.title}</h2><button type="button" onClick={() => setSelectedPdf(null)} className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">Close ×</button></div>
-        <iframe title={selectedPdf.title} src={selectedPdf.url} className="mx-auto min-h-0 w-full max-w-6xl flex-1 rounded-xl border border-slate-700 bg-white" />
-      </div>}
+      <DocumentViewerModal file={selectedPdf} onClose={() => setSelectedPdf(null)} />
       <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8">
         <Link to="/elementary" className="text-sm text-blue-400 hover:text-blue-300">← All Elementary grades</Link>
         <h1 className="mt-4 text-3xl font-bold text-white">Elementary — Grade {id}</h1>
@@ -99,7 +97,7 @@ export default function ElementaryGradePage() {
                   <h3 className="mb-2 font-semibold text-slate-200">📊 Presentations</h3>
                   <ul className="space-y-2">
                     {course.ppts.map((ppt, index) => (
-                      <li key={index}><a className="text-sm text-blue-400 hover:underline" href={getUploadedFileUrl(ppt.fileUrl)} target="_blank" rel="noreferrer">{ppt.title || 'Open presentation'} ↗</a></li>
+                      <li key={index}><button type="button" onClick={() => setSelectedPdf({ title: ppt.title || 'Presentation', fileName: ppt.fileName || ppt.originalFileName || ppt.title || 'presentation.pptx', url: getUploadedFileUrl(ppt.fileUrl) })} className="text-left text-sm text-blue-400 hover:underline">Open {ppt.title || 'presentation'} ↗</button></li>
                     ))}
                   </ul>
                 </section>
