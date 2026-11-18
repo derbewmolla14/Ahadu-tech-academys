@@ -25,23 +25,32 @@ const resolveDepartment = async (stream, departmentName) => {
 exports.getCatalog = async (req, res) => {
   try {
     const { stream, level, department, course, kind, academicYear } = req.query;
-    if (!stream || !['Natural', 'Social', 'Health', 'Diploma'].includes(stream)) return res.status(400).json({ message: 'Choose a valid academic stream.' });
-    if (level && !['Freshman', 'Remedial', 'Senior', 'Diploma'].includes(level)) return res.status(400).json({ message: 'Invalid academic level.' });
-    if (!level) return res.json({ streams: ['Natural', 'Social', 'Health', 'Diploma'], levels: ['Freshman', 'Remedial', 'Senior', 'Diploma'] });
-    const base = { ...approvedFilter, stream, level };
+    if (!stream) return res.status(400).json({ message: 'Choose a valid academic stream.' });
+    if (!selectedLevel) return res.json({ streams: ['Natural', 'Social', 'Health', 'Diploma'], levels: ['Freshman', 'Remedial', 'Senior', 'Diploma'] });
+    const normalizedStream = Object.keys(STREAM_CATEGORY).find((key) => key.toLowerCase() === String(stream).trim().toLowerCase());
+    const normalizedLevel = ['Freshman', 'Remedial', 'Senior', 'Diploma'].find((value) => value.toLowerCase() === String(level || '').trim().toLowerCase());
+    if (!normalizedStream) return res.status(400).json({ message: 'Choose a valid academic stream.' });
+    if (level && !normalizedLevel) return res.status(400).json({ message: 'Invalid academic level.' });
+    const selectedStream = normalizedStream;
+    const selectedLevel = normalizedLevel;
+    const base = {
+      ...approvedFilter,
+      stream: { $regex: exactDepartmentRegex(selectedStream) },
+      ...(selectedLevel ? { level: { $regex: exactDepartmentRegex(selectedLevel) } } : {}),
+    };
     let canonicalDepartment = '';
-    if (level === 'Senior' && department) {
-      const departmentRecord = await resolveDepartment(stream, department);
+    if (selectedLevel === 'Senior' && department) {
+      const departmentRecord = await resolveDepartment(selectedStream, department);
       if (!departmentRecord) return res.json({ courses: [], resources: [], message: 'No matching active department was found.' });
       canonicalDepartment = departmentRecord.name;
     }
-    if (level === 'Senior' && !department) {
-      const category = ({ Natural: 'Natural Science', Social: 'Social Science', Health: 'Health Science', Diploma: 'Diploma' })[stream];
+    if (selectedLevel === 'Senior' && !department) {
+      const category = STREAM_CATEGORY[selectedStream];
       const departments = await Department.find({ category, isActive: true }).select('name').sort({ name: 1 }).lean();
       return res.json({ departments: departments.map((item) => item.name) });
     }
-    if (level !== 'Senior' && !course) {
-      const legacyBase = { level: 'university', faculty: STREAM_CATEGORY[stream], studyStage: level, isActive: true };
+    if (selectedLevel !== 'Senior' && !course) {
+      const legacyBase = { level: 'university', faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) }, studyStage: { $regex: exactDepartmentRegex(selectedLevel) }, isActive: true };
       const [resourceCourses, legacyCourses] = await Promise.all([
         UniversityResource.distinct('course', { ...base, course: { $nin: ['', null] }, kind: { $in: ['course-material', 'exam-question'] } }),
         CourseContent.distinct('course', { ...legacyBase, course: { $nin: ['', null] } }),
@@ -49,13 +58,13 @@ exports.getCatalog = async (req, res) => {
       const courses = [...new Set([...resourceCourses, ...legacyCourses].map((item) => String(item || '').trim()).filter(Boolean))];
       return res.json({ courses: courses.sort((a, b) => a.localeCompare(b)) });
     }
-    if (level === 'Senior' && department && !kind) {
+    if (selectedLevel === 'Senior' && department && !kind) {
       return res.json({ options: [
         { id: 'exit-exam', label: 'Exit Exam' },
         { id: 'course-material', label: 'Course Material' },
       ] });
     }
-    if (level === 'Senior' && department && kind === 'course-material' && !course) {
+    if (selectedLevel === 'Senior' && department && kind === 'course-material' && !course) {
       const legacyBase = {
         level: 'university', faculty: STREAM_CATEGORY[stream], studyStage: 'Senior',
         department: { $regex: exactDepartmentRegex(canonicalDepartment) }, isActive: true,
@@ -68,27 +77,27 @@ exports.getCatalog = async (req, res) => {
       const courses = [...new Set([...resourceCourses, ...legacyCourses].map((item) => String(item || '').trim()).filter(Boolean))];
       return res.json({ courses: courses.sort((a, b) => a.localeCompare(b)) });
     }
-    if (level !== 'Senior' && course && !kind) {
+    if (selectedLevel !== 'Senior' && course && !kind) {
       return res.json({ options: [
         { id: 'exam-question', label: 'Exam Question' },
         { id: 'course-material', label: 'Course Material' },
       ] });
     }
     const query = { ...base };
-    if (department) query.department = { $regex: exactDepartmentRegex(level === 'Senior' ? canonicalDepartment : department) };
-    if (course) query.course = course;
-    if (kind) query.kind = kind;
+    if (department) query.department = { $regex: exactDepartmentRegex(selectedLevel === 'Senior' ? canonicalDepartment : department) };
+    if (course) query.course = { $regex: exactDepartmentRegex(course) };
+    if (kind) query.kind = { $regex: exactDepartmentRegex(kind) };
     if (academicYear) query.$or = [{ academicYear: String(academicYear).trim() }, { academicYear: 'All Years' }, { academicYear: '' }, { academicYear: null }, { academicYear: { $exists: false } }];
 
     const legacyQuery = {
       level: 'university',
-      faculty: STREAM_CATEGORY[stream],
-      studyStage: level,
+      faculty: { $regex: exactDepartmentRegex(STREAM_CATEGORY[selectedStream]) },
+      studyStage: { $regex: exactDepartmentRegex(selectedLevel) },
       isActive: true,
     };
-    if (level === 'Senior' && department) legacyQuery.department = { $regex: exactDepartmentRegex(canonicalDepartment) };
-    if (course) legacyQuery.course = course;
-    if (academicYear && level === 'Senior') {
+    if (selectedLevel === 'Senior' && department) legacyQuery.department = { $regex: exactDepartmentRegex(canonicalDepartment) };
+    if (course) legacyQuery.course = { $regex: exactDepartmentRegex(course) };
+    if (academicYear && selectedLevel === 'Senior') {
       legacyQuery.$or = [
         { year: String(academicYear).trim() },
         { year: 'All Years' },
@@ -204,9 +213,12 @@ exports.adminUpload = async (req, res) => {
       stream, level, department: canonicalDepartment, course, kind, academicYear: String(academicYear || '').trim() || 'All Years', resourceType, title: String(title).trim(),
       textContent, answer, solution, accessType, storedFileName,
       originalFileName: req.file?.originalname || '', mimeType: req.file?.mimetype || '',
-      uploadedBy: req.user._id, status: 'pending',
+      uploadedBy: req.user._id,
+      status: 'approved',
+      approvedBy: req.user._id,
+      approvedAt: new Date(),
     });
-    return res.status(201).json({ message: 'Upload received and awaiting admin approval.', resource: { id: item._id, status: item.status, accessType: item.accessType } });
+    return res.status(201).json({ message: 'Resource published successfully and is now visible to students.', resource: { id: item._id, status: item.status, accessType: item.accessType } });
   } catch (error) {
     console.error('University upload error:', error);
     return res.status(500).json({ message: 'Unable to save upload.' });
