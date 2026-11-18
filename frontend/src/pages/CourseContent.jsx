@@ -140,6 +140,14 @@ export default function CourseContent() {
         </div>
       </div>
 
+      {courseData.isPremium && courseData.hasAccess === false && (
+        <section className="mx-auto mt-6 max-w-6xl rounded-2xl border border-amber-500/40 bg-amber-500/10 p-6 text-amber-100">
+          <h2 className="text-xl font-semibold">🔒 Premium course — approval required</h2>
+          <p className="mt-2 text-sm text-amber-200">An administrator must approve your payment for this course before lessons can be opened or downloaded.</p>
+          <button type="button" onClick={() => setDownloadResource({ title: courseData.course, type: 'course materials', accessType: 'premium', isPremium: true, hasAccess: false, pricingTier: courseData.pricingTier || 'university' })} className="mt-4 rounded-lg bg-amber-500 px-4 py-2 font-semibold text-slate-950">View payment instructions</button>
+        </section>
+      )}
+      {(!courseData.isPremium || courseData.hasAccess !== false) && (
       {/* CONTENT SECTIONS */}
       <div className="max-w-6xl mx-auto p-6 space-y-8">
 
@@ -226,7 +234,7 @@ export default function CourseContent() {
           </div>
         )}
 
-      </div>
+      </div>)}
     </div>
   );
 }
