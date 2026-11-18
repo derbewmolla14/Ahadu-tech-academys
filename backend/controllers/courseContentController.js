@@ -20,26 +20,30 @@ const storage = multer.diskStorage({
   }
 });
 
-// File filter to allow PDF and PPT files
+// Accept PDF, PowerPoint, and browser-playable local video formats.
 const fileFilter = (req, file, cb) => {
   const allowedMimes = [
     'application/pdf',
     'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'video/mp4',
+    'video/webm',
+    'video/ogg'
   ];
-
-  if (allowedMimes.includes(file.mimetype)) {
+  const extension = path.extname(file.originalname || '').toLowerCase();
+  const allowedVideoExtension = ['.mp4', '.webm', '.ogv', '.ogg'].includes(extension);
+  if (allowedMimes.includes(file.mimetype) && (!file.mimetype.startsWith('video/') || allowedVideoExtension)) {
     cb(null, true);
   } else {
-    cb(new Error('Only PDF and PPT files are allowed!'), false);
+    cb(new Error('Allowed files: PDF, PPT/PPTX, MP4, WebM, and OGG video.'), false);
   }
 };
 
 const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
+  storage,
+  fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
+    fileSize: 500 * 1024 * 1024 // Up to 500MB per file; configure hosting limits accordingly.
   }
 });
 
@@ -128,29 +132,37 @@ const uploadContent = async (req, res) => {
     if (parsedPpts.some((item) => !String(item?.title || '').trim())) {
       return res.status(400).json({ success: false, message: 'Every PowerPoint presentation must have a title.' });
     }
-    if (parsedVideos.some((item) => !String(item?.title || '').trim() || !String(item?.url || '').trim())) {
-      return res.status(400).json({ success: false, message: 'Every video must have both a title and a video URL.' });
+    if (parsedVideos.some((item) => !String(item?.title || '').trim() || (!String(item?.url || '').trim() && item?.fileUpload !== true))) {
+      return res.status(400).json({ success: false, message: 'Every video must have a title and either a video URL or uploaded video file.' });
     }
     if (parsedQuestions.some((item) => !String(item?.question || '').trim() || !String(item?.answer || '').trim())) {
       return res.status(400).json({ success: false, message: 'Every exam question must include both a question and an answer.' });
     }
 
-    // Match uploaded files to their note/PPT entries in the order selected.
+    // Match each uploaded file to its material by MIME type and selection order.
     let noteFileIndex = 0;
     let pptFileIndex = 0;
+    let videoFileIndex = 0;
     (req.files || []).forEach((file) => {
+      const isVideo = String(file.mimetype || '').startsWith('video/');
       const isPpt = file.mimetype.includes('powerpoint') || file.mimetype.includes('presentation');
-      if (isPpt && parsedPpts[pptFileIndex]) {
+      if (isVideo && parsedVideos[videoFileIndex]?.fileUpload) {
+        parsedVideos[videoFileIndex].url = `/uploads/${file.filename}`;
+        parsedVideos[videoFileIndex].mimeType = file.mimetype;
+        delete parsedVideos[videoFileIndex].fileUpload;
+        videoFileIndex += 1;
+      } else if (isPpt && parsedPpts[pptFileIndex]) {
         parsedPpts[pptFileIndex].fileUrl = `/uploads/${file.filename}`;
         pptFileIndex += 1;
-      } else if (!isPpt && parsedNotes[noteFileIndex]) {
+      } else if (file.mimetype === 'application/pdf' && parsedNotes[noteFileIndex]) {
         parsedNotes[noteFileIndex].fileUrl = `/uploads/${file.filename}`;
         noteFileIndex += 1;
       }
     });
 
-    if (noteFileIndex !== parsedNotes.length || pptFileIndex !== parsedPpts.length) {
-      return res.status(400).json({ success: false, message: 'A selected PDF or PowerPoint file is missing or does not match its material entry. Please reselect the files and try again.' });
+    const expectedVideoFiles = parsedVideos.filter((item) => item.fileUpload === true).length;
+    if (noteFileIndex !== parsedNotes.length || pptFileIndex !== parsedPpts.length || videoFileIndex !== expectedVideoFiles) {
+      return res.status(400).json({ success: false, message: 'A selected PDF, PowerPoint, or video file is missing or does not match its material entry. Please reselect the files and try again.' });
     }
 
     const identity = {
