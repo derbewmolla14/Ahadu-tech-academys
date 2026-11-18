@@ -42,7 +42,7 @@ export default function DocumentViewerModal({ file, onClose, onDownloadRequest }
     : url;
 
   const downloadFile = () => {
-    onDownloadRequest?.({ title: file.title || fileName, fileName, type: isVideo ? 'video' : extension || 'document', resourceType: isVideo ? 'video' : extension, accessType: file.accessType });
+    onDownloadRequest?.({ title: file.title || fileName, fileName, type: isVideo ? 'video' : extension || 'document', resourceType: isVideo ? 'video' : extension, accessType: file.accessType, downloadEndpoint: file.downloadEndpoint, courseContentId: file.courseContentId, materialKind: file.materialKind, materialIndex: file.materialIndex });
   };
 
   const printFile = () => {
