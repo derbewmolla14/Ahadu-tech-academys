@@ -26,7 +26,16 @@ export default function HighSchoolGradePage() {
       }
     }
     loadCourses();
-    return () => controller.abort();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') loadCourses();
+    };
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      controller.abort();
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
   }, [id]);
 
   return (
