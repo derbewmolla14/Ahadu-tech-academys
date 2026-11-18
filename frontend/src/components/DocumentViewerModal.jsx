@@ -7,7 +7,7 @@ const getExtension = (name = '', url = '') => {
 
 export default function DocumentViewerModal({ file, onClose, onDownloadRequest }) {
   const frameRef = useRef(null);
-  const isVideo = Boolean(file && (String(file.mimeType || '').startsWith('video/') || /\\.(mp4|webm|mov|m4v)([?#]|$)/i.test(file.url || file.fileName || '')));
+  const isVideo = Boolean(file && (String(file.mimeType || '').startsWith('video/') || /\.(mp4|webm|mov|m4v)([?#]|$)/i.test(file.url || file.fileName || '')));
 
   useEffect(() => {
     if (!file) return undefined;
