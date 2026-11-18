@@ -42,6 +42,7 @@ export default function UniversityContent() {
                 className="w-full bg-black"
               />
             </div>
+            <button type="button" onClick={() => setDownloadResource({ title: courseTitle + ' — video lesson', type: 'video', accessType: 'free' })} className="mt-3 rounded-full border border-amber-500/60 px-5 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/10">Download video</button>
           </div>
 
           <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-xl shadow-slate-950/40">
