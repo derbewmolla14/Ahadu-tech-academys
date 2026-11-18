@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Plus,
   BookOpen,
+  Download,
   Upload,
   Layers,
   Users,
@@ -308,6 +309,14 @@ export default function DashboardLayout() {
           onClick={closeMenu}
         >
           Settings
+        </NavigationItem>
+
+        <NavigationItem
+          to="/dashboard/offline"
+          icon={Download}
+          onClick={closeMenu}
+        >
+          My Offline Library
         </NavigationItem>
 
         {/* LOGOUT */}
