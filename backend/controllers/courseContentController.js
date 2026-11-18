@@ -248,8 +248,9 @@ const getContent = async (req, res) => {
     const content = await CourseContent.find(query).lean();
     const isAdmin = req.user?.role === 'admin';
     const unlockedIds = new Set((req.user?.unlockedCourseContents || []).map((id) => String(id)));
+    const approvedIds = new Set((req.user?.downloadApprovals || []).filter((entry) => entry.resourceModel === 'CourseContent' && entry.status === 'approved').map((entry) => String(entry.resourceId)));
     content.forEach((item) => {
-      item.hasAccess = !item.isPremium || isAdmin || unlockedIds.has(String(item._id));
+      item.hasAccess = !item.isPremium || isAdmin || unlockedIds.has(String(item._id)) || approvedIds.has(String(item._id));
     });
     // Never expose private note/PPT upload paths in public catalog responses.
     content.forEach((item) => {
