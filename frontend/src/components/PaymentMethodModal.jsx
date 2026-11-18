@@ -6,8 +6,9 @@ export default function PaymentMethodModal({ open, onClose, resource }) {
   if (!open) return null;
 
   const telegramUsername = (import.meta.env.VITE_PAYMENT_TELEGRAM_USERNAME || '').replace(/^@/, '');
+  const hasTelegramContact = Boolean(import.meta.env.VITE_PAYMENT_TELEGRAM_URL || telegramUsername);
   const telegramUrl = import.meta.env.VITE_PAYMENT_TELEGRAM_URL
-    || (telegramUsername ? `https://t.me/${telegramUsername}` : 'https://t.me/HorizonHydroOstechbot');
+    || (telegramUsername ? `https://t.me/${telegramUsername}` : 'https://t.me/');
   const paymentDetails = {
     bankName: import.meta.env.VITE_PAYMENT_BANK_NAME || '',
     accountName: import.meta.env.VITE_PAYMENT_ACCOUNT_NAME || '',
@@ -52,6 +53,7 @@ export default function PaymentMethodModal({ open, onClose, resource }) {
             <li><strong>Payment method:</strong> Bank transfer or Telebirr</li>
           </ul>
           <a href={telegramUrl} target="_blank" rel="noopener noreferrer" className="mt-4 block rounded-xl bg-sky-600 px-4 py-3 text-center font-semibold text-white hover:bg-sky-500">Send Payment Screenshot via Telegram</a>
+          {!hasTelegramContact && <p className="mt-2 text-xs text-amber-200">The academy has not configured its Telegram contact yet. Ask the administrator to set VITE_PAYMENT_TELEGRAM_URL or VITE_PAYMENT_TELEGRAM_USERNAME.</p>}
           <p className="mt-2 break-all text-xs text-slate-400">Telegram contact: {telegramUrl}</p>
         </section>
         <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-slate-300">
