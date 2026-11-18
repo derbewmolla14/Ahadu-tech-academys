@@ -21,6 +21,28 @@ export default function CourseContent() {
   const [downloadResource, setDownloadResource] = useState(null);
   const requestDownload = (resource) => downloadApprovedResource(resource, setDownloadResource);
 
+  const openCourseVideo = async (index, video) => {
+    const endpoint = `content/${courseData._id}/video/${index}`;
+    try {
+      if (!String(video.url || '').startsWith('/uploads/')) {
+        setDocumentFile({ title: video.title || 'Video lesson', fileName: video.title || 'lesson.mp4', mimeType: video.mimeType || 'video/mp4', url: video.url, downloadEndpoint: endpoint + '/download' });
+        return;
+      }
+      const response = await apiFetch(endpoint);
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        if (response.status === 403) setDownloadResource({ title: courseData.course, type: 'course materials', accessType: 'premium', isPremium: true, hasAccess: false, pricingTier: courseData.pricingTier || 'university' });
+        else throw new Error(result.message || 'Unable to open this video.');
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      setDocumentFile({ title: video.title || 'Video lesson', fileName: video.title || 'lesson.mp4', mimeType: blob.type || video.mimeType || 'video/mp4', url, downloadEndpoint: endpoint + '/download' });
+    } catch (error) {
+      window.alert(error.message || 'Unable to open this video.');
+    }
+  };
+
   const openCourseFile = async (kind, index, item) => {
     try {
       const endpoint = `content/${courseData._id}/material/${kind}/${index}`;
@@ -192,7 +214,7 @@ export default function CourseContent() {
                       <p className="text-slate-400 text-xs mt-1">Video Content</p>
                     </div>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => setDocumentFile({ title: video.title || 'Video lesson', fileName: video.title || 'lesson.mp4', mimeType: video.mimeType || 'video/mp4', url: String(video.url || '').startsWith('/uploads/') ? `${apiBaseURL.replace(/\/api\/?$/, '')}${video.url}` : video.url, downloadEndpoint: `content/${courseData._id}/video/${index}/download`, courseContentId: courseData._id, materialIndex: index })} className="text-red-400 text-xs">Watch video →</button><button type="button" onClick={() => requestDownload({ title: video.title || 'Video lesson', type: 'video', downloadEndpoint: `content/${courseData._id}/video/${index}/download` })} className="rounded-lg border border-amber-500/60 px-3 py-1 text-xs font-semibold text-amber-200">Download</button></div>
+                  <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => openCourseVideo(index, video)} className="text-red-400 text-xs">Watch video →</button><button type="button" onClick={() => requestDownload({ title: video.title || 'Video lesson', type: 'video', downloadEndpoint: `content/${courseData._id}/video/${index}/download` })} className="rounded-lg border border-amber-500/60 px-3 py-1 text-xs font-semibold text-amber-200">Download</button></div>
                 </article>
               ))}
             </div>
