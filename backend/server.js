@@ -125,14 +125,14 @@ app.use('/uploads', async (req, res, next) => {
 
     return authMiddleware(req, res, () => {
       const isAdmin = req.user?.role === 'admin';
-      const isUnlocked = req.user?.unlockedCourseContents?.some((item) => String(item) === String(courseMaterial._id));
       const isApproved = req.user?.downloadApprovals?.some((entry) =>
         entry.resourceModel === 'CourseContent'
         && String(entry.resourceId) === String(courseMaterial._id)
         && entry.status === 'approved'
       );
-      if (!isAdmin && !isUnlocked && !isApproved) {
-        return res.status(403).json({ success: false, message: 'Administrator approval is required before accessing this course file directly.' });
+      const course = await CourseContent.findById(courseMaterial._id).select('isPremium').lean();
+      if (course?.isPremium && !isAdmin && !isApproved) {
+        return res.status(403).json({ success: false, accessLocked: true, isPremium: true, message: 'Administrator approval is required before accessing this premium course.' });
       }
       return next();
     });
