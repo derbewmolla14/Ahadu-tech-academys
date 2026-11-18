@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../api/api';
 
@@ -18,6 +18,7 @@ export default function UniversityFlow() {
   const [selection, setSelection] = useState(initial);
   const [history, setHistory] = useState([]);
   const [catalog, setCatalog] = useState({});
+  const catalogRequestId = useRef(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [courseSearch, setCourseSearch] = useState('');
@@ -34,20 +35,28 @@ export default function UniversityFlow() {
   };
 
   const load = useCallback(async (next) => {
-    if (!next.stream) { setCatalog({}); return; }
+    const requestId = ++catalogRequestId.current;
+    if (!next.stream) { setCatalog({}); setLoading(false); return; }
     const params = new URLSearchParams();
     Object.entries(next).forEach(([key, value]) => { if (value) params.set(key, value); });
+    setCatalog({});
     setLoading(true); setError('');
     try {
-      const response = await apiFetch('university-learning/catalog?' + params.toString());
+      const response = await apiFetch('university-learning/catalog?' + params.toString(), { cache: 'no-store' });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Unable to load learning content.');
-      setCatalog(data);
-    } catch (err) { setError(err.message); setCatalog({}); }
-    finally { setLoading(false); }
+      if (requestId === catalogRequestId.current) setCatalog(data);
+    } catch (err) {
+      if (requestId === catalogRequestId.current) { setError(err.message); setCatalog({}); }
+    } finally {
+      if (requestId === catalogRequestId.current) setLoading(false);
+    }
   }, []);
 
-  useEffect(() => { load(selection); }, [selection, load]);
+  useEffect(() => {
+    load(selection);
+    return () => { catalogRequestId.current += 1; };
+  }, [selection, load]);
 
   const move = (patch) => {
     setHistory((items) => [...items, selection]);
