@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../api/api';
 import DocumentViewerModal from '../components/DocumentViewerModal';
 import PaymentMethodModal from '../components/PaymentMethodModal';
+import { downloadApprovedResource } from '../utils/downloadApprovedResource';
 
 export default function CourseContent() {
   const { name } = useParams();
@@ -18,6 +19,23 @@ export default function CourseContent() {
   const [error, setError] = useState('');
   const [documentFile, setDocumentFile] = useState(null);
   const [downloadResource, setDownloadResource] = useState(null);
+  const requestDownload = (resource) => downloadApprovedResource(resource, setDownloadResource);
+
+  const openCourseFile = async (kind, index, item) => {
+    try {
+      const endpoint = `content/${courseData._id}/material/${kind}/${index}`;
+      const response = await apiFetch(endpoint);
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.message || 'Unable to open this material.');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      setDocumentFile({ title: item.title || 'Course material', fileName: item.title || (kind === 'notes' ? 'note.pdf' : 'presentation.pptx'), mimeType: blob.type, url, downloadEndpoint: endpoint + '?download=1' });
+    } catch (error) {
+      window.alert(error.message || 'Unable to open this material.');
+    }
+  };
 
   useEffect(() => {
     // If missing required parameters, redirect to university page
@@ -69,7 +87,7 @@ export default function CourseContent() {
   if (error || !courseData) {
     return (
       <div className="min-h-screen bg-slate-950 text-white">
-      <DocumentViewerModal file={documentFile} onClose={() => setDocumentFile(null)} onDownloadRequest={setDownloadResource} />
+      <DocumentViewerModal file={documentFile} onClose={() => setDocumentFile(null)} onDownloadRequest={requestDownload} />
       <PaymentMethodModal open={Boolean(downloadResource)} resource={downloadResource} onClose={() => setDownloadResource(null)} />
         <div className="max-w-4xl mx-auto p-6">
           <div className="bg-red-900/50 border border-red-700 text-red-200 p-6 rounded-xl">
@@ -131,7 +149,7 @@ export default function CourseContent() {
                       <p className="text-slate-400 text-xs mt-1">PDF Document</p>
                     </div>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => setDocumentFile({ title: note.title || 'PDF note', fileName: note.title || 'note.pdf', mimeType: 'application/pdf', url: note.fileUrl })} className="text-blue-400 text-xs">Open / Read →</button><button type="button" onClick={() => setDownloadResource({ title: note.title || 'PDF note', type: 'PDF', accessType: 'free' })} className="rounded-lg border border-amber-500/60 px-3 py-1 text-xs font-semibold text-amber-200">Download</button></div>
+                  <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => openCourseFile('notes', index, note)} className="text-blue-400 text-xs">Open / Read →</button><button type="button" onClick={() => requestDownload({ title: note.title || 'PDF note', type: 'PDF', downloadEndpoint: `content/${courseData._id}/material/notes/${index}?download=1` })} className="rounded-lg border border-amber-500/60 px-3 py-1 text-xs font-semibold text-amber-200">Download</button></div>
                 </article>
               ))}
             </div>
@@ -155,7 +173,7 @@ export default function CourseContent() {
                       <p className="text-slate-400 text-xs mt-1">Video Content</p>
                     </div>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => setDocumentFile({ title: video.title || 'Video lesson', fileName: video.title || 'lesson.mp4', mimeType: 'video/mp4', url: video.url })} className="text-red-400 text-xs">Watch video →</button><button type="button" onClick={() => setDownloadResource({ title: video.title || 'Video lesson', type: 'video', accessType: 'free' })} className="rounded-lg border border-amber-500/60 px-3 py-1 text-xs font-semibold text-amber-200">Download</button></div>
+                  <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => setDocumentFile({ title: video.title || 'Video lesson', fileName: video.title || 'lesson.mp4', mimeType: 'video/mp4', url: video.url, downloadEndpoint: `content/${courseData._id}/video/${index}/download` })} className="text-red-400 text-xs">Watch video →</button><button type="button" onClick={() => requestDownload({ title: video.title || 'Video lesson', type: 'video', downloadEndpoint: `content/${courseData._id}/video/${index}/download` })} className="rounded-lg border border-amber-500/60 px-3 py-1 text-xs font-semibold text-amber-200">Download</button></div>
                 </article>
               ))}
             </div>
@@ -179,7 +197,7 @@ export default function CourseContent() {
                       <p className="text-slate-400 text-xs mt-1">PowerPoint Presentation</p>
                     </div>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => setDocumentFile({ title: ppt.title || 'Presentation', fileName: ppt.title || 'presentation.pptx', url: ppt.fileUrl })} className="text-purple-400 text-xs">Open / Read →</button><button type="button" onClick={() => setDownloadResource({ title: ppt.title || 'Presentation', type: 'PPT', accessType: 'free' })} className="rounded-lg border border-amber-500/60 px-3 py-1 text-xs font-semibold text-amber-200">Download</button></div>
+                  <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => openCourseFile('ppts', index, ppt)} className="text-purple-400 text-xs">Open / Read →</button><button type="button" onClick={() => requestDownload({ title: ppt.title || 'Presentation', type: 'PPT', downloadEndpoint: `content/${courseData._id}/material/ppts/${index}?download=1` })} className="rounded-lg border border-amber-500/60 px-3 py-1 text-xs font-semibold text-amber-200">Download</button></div>
                 </article>
               ))}
             </div>
