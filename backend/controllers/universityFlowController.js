@@ -289,7 +289,8 @@ exports.downloadApproved = async (req, res) => {
     const isAdmin = req.user?.role === 'admin';
     const isUnlocked = (req.user?.unlockedUniversityResources || []).some((id) => String(id) === String(item._id));
     const isApproved = (req.user?.downloadApprovals || []).some((entry) => entry.resourceModel === 'UniversityResource' && String(entry.resourceId) === String(item._id) && entry.status === 'approved');
-    if (!isAdmin && !isUnlocked && !isApproved) return res.status(403).json({ message: 'Administrator approval is required before downloading this resource.' });
+    if (req.query.download === '1' && !isAdmin && !isUnlocked && !isApproved) return res.status(403).json({ message: 'Administrator approval is required before downloading this resource.' });
+    if (req.query.download !== '1' && item.accessType === 'premium' && !isAdmin && !isUnlocked && !isApproved) return res.status(403).json({ message: 'Administrator approval is required to view this premium resource.' });
     if (!item.storedFileName) return res.status(404).json({ message: 'This resource has no attached file.' });
     const filePath = path.join(PRIVATE_DIR, path.basename(item.storedFileName));
     if (!fs.existsSync(filePath)) return res.status(404).json({ message: 'File is missing.' });
