@@ -378,6 +378,11 @@ const downloadCourseVideo = async (req, res) => {
     if (!isAdmin && !isUnlocked && !isApproved) return res.status(403).json({ success: false, message: 'Administrator approval is required before downloading this course video.' });
     const video = course.videos?.[Number(req.params.index)];
     if (!video?.url) return res.status(404).json({ success: false, message: 'Video not found.' });
+    if (String(video.url).startsWith('/uploads/')) {
+      const filePath = path.join(uploadsDirectory, path.basename(video.url));
+      if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, message: 'Uploaded video file is missing from the server.' });
+      return res.download(filePath, path.basename(filePath));
+    }
     let target;
     try { target = new URL(video.url); } catch { return res.status(400).json({ success: false, message: 'Video URL is invalid.' }); }
     if (!['http:', 'https:'].includes(target.protocol)) return res.status(400).json({ success: false, message: 'Unsupported video URL.' });
