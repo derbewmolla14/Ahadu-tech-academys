@@ -37,6 +37,16 @@ export default function PremiumCourseAccessAdmin() {
 
   const hasAccess = (student, courseId) => (student.unlockedCourseContents || []).some(item => String(item?._id || item) === String(courseId));
 
+  const toggleCoursePremium = async (course) => {
+    setError(''); setMessage('');
+    try {
+      const response = await apiFetch(`content/${course._id}/premium`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isPremium: !course.isPremium }) });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || 'Unable to change course access type.');
+      setMessage(result.message); await load();
+    } catch (err) { setError(err.message || 'Unable to change course access type.'); }
+  };
+
   const changeAccess = async (course, student, grant) => {
     const key = course._id + ':' + student._id;
     setBusyKey(key);
@@ -78,6 +88,8 @@ export default function PremiumCourseAccessAdmin() {
                 <div>
                   <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">Download approval · {course.isActive ? 'Active' : 'Inactive'}</span>
                   <h2 className="mt-3 text-xl font-semibold">{course.course}</h2>
+                  <span className={course.isPremium ? 'mt-2 inline-flex rounded-full bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-300' : 'mt-2 inline-flex rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-300'}>{course.isPremium ? '🔒 PREMIUM' : 'FREE'}</span>
+                  <button type="button" onClick={() => toggleCoursePremium(course)} className="mt-3 block rounded-lg border border-amber-500/50 px-3 py-2 text-sm text-amber-200">{course.isPremium ? 'Set Free' : 'Make Premium'}</button>
                   <p className="mt-1 text-sm text-slate-400">{course.faculty} · {course.studyStage} · {course.department} · {course.year}</p>
                   {course.description && <p className="mt-2 text-sm text-slate-300">{course.description}</p>}
                 </div>
