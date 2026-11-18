@@ -184,7 +184,7 @@ export default function UniversityFlow() {
             {resource.hasAccess && resource.solution && <p className="mt-2 whitespace-pre-wrap text-slate-300"><strong>Solution:</strong> {resource.solution}</p>}
             {!resource.hasAccess && <><p className="mt-3 text-sm text-amber-200">🔒 This premium resource is locked until an administrator approves your account.</p><button type="button" onClick={() => setDownloadResource({ ...resource, accessType: 'premium' })} className="mt-4 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500">View payment options</button></>}
             {resource.resourceType !== 'text' && <div className="mt-4 flex flex-wrap gap-2">
-              <button type="button" onClick={() => openResource(resource)} className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold hover:bg-sky-500">Open {resource.resourceType}</button>}
+              <button type="button" onClick={() => openResource(resource)} className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold hover:bg-sky-500">{resource.hasAccess ? `Open ${resource.resourceType}` : `🔒 Unlock ${resource.resourceType}`}</button>
               <button type="button" onClick={() => requestDownload(resource)} className="rounded-lg border border-amber-500/60 px-4 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/10">Download</button>
             </div>}
           </article>)}
