@@ -98,7 +98,7 @@ export default function AdminUniversityResources() {
     <header className="rounded-3xl border border-slate-800 bg-slate-900 p-7"><p className="text-sm font-semibold uppercase tracking-widest text-sky-400">Admin workspace</p><h1 className="mt-2 text-3xl font-bold">University Resource Management</h1><p className="mt-2 text-slate-400">New admin uploads are published immediately. Premium resources remain visible, but each student must still be individually unlocked after payment verification.</p></header>
     <form onSubmit={submit} noValidate className="grid gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:grid-cols-2 lg:grid-cols-3">
       {field('Stream', 'stream', ['Natural', 'Social', 'Health', 'Diploma'])}
-      {field('Language', 'language', ['en', 'am'])}
+      <label className="block text-sm text-slate-300">Language<select name="language" value={form.language} onChange={change} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-white"><option value="en">English</option><option value="am">Amharic (አማርኛ)</option></select></label>
       {field('Level', 'level', ['Freshman', 'Remedial', 'Senior', 'Diploma'])}
       {field('Content path', 'kind', form.level === 'Senior' ? ['exit-exam', 'course-material'] : ['exam-question', 'course-material'])}
       <label className="block text-sm text-slate-300">Department<select name="department" value={form.department} onChange={change} disabled={form.level !== 'Senior'} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 disabled:opacity-50"><option value="">Select department</option>{departments.map((item) => <option key={item._id} value={item.name}>{item.name}</option>)}</select></label>
