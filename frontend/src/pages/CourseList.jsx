@@ -235,7 +235,7 @@ export default function CourseList() {
             className="rounded-3xl border border-slate-800 bg-slate-900 p-6 text-left transition hover:border-sky-500 hover:bg-slate-800"
           >
             <div className="flex items-start justify-between mb-3">
-              <h2 className="text-xl font-semibold text-white">{course.title}</h2>
+              <div className="flex flex-wrap items-center gap-2"><h2 className="text-xl font-semibold text-white">{course.title}</h2>{course.isPremium && <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-300">🔒 PREMIUM</span>}{course.isPremium && course.hasAccess && <span className="rounded-full bg-green-500/10 px-2.5 py-1 text-[10px] font-bold text-green-300">UNLOCKED</span>}</div>
               <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-400">
                 {department || faculty}
               </span>
