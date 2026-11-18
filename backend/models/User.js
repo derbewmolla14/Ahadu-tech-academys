@@ -7,6 +7,10 @@ const userSchema = new mongoose.Schema(
     phone: { type: String, trim: true, default: '' },
     password: { type: String, required: true, select: false },
     profilePhoto: { type: String, default: '' },
+    preferences: {
+      theme: { type: String, enum: ['light', 'dark', 'system'], default: 'system' },
+      language: { type: String, enum: ['en', 'am'], default: 'en' },
+    },
     role: { type: String, enum: ['user', 'student', 'admin'], default: 'user' },
     approved: { type: Boolean, default: true },
     unlockedCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],

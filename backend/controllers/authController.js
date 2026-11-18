@@ -253,6 +253,10 @@ exports.updateProfile = async (req, res) => {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
+    if (Object.prototype.hasOwnProperty.call(req.body, 'email')) {
+      return res.status(403).json({ message: 'Email address can only be changed by an administrator.' });
+    }
+
     if (typeof req.body.fullName === 'string' && req.body.fullName.trim()) {
       user.fullName = req.body.fullName.trim();
     }
@@ -261,6 +265,18 @@ exports.updateProfile = async (req, res) => {
     }
     if (req.file) {
       user.profilePhoto = `/uploads/profiles/${req.file.filename}`;
+    }
+    if (typeof req.body.theme === 'string') {
+      if (!['light', 'dark', 'system'].includes(req.body.theme)) {
+        return res.status(400).json({ message: 'Invalid theme preference.' });
+      }
+      user.preferences.theme = req.body.theme;
+    }
+    if (typeof req.body.language === 'string') {
+      if (!['en', 'am'].includes(req.body.language)) {
+        return res.status(400).json({ message: 'Language must be English or Amharic.' });
+      }
+      user.preferences.language = req.body.language;
     }
 
     await user.save();
@@ -271,5 +287,36 @@ exports.updateProfile = async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).json({ message: 'Update failed' });
+  }
+};
+
+
+exports.changePassword = async (req, res) => {
+  try {
+    const currentPassword = String(req.body.currentPassword || '');
+    const newPassword = String(req.body.newPassword || '');
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Current password and new password are required.' });
+    }
+    if (newPassword.length < 8 || newPassword.length > 128 || !/^(?=.*[A-Za-z])(?=.*\d)/.test(newPassword)) {
+      return res.status(400).json({ message: 'New password must be 8–128 characters and include at least one letter and one number.' });
+    }
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ message: 'Choose a new password different from your current password.' });
+    }
+
+    const user = await User.findById(req.user._id).select('+password');
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+
+    const matches = await bcrypt.compare(currentPassword, user.password);
+    if (!matches) return res.status(400).json({ message: 'Your current password is incorrect.' });
+
+    user.password = await bcrypt.hash(newPassword, 12);
+    await user.save();
+    return res.json({ message: 'Password changed successfully.' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    return res.status(500).json({ message: 'Unable to change password.' });
   }
 };
