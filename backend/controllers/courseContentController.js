@@ -177,6 +177,9 @@ const uploadContent = async (req, res) => {
       ppts: parsedPpts,
       questions: parsedQuestions,
       isActive: isActive === undefined ? true : isActive === 'true' || isActive === true,
+      isApproved: true,
+      isPublished: true,
+      status: 'approved',
       isPremium: isPremium === true || isPremium === 'true'
     };
 
@@ -211,10 +214,24 @@ const getContent = async (req, res) => {
     const { level, university, department, year, grade, subject, technology, faculty, studyStage, contentType, course, courseCode, language } = req.query;
 
     // Build a tolerant query for legacy uploads while keeping inactive content hidden.
-    const query = { isActive: true };
-    if (String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic') query.language = 'am';
+    const query = { isActive: { $ne: false }, $and: [
+      { $or: [{ isApproved: true }, { isApproved: { $exists: false } }, { isApproved: null }] },
+      { $or: [{ isPublished: true }, { isPublished: { $exists: false } }, { isPublished: null }] },
+      { $or: [{ status: 'approved' }, { status: { $exists: false } }, { status: null }, { status: '' }] },
+    ] };
+    const requestedLanguage = String(language || '').trim().toLowerCase();
+    if (['am', 'amharic', 'አማርኛ'].includes(requestedLanguage)) {
+      query.$and.push({ $or: [
+        { language: { $in: ['am', 'Am', 'AM', 'Amharic', 'amharic', 'አማርኛ'] } },
+        { adminLanguage: { $in: ['am', 'Am', 'AM', 'Amharic', 'amharic', 'አማርኛ'] } },
+      ] });
+    }
     const addAnd = (condition) => { query.$and = [...(query.$and || []), condition]; };
-    if (level) query.level = { $regex: exactDepartmentRegex(level) };
+    if (level) {
+      const normalizedLevel = String(level).trim().toLowerCase().replace(/\\s+/g, '');
+      const levelAliases = normalizedLevel === 'highschool' ? ['highschool', 'high school'] : normalizedLevel === 'elementary' ? ['elementary'] : [String(level).trim()];
+      query.$and.push({ $or: levelAliases.map((value) => ({ level: { $regex: exactDepartmentRegex(value) } })) });
+    }
     if (university) query.university = { $regex: exactDepartmentRegex(university) };
     if (grade) {
       const selectedGrade = String(grade).trim();
