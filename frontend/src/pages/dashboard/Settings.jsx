@@ -64,6 +64,10 @@ export default function SettingsPage() {
   const currentVersion = getAppVersion();
   const platform = getRuntimePlatform();
   const isNativeApp = platform !== "web";
+  const nativeBinaryUpdateRequired = isNativeApp && Boolean(latestVersion) && (
+    latestVersion.nativeUpdateRequired === true ||
+    (latestVersion.webBundleMode !== "live" && compareVersions(latestVersion.version, currentVersion) > 0)
+  );
 
   useEffect(() => {
     setFullName(user?.fullName || "");
@@ -181,7 +185,10 @@ export default function SettingsPage() {
         if (registration) await registration.update().catch(() => undefined);
       }
       const appUpdateAvailable = compareVersions(metadata.version, currentVersion) > 0 || Boolean(metadata.forceRefresh);
-      const nativeUpdateAvailable = isNativeApp && metadata.nativeUpdateRequired === true;
+      const nativeUpdateAvailable = isNativeApp && (
+        metadata.nativeUpdateRequired === true ||
+        (metadata.webBundleMode !== "live" && compareVersions(metadata.version, currentVersion) > 0)
+      );
       showNotice("success", appUpdateAvailable || nativeUpdateAvailable ? "An update is available." : "You're using the latest available app version.");
       return metadata;
     } catch (error) {
@@ -199,7 +206,7 @@ export default function SettingsPage() {
     const platformUpdateUrl = platform === "ios"
       ? latestVersion.iosUpdateUrl
       : latestVersion.androidUpdateUrl;
-    if (isNativeApp && latestVersion.nativeUpdateRequired === true) {
+    if (nativeBinaryUpdateRequired) {
       if (platformUpdateUrl) {
         window.open(platformUpdateUrl, "_blank", "noopener,noreferrer");
         setApplyingUpdate(false);
@@ -451,7 +458,7 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {latestVersion?.nativeUpdateRequired && isNativeApp && (
+              {nativeBinaryUpdateRequired && (
                 <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-700">
                   <AlertTriangle size={18} className="mt-0.5 shrink-0" />
                   <div className="text-sm">
@@ -469,10 +476,10 @@ export default function SettingsPage() {
                   <RefreshCw size={16} className={checkingUpdates ? "animate-spin" : ""} />
                   {checkingUpdates ? "Checking…" : "Check for Updates"}
                 </button>
-                {latestVersion && (compareVersions(latestVersion.version, currentVersion) > 0 || latestVersion.forceRefresh || (isNativeApp && latestVersion.nativeUpdateRequired)) && (
+                {latestVersion && (compareVersions(latestVersion.version, currentVersion) > 0 || latestVersion.forceRefresh || nativeBinaryUpdateRequired) && (
                   <button type="button" onClick={updateNow} disabled={applyingUpdate} className={buttonClass}>
-                    {isNativeApp && latestVersion.nativeUpdateRequired ? <ExternalLink size={16} /> : <Download size={16} />}
-                    {applyingUpdate ? "Updating…" : isNativeApp && latestVersion.nativeUpdateRequired ? "Get Mobile App Update" : "Update Now"}
+                    {nativeBinaryUpdateRequired ? <ExternalLink size={16} /> : <Download size={16} />}
+                    {applyingUpdate ? "Updating…" : nativeBinaryUpdateRequired ? "Get Mobile App Update" : "Update Now"}
                   </button>
                 )}
               </div>
