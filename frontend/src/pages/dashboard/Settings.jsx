@@ -5,8 +5,9 @@ import {
   RefreshCw, Download, Smartphone, Globe, CheckCircle2, AlertTriangle, ExternalLink,
 } from "lucide-react";
 import { AuthContext } from "../../context/AuthContext";
-import api, { apiBaseURL } from "../../api/api";
+import api from "../../api/api";
 import { applyTheme, getSavedTheme } from "../../utils/theme";
+import { getProfileImageUrl, getProfileInitials } from "../../utils/profile";
 import { compareVersions, fetchLatestVersion, getAppVersion, getBuildDate, getRuntimePlatform, refreshAppShell } from "../../utils/appUpdates";
 
 const tabs = [
@@ -23,18 +24,6 @@ const themeOptions = [
 const fieldClass = "mt-2 w-full rounded-xl border border-[var(--app-border)] bg-[var(--app-bg)] px-4 py-3 text-sm text-[var(--app-text)] outline-none transition placeholder:text-[var(--app-muted)] focus:border-sky-500 focus:ring-2 focus:ring-sky-500/15 disabled:cursor-not-allowed disabled:opacity-70";
 const cardClass = "rounded-2xl border border-[var(--app-border)] bg-[var(--app-card)] p-5 shadow-sm sm:p-6";
 const buttonClass = "inline-flex items-center justify-center gap-2 rounded-xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-60";
-
-function getPhotoUrl(user) {
-  const value = user?.profilePhotoUrl || user?.profilePhoto || "";
-  if (!value) return "";
-  if (/^https?:\/\//i.test(value)) return value;
-  const origin = apiBaseURL.replace(/\/api\/?$/, "");
-  return origin + (value.startsWith("/") ? value : "/" + value);
-}
-
-function initials(name) {
-  return String(name || "A").trim().split(/\s+/).slice(0, 2).map((part) => part[0] || "").join("").toUpperCase();
-}
 
 export default function SettingsPage() {
   const { user, updateProfile } = useContext(AuthContext);
@@ -79,7 +68,7 @@ export default function SettingsPage() {
     if (photoPreview) URL.revokeObjectURL(photoPreview);
   }, [photoPreview]);
 
-  const photoUrl = useMemo(() => photoPreview || getPhotoUrl(user), [photoPreview, user]);
+  const photoUrl = useMemo(() => photoPreview || getProfileImageUrl(user), [photoPreview, user]);
 
   function showNotice(type, text) {
     setNotice({ type, text });
@@ -324,8 +313,8 @@ export default function SettingsPage() {
                 <form onSubmit={saveProfile} className="space-y-6">
                   <div className="flex flex-wrap items-center gap-5">
                     <div className="relative">
-                      <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border border-[var(--app-border)] bg-[var(--app-bg)] text-2xl font-bold text-sky-600">
-                        {photoUrl ? <img src={photoUrl} alt="Your profile" className="h-full w-full object-cover" /> : initials(fullName)}
+                      <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-[var(--app-border)] bg-[var(--app-bg)] text-2xl font-bold text-sky-600">
+                        {photoUrl ? <img src={photoUrl} alt="Your profile" className="h-full w-full object-cover" /> : getProfileInitials(fullName)}
                       </div>
                       <button type="button" onClick={() => fileRef.current?.click()} aria-label="Upload profile photo" className="absolute -bottom-2 -right-2 rounded-xl border-2 border-[var(--app-card)] bg-sky-600 p-2 text-white shadow transition hover:bg-sky-500">
                         <Camera size={16} />
