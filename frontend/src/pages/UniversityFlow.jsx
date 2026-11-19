@@ -8,8 +8,6 @@ import { downloadApprovedResource } from '../utils/downloadApprovedResource';
 
 const initial = { stream: '', level: '', department: '', course: '', kind: '' };
 const mainCategories = [
-  { title: 'Foundation Building', description: 'Build strong foundations with school-level learning resources.', icon: '📚', to: '/elementary', color: 'from-blue-500 to-cyan-500' },
-  { title: 'Development Skills', description: 'Practice coding and develop practical technology skills.', icon: '💻', to: '/coding', color: 'from-orange-500 to-amber-500' },
   { title: 'Natural Sciences', description: 'Explore science programs, departments, exams, and course materials.', icon: '🔬', stream: 'Natural', color: 'from-emerald-500 to-teal-500' },
   { title: 'Social Sciences', description: 'Explore social science departments, exams, and learning materials.', icon: '🌍', stream: 'Social', color: 'from-violet-500 to-purple-500' },
   { title: 'Health Sciences', description: 'Explore health science departments and academic resources.', icon: '🩺', stream: 'Health', color: 'from-rose-500 to-pink-500' },
