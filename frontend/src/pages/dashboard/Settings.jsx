@@ -201,22 +201,40 @@ export default function SettingsPage() {
   }
 
   async function updateNow() {
-    if (!latestVersion) return;
     setApplyingUpdate(true);
-    const platformUpdateUrl = platform === "ios"
-      ? latestVersion.iosUpdateUrl
-      : latestVersion.androidUpdateUrl;
-    if (nativeBinaryUpdateRequired) {
-      if (platformUpdateUrl) {
-        window.open(platformUpdateUrl, "_blank", "noopener,noreferrer");
-        setApplyingUpdate(false);
+    setUpdateError("");
+    showNotice("", "");
+    try {
+      // Always fetch the manifest at click time so this is a true one-tap flow.
+      const metadata = await fetchLatestVersion();
+      setLatestVersion(metadata);
+      setUpdateCheckedAt(new Date().toLocaleString());
+
+      const webUpdateAvailable = compareVersions(metadata.version, currentVersion) > 0 || Boolean(metadata.forceRefresh);
+      const needsNativeBinary = isNativeApp && (
+        metadata.nativeUpdateRequired === true ||
+        (metadata.webBundleMode !== "live" && webUpdateAvailable)
+      );
+
+      if (needsNativeBinary) {
+        const updateUrl = platform === "ios" ? metadata.iosUpdateUrl : metadata.androidUpdateUrl;
+        if (updateUrl) {
+          const opened = window.open(updateUrl, "_blank", "noopener,noreferrer");
+          if (!opened && typeof window !== "undefined") window.location.href = updateUrl;
+          showNotice("success", "Open the official app update page to install the new mobile app version.");
+          return;
+        }
+        setUpdateError("A new mobile app installation is required, but its official APK/store link is not configured. Ask the administrator to publish the update link.");
         return;
       }
-      setUpdateError("A native app update is required, but the store/APK update link is not configured yet.");
+
+      await refreshAppShell();
+    } catch (error) {
+      setUpdateError(error.message || "The update could not be completed. Check your connection and try again.");
+      showNotice("error", "Update failed. Your sign-in information and downloaded offline study materials have not been cleared.");
+    } finally {
       setApplyingUpdate(false);
-      return;
     }
-    await refreshAppShell();
   }
 
   useEffect(() => {
@@ -476,12 +494,10 @@ export default function SettingsPage() {
                   <RefreshCw size={16} className={checkingUpdates ? "animate-spin" : ""} />
                   {checkingUpdates ? "Checking…" : "Check for Updates"}
                 </button>
-                {latestVersion && (compareVersions(latestVersion.version, currentVersion) > 0 || latestVersion.forceRefresh || nativeBinaryUpdateRequired) && (
-                  <button type="button" onClick={updateNow} disabled={applyingUpdate} className={buttonClass}>
-                    {nativeBinaryUpdateRequired ? <ExternalLink size={16} /> : compareVersions(latestVersion.version, currentVersion) > 0 || latestVersion.forceRefresh ? <Download size={16} /> : <RefreshCw size={16} />}
-                    {applyingUpdate ? "Updating…" : nativeBinaryUpdateRequired ? "Get Mobile App Update" : compareVersions(latestVersion.version, currentVersion) > 0 || latestVersion.forceRefresh ? "Update Now" : "Refresh App Now"}
-                  </button>
-                )}
+                <button type="button" onClick={updateNow} disabled={applyingUpdate || checkingUpdates} className={buttonClass}>
+                  {applyingUpdate ? <RefreshCw size={16} className="animate-spin" /> : nativeBinaryUpdateRequired ? <ExternalLink size={16} /> : <Download size={16} />}
+                  {applyingUpdate ? "Updating…" : nativeBinaryUpdateRequired ? "Get Mobile App Update" : "Update / Refresh Now"}
+                </button>
               </div>
               <p className="mt-4 text-xs leading-5 text-[var(--app-muted)]">
                 Updating refreshes application files only. Your sign-in session, personal settings, and downloaded offline study materials are preserved.
