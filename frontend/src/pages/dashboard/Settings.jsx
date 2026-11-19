@@ -174,7 +174,7 @@ export default function SettingsPage() {
         if (registration) await registration.update().catch(() => undefined);
       }
       let hasOtaUpdate = false;
-      if (isNativeApp && metadata.bundleId && metadata.bundleUrl) {
+      if (isNativeApp && metadata.bundleId && metadata.bundleUrl && metadata.checksum) {
         const currentBundleId = await getCurrentOtaBundleId().catch(() => null);
         hasOtaUpdate = currentBundleId !== metadata.bundleId;
       }
@@ -458,7 +458,7 @@ export default function SettingsPage() {
                   <p className="mt-1 text-xl font-bold">{latestVersion?.version || "Not checked yet"}</p>
                   <p className="mt-1 text-xs text-[var(--app-muted)]">
                     {latestVersion
-                      ? (compareVersions(latestVersion.version, currentVersion) > 0 || latestVersion.forceRefresh
+                      ? (compareVersions(latestVersion.version, currentVersion) > 0 || latestVersion.forceRefresh || otaUpdateAvailable
                         ? "Update available"
                         : "No newer web version found")
                       : "Check online to get the latest version"}
