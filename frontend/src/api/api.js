@@ -28,7 +28,7 @@ export const apiBaseURL = normalizeApiBase(configuredApiUrl);
 function normalizeApiPath(relativePath) {
   let path = String(relativePath || '').trim().replace(/^\/+/, '');
   // Accept either "auth/login" or "/api/auth/login" without duplicating /api.
-  path = path.replace(/^api\/+?/i, '');
+  path = path.replace(/^api(?:\/|$)/i, '').replace(/^\/+/, '');
   return path;
 }
 
