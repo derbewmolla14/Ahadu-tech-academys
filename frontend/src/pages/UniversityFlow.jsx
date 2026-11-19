@@ -95,7 +95,26 @@ export default function UniversityFlow() {
   );
 
   const resources = catalog.resources || [];
-  const filteredCourses = (catalog.courses || []).filter((course) => String(course || '').toLowerCase().includes(courseSearch.trim().toLowerCase()));
+  const excludedOuterTrackNames = new Set([
+    'development skill',
+    'development skills',
+    'deployment skill',
+    'deployment skills',
+    'foundation development',
+    'foundation building',
+    'advanced preparation',
+    'higher education',
+    'skill',
+    'skill development',
+  ]);
+  const filteredCourses = (catalog.courses || []).filter((course) => {
+    const normalizedCourse = String(course || '').trim().toLowerCase();
+    return !excludedOuterTrackNames.has(normalizedCourse)
+      && normalizedCourse.includes(courseSearch.trim().toLowerCase());
+  });
+  const visibleLevels = selection.stream === 'Diploma'
+    ? ['Diploma']
+    : ['Freshman', 'Remedial', 'Senior'];
   const filteredDepartments = (catalog.departments || []).filter((department) => department.toLowerCase().includes(departmentSearch.trim().toLowerCase()));
   const filteredResources = resources.filter((resource) => [resource.title, resource.originalFileName, resource.resourceType, resource.textContent].join(' ').toLowerCase().includes(resourceSearch.trim().toLowerCase()));
 
@@ -168,7 +187,7 @@ export default function UniversityFlow() {
               <div className="p-7"><h2 className="text-xl font-bold group-hover:text-sky-300">{category.title}</h2><p className="mt-3 min-h-[3.5rem] text-sm leading-6 text-slate-400">{category.description}</p><span className="mt-5 inline-flex font-semibold text-sky-400">Explore learning path →</span></div>
             </Link>
           ) : (
-            <button key={category.title} type="button" onClick={() => move({ stream: category.stream })} className="group overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 text-left shadow-lg transition hover:-translate-y-1 hover:border-sky-500 hover:shadow-2xl">
+            <button key={category.title} type="button" onClick={() => move({ stream: category.stream, ...(category.stream === 'Diploma' ? { level: 'Diploma' } : {}) })} className="group overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 text-left shadow-lg transition hover:-translate-y-1 hover:border-sky-500 hover:shadow-2xl">
               <div className={`flex h-32 items-center justify-center bg-gradient-to-br ${category.color}`}><span className="text-6xl">{category.icon}</span></div>
               <div className="p-7"><h2 className="text-xl font-bold group-hover:text-sky-300">{category.title}</h2><p className="mt-3 min-h-[3.5rem] text-sm leading-6 text-slate-400">{category.description}</p><span className="mt-5 inline-flex font-semibold text-sky-400">Explore learning path →</span></div>
             </button>
@@ -188,7 +207,7 @@ export default function UniversityFlow() {
         </header>
         {error && <p role="alert" className="rounded-xl border border-amber-800 bg-amber-950/60 p-4 text-amber-200">{error}</p>}
         {loading && <p className="py-8 text-center text-slate-400">Loading approved content…</p>}
-        {!loading && !selection.level && <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{['Freshman', 'Remedial', 'Senior', 'Diploma'].map((level) => choose(level, () => move({ level }), level === 'Senior' ? 'Browse departments, course materials, and exit exams.' : 'Browse courses and approved learning resources.'))}</section>}
+        {!loading && !selection.level && <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{visibleLevels.map((level) => choose(level, () => move({ level }), level === 'Senior' ? 'Browse departments, course materials, and exit exams.' : 'Browse courses and approved learning resources.'))}</section>}
         {!loading && selection.level === 'Senior' && !selection.department && <section className="space-y-4"><h2 className="text-xl font-semibold">Choose Department</h2><input type="search" value={departmentSearch} onChange={(event) => setDepartmentSearch(event.target.value)} placeholder="Search departments by name…" className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-sky-500" /><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{filteredDepartments.map((department) => choose(department, () => move({ department })))}</div>{!catalog.departments?.length && <p className="text-slate-400">No active departments are configured for this stream yet.</p>}{catalog.departments?.length > 0 && !filteredDepartments.length && <p className="text-slate-400">No departments match your search.</p>}</section>}
         {!loading && ['Freshman', 'Remedial', 'Diploma'].includes(selection.level) && !selection.course && <section className="space-y-4"><h2 className="text-xl font-semibold">Choose Course</h2><input type="search" value={courseSearch} onChange={(event) => setCourseSearch(event.target.value)} placeholder="Search courses by name or keyword…" className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-sky-500" /><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{filteredCourses.map((course) => choose(course, () => move({ course })))}</div>{!catalog.courses?.length && <p className="text-slate-400">No approved courses are available yet.</p>}{catalog.courses?.length > 0 && !filteredCourses.length && <p className="text-slate-400">No courses match your search.</p>}</section>}
         {!loading && selection.level === 'Senior' && selection.department && !selection.kind && <section className="grid gap-5 sm:grid-cols-2">{choose('Exit Exam', () => move({ kind: 'exit-exam' }), 'Open approved exit exam questions, answers, and solutions.')}{choose('Course Material', () => move({ kind: 'course-material' }), 'Browse department courses and approved PDFs, presentations, and videos.')}</section>}
