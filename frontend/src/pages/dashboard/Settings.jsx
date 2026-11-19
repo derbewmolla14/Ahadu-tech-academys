@@ -109,6 +109,7 @@ export default function SettingsPage() {
       if (photoFile) form.append("profilePhoto", photoFile);
       await updateProfile(form);
       setPhotoFile(null);
+      setPhotoPreview("");
       showNotice("success", "Your profile has been updated.");
     } catch (error) {
       showNotice("error", error.response?.data?.message || "Unable to save your profile. Please try again.");
