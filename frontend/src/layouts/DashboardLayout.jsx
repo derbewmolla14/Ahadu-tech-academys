@@ -43,7 +43,7 @@ function NavigationItem({
       className={({ isActive }) =>
         [
           "flex items-center gap-3 rounded-lg px-3 py-3",
-          "text-[13px] font-semibold transition-all duration-200",
+          "text-[13px] md:text-sm lg:text-base font-semibold transition-all duration-200",
           isActive
             ? "border border-sky-500/30 bg-sky-500/15 text-sky-300 shadow-sm"
             : "border border-transparent text-slate-400 hover:bg-slate-800/70 hover:text-white",
@@ -61,7 +61,7 @@ function NavigationItem({
 // ========================================
 function SectionTitle({ children }) {
   return (
-    <p className="mb-2 mt-6 px-3 text-[10px] font-bold uppercase tracking-[1.8px] text-slate-500">
+    <p className="mb-2 mt-6 px-3 text-[10px] md:text-xs font-bold uppercase tracking-[1.8px] text-slate-500">
       {children}
     </p>
   );
@@ -277,7 +277,7 @@ export default function DashboardLayout() {
         <button
           type="button"
           onClick={handleLogout}
-          className="mt-3 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[13px] font-semibold text-red-400 transition hover:bg-red-500/10 hover:text-red-300"
+          className="mt-3 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[13px] md:text-sm lg:text-base font-semibold text-red-400 transition hover:bg-red-500/10 hover:text-red-300"
         >
           <LogOut size={17} />
           Logout
