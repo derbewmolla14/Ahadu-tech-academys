@@ -66,14 +66,11 @@ export default function Navbar() {
                 className="flex items-center rounded-full border border-[#0f1b3d]/15 bg-slate-50 p-1 transition hover:bg-slate-100"
               >
                 <span className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-[#0f1b3d] text-xs font-bold text-white">
-                  {user.profilePhotoUrl ? (
-                    <img src={user.profilePhotoUrl} alt="" className="h-full w-full object-cover" />
+                  {profileImage ? (
+                    <img src={profileImage} alt="Profile" className="h-full w-full object-cover" />
                   ) : (
-                    initials
+                    profileInitials
                   )}
-                </span>
-                <span className="max-w-[140px] truncate text-sm font-bold">
-                  {user.fullName?.trim() || user.email}
                 </span>
               </Link>
             ) : (
