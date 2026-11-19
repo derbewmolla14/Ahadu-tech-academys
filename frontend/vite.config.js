@@ -17,7 +17,6 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
     __APP_BUILD_DATE__: JSON.stringify(buildDate),
-    'import.meta.env.VITE_UPDATE_MANIFEST_URL': JSON.stringify(process.env.VITE_UPDATE_MANIFEST_URL || ''),
   },
   server: {
     host: '127.0.0.1',

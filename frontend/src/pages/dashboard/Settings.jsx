@@ -8,7 +8,7 @@ import { AuthContext } from "../../context/AuthContext";
 import api from "../../api/api";
 import { applyTheme, getSavedTheme } from "../../utils/theme";
 import { getProfileImageUrl, getProfileInitials } from "../../utils/profile";
-import { compareVersions, fetchLatestVersion, getAppVersion, getBuildDate, getRuntimePlatform, refreshAppShell } from "../../utils/appUpdates";
+import { applyOtaBundle, compareVersions, fetchLatestVersion, getAppVersion, getBuildDate, getCurrentOtaBundleId, getRuntimePlatform, openExternalUpdateUrl, refreshAppShell } from "../../utils/appUpdates";
 
 const tabs = [
   { id: "account", label: "Account & Profile", icon: UserRound },
@@ -50,13 +50,12 @@ export default function SettingsPage() {
   const [updateCheckedAt, setUpdateCheckedAt] = useState("");
   const [updateError, setUpdateError] = useState("");
   const [nativeVersion, setNativeVersion] = useState("");
+  const [otaUpdateAvailable, setOtaUpdateAvailable] = useState(false);
   const currentVersion = getAppVersion();
   const platform = getRuntimePlatform();
   const isNativeApp = platform !== "web";
-  const nativeBinaryUpdateRequired = isNativeApp && Boolean(latestVersion) && (
-    latestVersion.nativeUpdateRequired === true ||
-    (latestVersion.webBundleMode !== "live" && (compareVersions(latestVersion.version, currentVersion) > 0 || latestVersion.forceRefresh))
-  );
+  const nativeBinaryUpdateRequired = isNativeApp && latestVersion?.nativeUpdateRequired === true;
+  const nativeDownloadUrl = platform === "ios" ? latestVersion?.iosUpdateUrl : latestVersion?.androidUpdateUrl;
 
   useEffect(() => {
     setFullName(user?.fullName || "");
@@ -174,11 +173,14 @@ export default function SettingsPage() {
         const registration = await navigator.serviceWorker.getRegistration().catch(() => null);
         if (registration) await registration.update().catch(() => undefined);
       }
-      const appUpdateAvailable = compareVersions(metadata.version, currentVersion) > 0 || Boolean(metadata.forceRefresh);
-      const nativeUpdateAvailable = isNativeApp && (
-        metadata.nativeUpdateRequired === true ||
-        (metadata.webBundleMode !== "live" && (compareVersions(metadata.version, currentVersion) > 0 || metadata.forceRefresh))
-      );
+      let hasOtaUpdate = false;
+      if (isNativeApp && metadata.bundleId && metadata.bundleUrl) {
+        const currentBundleId = await getCurrentOtaBundleId().catch(() => null);
+        hasOtaUpdate = currentBundleId !== metadata.bundleId;
+      }
+      setOtaUpdateAvailable(hasOtaUpdate);
+      const appUpdateAvailable = compareVersions(metadata.version, currentVersion) > 0 || Boolean(metadata.forceRefresh) || hasOtaUpdate;
+      const nativeUpdateAvailable = isNativeApp && metadata.nativeUpdateRequired === true;
       showNotice("success", appUpdateAvailable || nativeUpdateAvailable ? "An update is available." : "You're using the latest available app version.");
       return metadata;
     } catch (error) {
@@ -200,21 +202,13 @@ export default function SettingsPage() {
       setLatestVersion(metadata);
       setUpdateCheckedAt(new Date().toLocaleString());
 
-      const webUpdateAvailable = compareVersions(metadata.version, currentVersion) > 0 || Boolean(metadata.forceRefresh);
-      const needsNativeBinary = isNativeApp && (
-        metadata.nativeUpdateRequired === true ||
-        (metadata.webBundleMode !== "live" && webUpdateAvailable)
-      );
+      if (isNativeApp && metadata.bundleId && metadata.bundleUrl) {
+        await applyOtaBundle(metadata);
+        return;
+      }
 
-      if (needsNativeBinary) {
-        const updateUrl = platform === "ios" ? metadata.iosUpdateUrl : metadata.androidUpdateUrl;
-        if (updateUrl) {
-          const opened = window.open(updateUrl, "_blank", "noopener,noreferrer");
-          if (!opened && typeof window !== "undefined") window.location.href = updateUrl;
-          showNotice("success", "Open the official app update page to install the new mobile app version.");
-          return;
-        }
-        setUpdateError("A new mobile app installation is required, but its official APK/store link is not configured. Ask the administrator to publish the update link.");
+      if (isNativeApp && metadata.nativeUpdateRequired === true) {
+        setUpdateError("A native app update is required. Use Download Latest APK below.");
         return;
       }
 
@@ -224,6 +218,19 @@ export default function SettingsPage() {
       showNotice("error", "Update failed. Your sign-in information and downloaded offline study materials have not been cleared.");
     } finally {
       setApplyingUpdate(false);
+    }
+  }
+
+  async function downloadLatestApk() {
+    if (!nativeDownloadUrl) {
+      setUpdateError("The native app download link has not been configured yet.");
+      return;
+    }
+    try {
+      await openExternalUpdateUrl(nativeDownloadUrl);
+      showNotice("success", "Opened the official app download page.");
+    } catch (error) {
+      setUpdateError(error.message || "Unable to open the app download link.");
     }
   }
 
@@ -484,14 +491,18 @@ export default function SettingsPage() {
                   <RefreshCw size={16} className={checkingUpdates ? "animate-spin" : ""} />
                   {checkingUpdates ? "Checking…" : "Check for Updates"}
                 </button>
-                <button type="button" onClick={updateNow} disabled={applyingUpdate || checkingUpdates} className={buttonClass}>
-                  {applyingUpdate ? <RefreshCw size={16} className="animate-spin" /> : nativeBinaryUpdateRequired ? <ExternalLink size={16} /> : <Download size={16} />}
-                  {applyingUpdate ? "Updating…" : nativeBinaryUpdateRequired ? "Get Mobile App Update" : "Update / Refresh Now"}
+                <button type="button" onClick={updateNow} disabled={applyingUpdate || checkingUpdates || (isNativeApp && !otaUpdateAvailable && !latestVersion?.bundleUrl)} className={buttonClass}>
+                  {applyingUpdate ? <RefreshCw size={16} className="animate-spin" /> : <Download size={16} />}
+                  {applyingUpdate ? "Applying OTA update…" : "Update Now"}
                 </button>
+                {isNativeApp && nativeDownloadUrl && (
+                  <button type="button" onClick={downloadLatestApk} className={buttonClass}>
+                    <ExternalLink size={16} /> Download Latest {platform === "ios" ? "App" : "APK"}
+                  </button>
+                )}
               </div>
               <p className="mt-4 text-xs leading-5 text-[var(--app-muted)]">
-                Updating refreshes application files only. Your sign-in session, personal settings, and downloaded offline study materials are preserved.
-                {isNativeApp && " If this installation uses bundled Android/iOS files, a new APK/app-store release may be required for code changes."}
+                OTA updates replace only the web bundle. Your sign-in session, profile data, and downloaded offline study materials are preserved. Native Android/iOS code or permission changes still require a separately published app update.
               </p>
             </section>
           )}
