@@ -1,16 +1,14 @@
 {
   "name": "Ahadu Tech Academy",
-  "short_name": "Ahadu Tech",
-  "description": "Educational platform for Ethiopian university students",
+  "short_name": "Ahadu Academy",
+  "description": "Ahadu Tech Academy — learning resources, courses and offline study.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#020617",
-  "theme_color": "#3b82f6",
+  "background_color": "#102b4b",
+  "theme_color": "#102b4b",
   "icons": [
-    {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
-    }
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
   ]
 }
