@@ -49,6 +49,8 @@ export default function SettingsPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPreferences, setSavingPreferences] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [telegramLink, setTelegramLink] = useState("");
+  const [creatingTelegramLink, setCreatingTelegramLink] = useState(false);
   const [notice, setNotice] = useState({ type: "", text: "" });
 
   useEffect(() => {
@@ -137,6 +139,21 @@ export default function SettingsPage() {
     setLanguage(value);
     localStorage.setItem("language", value);
     savePreferences({ language: value });
+  }
+
+  async function createTelegramLink() {
+    setCreatingTelegramLink(true);
+    setTelegramLink("");
+    showNotice("", "");
+    try {
+      const response = await api.post("/auth/telegram/link/request");
+      setTelegramLink(response.data?.telegramLink || "");
+      showNotice("success", response.data?.message || "Open Telegram to link your account.");
+    } catch (error) {
+      showNotice("error", error.response?.data?.message || "Unable to create a Telegram link.");
+    } finally {
+      setCreatingTelegramLink(false);
+    }
   }
 
   async function changePassword(event) {
@@ -244,6 +261,18 @@ export default function SettingsPage() {
                     <Save size={16} /> {savingProfile ? "Saving…" : "Save profile"}
                   </button>
                 </form>
+                <div className="mt-6 border-t border-[var(--app-border)] pt-5">
+                  <h3 className="text-sm font-bold">Telegram account</h3>
+                  <p className="mt-1 text-sm text-[var(--app-muted)]">Link your Telegram account securely so you can receive one-minute password reset codes.</p>
+                  <button type="button" onClick={createTelegramLink} disabled={creatingTelegramLink} className={buttonClass + " mt-4"}>
+                    {creatingTelegramLink ? "Preparing Telegram link…" : "Link Telegram account"}
+                  </button>
+                  {telegramLink && (
+                    <a href={telegramLink} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex rounded-xl border border-sky-500/40 px-4 py-3 text-sm font-semibold text-sky-600 hover:bg-sky-500/10">
+                      Open Telegram bot to finish linking
+                    </a>
+                  )}
+                </div>
               </section>
 
               <section className={cardClass}>
