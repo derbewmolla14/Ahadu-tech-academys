@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import packageJson from './package.json' with { type: 'json' };
+import packageJson from './package.json';
 
 const appVersion = process.env.npm_package_version || packageJson.version;
 const buildDate = new Date().toISOString();
