@@ -1,4 +1,5 @@
 import { apiFetch } from '../api/api';
+import { saveOfflineResource } from './offlineLibrary';
 
 export async function downloadApprovedResource(resource, requestAccess) {
   if (!resource?.downloadEndpoint) {
@@ -34,6 +35,18 @@ export async function downloadApprovedResource(resource, requestAccess) {
     }
 
     const blob = await response.blob();
+    try {
+      await saveOfflineResource({
+        blob,
+        title: resource.title || resource.fileName || 'Learning resource',
+        fileName: resource.fileName || resource.originalFileName || resource.title,
+        mimeType: blob.type || resource.mimeType,
+        resourceId: resource.resourceId || resource.courseContentId || null,
+        resourceType: resource.resourceType || resource.type || 'document',
+      });
+    } catch (storageError) {
+      console.warn('The file downloaded, but could not be added to the offline library:', storageError);
+    }
     const objectUrl = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     const fileName = String(resource.fileName || resource.originalFileName || resource.title || 'learning-resource')

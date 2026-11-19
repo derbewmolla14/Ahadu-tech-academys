@@ -12,5 +12,18 @@
       "sizes": "any",
       "type": "image/svg+xml"
     }
+  ],
+  "scope": "/",
+  "orientation": "any",
+  "categories": [
+    "education",
+    "productivity"
+  ],
+  "shortcuts": [
+    {
+      "name": "Offline Library",
+      "short_name": "Offline",
+      "url": "/dashboard/offline"
+    }
   ]
 }
