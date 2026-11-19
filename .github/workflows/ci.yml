@@ -22,6 +22,21 @@ jobs:
       - run: npm ci
       - run: npm run build
 
+  chrome-extension-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validate Manifest V3 configuration
+        run: |
+          node -e "const fs = require('node:fs'); const m = JSON.parse(fs.readFileSync('chrome-extension/manifest.json', 'utf8')); if (m.manifest_version !== 3 || m.action?.default_popup !== 'popup.html') process.exit(1); console.log('Manifest V3 configuration valid')"
+          node --check chrome-extension/popup.js
+
   backend-check:
     runs-on: ubuntu-latest
     defaults:
