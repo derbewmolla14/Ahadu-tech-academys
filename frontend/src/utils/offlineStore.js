@@ -1,14 +1,14 @@
 const DB_NAME = 'ahadu-tech-offline';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = 'resources';
+const COURSE_STORE = 'courses';
 
 function openDb() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onupgradeneeded = () => {
-      if (!request.result.objectStoreNames.contains(STORE)) {
-        request.result.createObjectStore(STORE, { keyPath: 'id' });
-      }
+      if (!request.result.objectStoreNames.contains(STORE)) request.result.createObjectStore(STORE, { keyPath: 'id' });
+      if (!request.result.objectStoreNames.contains(COURSE_STORE)) request.result.createObjectStore(COURSE_STORE, { keyPath: 'id' });
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error || new Error('Unable to open offline storage.'));
@@ -88,4 +88,36 @@ export async function deleteOfflineResource(id) {
 
 export function createOfflineObjectUrl(item) {
   return item?.blob ? URL.createObjectURL(item.blob) : '';
+}
+
+export async function saveCourseSnapshot(id, course, accessLocked = false) {
+  const db = await openDb();
+  try {
+    const tx = db.transaction(COURSE_STORE, 'readwrite');
+    tx.objectStore(COURSE_STORE).put({ id: String(id), course, accessLocked: Boolean(accessLocked), savedAt: new Date().toISOString() });
+    await new Promise((resolve, reject) => {
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error || new Error('Could not cache course information.'));
+    });
+  } finally {
+    db.close();
+  }
+}
+
+export async function getCourseSnapshot(id) {
+  const db = await openDb();
+  try {
+    return (await requestValue(db.transaction(COURSE_STORE, 'readonly').objectStore(COURSE_STORE).get(String(id)))) || null;
+  } finally {
+    db.close();
+  }
+}
+
+export async function listCourseSnapshots() {
+  const db = await openDb();
+  try {
+    return await requestValue(db.transaction(COURSE_STORE, 'readonly').objectStore(COURSE_STORE).getAll());
+  } finally {
+    db.close();
+  }
 }

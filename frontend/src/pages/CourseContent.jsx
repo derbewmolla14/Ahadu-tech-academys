@@ -4,7 +4,7 @@ import { apiBaseURL, apiFetch } from '../api/api';
 import DocumentViewerModal from '../components/DocumentViewerModal';
 import PaymentMethodModal from '../components/PaymentMethodModal';
 import { downloadApprovedResource } from '../utils/downloadApprovedResource';
-import { findOfflineResourceByEndpoint, createOfflineObjectUrl } from '../utils/offlineStore';
+import { findOfflineResourceByEndpoint, createOfflineObjectUrl, saveCourseSnapshot, getCourseSnapshot } from '../utils/offlineStore';
 
 export default function CourseContent() {
   const { name } = useParams();
@@ -90,6 +90,7 @@ export default function CourseContent() {
       if (data.success && data.data.length > 0) {
         const selectedCourse = data.data[0];
         setCourseData(selectedCourse);
+        await saveCourseSnapshot(`${name}|${faculty}|${department}|${year}`, selectedCourse, Boolean(selectedCourse.isPremium && selectedCourse.hasAccess === false));
         if (selectedCourse.isPremium && selectedCourse.hasAccess === false) {
           setDownloadResource({
             title: selectedCourse.course,
@@ -104,7 +105,9 @@ export default function CourseContent() {
         setError('Course content not found or not available');
       }
     } catch (err) {
-      setError('Error loading course content');
+      const cached = await getCourseSnapshot(`${name}|${faculty}|${department}|${year}`).catch(() => null);
+      if (cached) setCourseData(cached.course);
+      else setError('Error loading course content');
       console.error('Fetch error:', err);
     } finally {
       setLoading(false);
