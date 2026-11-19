@@ -2,15 +2,18 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   Camera, Check, ChevronRight, Eye, EyeOff, Globe2, LockKeyhole,
   Monitor, Moon, Palette, Save, ShieldCheck, Sun, UserRound,
+  RefreshCw, Download, Smartphone, Globe, CheckCircle2, AlertTriangle, ExternalLink,
 } from "lucide-react";
 import { AuthContext } from "../../context/AuthContext";
 import api, { apiBaseURL } from "../../api/api";
 import { applyTheme, getSavedTheme } from "../../utils/theme";
+import { compareVersions, fetchLatestVersion, getAppVersion, getBuildDate, getRuntimePlatform, refreshAppShell } from "../../utils/appUpdates";
 
 const tabs = [
   { id: "account", label: "Account & Profile", icon: UserRound },
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "language", label: "Language", icon: Globe2 },
+  { id: "updates", label: "App & Web Updates", icon: RefreshCw },
 ];
 const themeOptions = [
   { id: "light", label: "Light", detail: "A bright, clean workspace", icon: Sun },
@@ -52,6 +55,19 @@ export default function SettingsPage() {
   const [telegramLink, setTelegramLink] = useState("");
   const [creatingTelegramLink, setCreatingTelegramLink] = useState(false);
   const [notice, setNotice] = useState({ type: "", text: "" });
+  const [latestVersion, setLatestVersion] = useState(null);
+  const [checkingUpdates, setCheckingUpdates] = useState(false);
+  const [applyingUpdate, setApplyingUpdate] = useState(false);
+  const [updateCheckedAt, setUpdateCheckedAt] = useState("");
+  const [updateError, setUpdateError] = useState("");
+  const [nativeVersion, setNativeVersion] = useState("");
+  const currentVersion = getAppVersion();
+  const platform = getRuntimePlatform();
+  const isNativeApp = platform !== "web";
+  const nativeBinaryUpdateRequired = isNativeApp && Boolean(latestVersion) && (
+    latestVersion.nativeUpdateRequired === true ||
+    (latestVersion.webBundleMode !== "live" && (compareVersions(latestVersion.version, currentVersion) > 0 || latestVersion.forceRefresh))
+  );
 
   useEffect(() => {
     setFullName(user?.fullName || "");
@@ -155,6 +171,65 @@ export default function SettingsPage() {
       setCreatingTelegramLink(false);
     }
   }
+
+
+  async function checkForUpdates() {
+    setCheckingUpdates(true);
+    setUpdateError("");
+    try {
+      const metadata = await fetchLatestVersion();
+      setLatestVersion(metadata);
+      setUpdateCheckedAt(new Date().toLocaleString());
+      if ("serviceWorker" in navigator) {
+        const registration = await navigator.serviceWorker.getRegistration().catch(() => null);
+        if (registration) await registration.update().catch(() => undefined);
+      }
+      const appUpdateAvailable = compareVersions(metadata.version, currentVersion) > 0 || Boolean(metadata.forceRefresh);
+      const nativeUpdateAvailable = isNativeApp && (
+        metadata.nativeUpdateRequired === true ||
+        (metadata.webBundleMode !== "live" && (compareVersions(metadata.version, currentVersion) > 0 || metadata.forceRefresh))
+      );
+      showNotice("success", appUpdateAvailable || nativeUpdateAvailable ? "An update is available." : "You're using the latest available app version.");
+      return metadata;
+    } catch (error) {
+      setUpdateError(error.message || "Unable to check for updates. Check your internet connection and try again.");
+      showNotice("error", "Could not check for updates. Your saved offline materials and account data are unchanged.");
+      return null;
+    } finally {
+      setCheckingUpdates(false);
+    }
+  }
+
+  async function updateNow() {
+    if (!latestVersion) return;
+    setApplyingUpdate(true);
+    const platformUpdateUrl = platform === "ios"
+      ? latestVersion.iosUpdateUrl
+      : latestVersion.androidUpdateUrl;
+    if (nativeBinaryUpdateRequired) {
+      if (platformUpdateUrl) {
+        window.open(platformUpdateUrl, "_blank", "noopener,noreferrer");
+        setApplyingUpdate(false);
+        return;
+      }
+      setUpdateError("A native app update is required, but the store/APK update link is not configured yet.");
+      setApplyingUpdate(false);
+      return;
+    }
+    await refreshAppShell();
+  }
+
+  useEffect(() => {
+    if (!isNativeApp) return undefined;
+    let active = true;
+    const appPlugin = window.Capacitor?.Plugins?.App;
+    if (typeof appPlugin?.getInfo === "function") {
+      appPlugin.getInfo().then((info) => {
+        if (active) setNativeVersion(info?.version || "");
+      }).catch(() => undefined);
+    }
+    return () => { active = false; };
+  }, [isNativeApp]);
 
   async function changePassword(event) {
     event.preventDefault();
@@ -336,6 +411,82 @@ export default function SettingsPage() {
                 })}
               </div>
               <p className="mt-5 text-xs text-[var(--app-muted)]">System default follows your operating system’s light or dark appearance setting.</p>
+            </section>
+          )}
+
+
+          {activeTab === "updates" && (
+            <section className={cardClass}>
+              <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-xl bg-sky-500/10 p-2.5 text-sky-600"><RefreshCw size={19} /></span>
+                    <h2 className="text-lg font-bold">App & Web Updates</h2>
+                  </div>
+                  <p className="mt-2 text-sm text-[var(--app-muted)]">Check for the latest Ahadu Tech Academy application and website version.</p>
+                </div>
+                <span className="inline-flex items-center gap-2 rounded-full border border-[var(--app-border)] px-3 py-1.5 text-xs font-semibold">
+                  {isNativeApp ? <Smartphone size={14} /> : <Globe size={14} />}
+                  {isNativeApp ? `Mobile app · ${platform}` : "Web / PWA"}
+                </span>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-bg)] p-4">
+                  <p className="text-xs font-medium text-[var(--app-muted)]">Current loaded version</p>
+                  <p className="mt-1 text-xl font-bold">{currentVersion}</p>
+                  <p className="mt-1 text-xs text-[var(--app-muted)]">Build: {getBuildDate()}</p>
+                  {nativeVersion && <p className="mt-1 text-xs text-[var(--app-muted)]">Installed native build: {nativeVersion}</p>}
+                </div>
+                <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-bg)] p-4">
+                  <p className="text-xs font-medium text-[var(--app-muted)]">Latest published version</p>
+                  <p className="mt-1 text-xl font-bold">{latestVersion?.version || "Not checked yet"}</p>
+                  <p className="mt-1 text-xs text-[var(--app-muted)]">
+                    {latestVersion
+                      ? (compareVersions(latestVersion.version, currentVersion) > 0 || latestVersion.forceRefresh
+                        ? "Update available"
+                        : "No newer web version found")
+                      : "Check online to get the latest version"}
+                  </p>
+                </div>
+              </div>
+
+              {latestVersion?.releaseNotes && (
+                <div className="mt-4 rounded-xl border border-[var(--app-border)] p-4">
+                  <p className="text-sm font-semibold">What's new</p>
+                  <p className="mt-1 whitespace-pre-line text-sm text-[var(--app-muted)]">{latestVersion.releaseNotes}</p>
+                </div>
+              )}
+
+              {nativeBinaryUpdateRequired && (
+                <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-700">
+                  <AlertTriangle size={18} className="mt-0.5 shrink-0" />
+                  <div className="text-sm">
+                    <p className="font-semibold">A mobile app installation update is required.</p>
+                    <p className="mt-1">Refreshing the web content cannot replace the installed Android/iOS application binary.</p>
+                  </div>
+                </div>
+              )}
+
+              {updateError && <p role="alert" className="mt-4 text-sm text-rose-600">{updateError}</p>}
+              {updateCheckedAt && <p className="mt-3 text-xs text-[var(--app-muted)]">Last checked: {updateCheckedAt}</p>}
+
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button type="button" onClick={checkForUpdates} disabled={checkingUpdates || applyingUpdate} className={buttonClass}>
+                  <RefreshCw size={16} className={checkingUpdates ? "animate-spin" : ""} />
+                  {checkingUpdates ? "Checking…" : "Check for Updates"}
+                </button>
+                {latestVersion && (compareVersions(latestVersion.version, currentVersion) > 0 || latestVersion.forceRefresh || nativeBinaryUpdateRequired) && (
+                  <button type="button" onClick={updateNow} disabled={applyingUpdate} className={buttonClass}>
+                    {nativeBinaryUpdateRequired ? <ExternalLink size={16} /> : compareVersions(latestVersion.version, currentVersion) > 0 || latestVersion.forceRefresh ? <Download size={16} /> : <RefreshCw size={16} />}
+                    {applyingUpdate ? "Updating…" : nativeBinaryUpdateRequired ? "Get Mobile App Update" : compareVersions(latestVersion.version, currentVersion) > 0 || latestVersion.forceRefresh ? "Update Now" : "Refresh App Now"}
+                  </button>
+                )}
+              </div>
+              <p className="mt-4 text-xs leading-5 text-[var(--app-muted)]">
+                Updating refreshes application files only. Your sign-in session, personal settings, and downloaded offline study materials are preserved.
+                {isNativeApp && " If this installation uses bundled Android/iOS files, a new APK/app-store release may be required for code changes."}
+              </p>
             </section>
           )}
 

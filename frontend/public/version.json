@@ -1,0 +1,10 @@
+{
+  "version": "1.0.1",
+  "buildDate": "2026-11-19",
+  "releaseNotes": "Added App & Web Updates in Settings, remote version checks, and safer application-shell refresh.",
+  "forceRefresh": false,
+  "nativeUpdateRequired": false,
+  "androidUpdateUrl": "",
+  "iosUpdateUrl": "",
+  "webBundleMode": "bundled"
+}
