@@ -68,6 +68,7 @@ if (!fs.existsSync(profilesDir)) {
 }
 
 const authRoutes = require('./routes/auth');
+const { startTelegramBot } = require('./telegramBot');
 const adminRoutes = require('./routes/admin');
 const paymentPricingRoutes = require('./routes/paymentPricing');
 const courseRoutes = require('./routes/courses');
@@ -199,7 +200,9 @@ let serverRef;
 serverRef = app.listen(PORT, HOST, () => {
   console.log(`[Server] Listening on http://${HOST}:${PORT} (PORT from env: ${process.env.PORT ?? '(unset, fallback)'})`);
   console.log(`[Server] NODE_ENV=${process.env.NODE_ENV || '(unset)'}`);
-  void connectMongoose();
+  void connectMongoose().then((connected) => {
+    if (connected) startTelegramBot();
+  });
 });
 
 process.on('SIGTERM', () => void gracefulShutdown('SIGTERM'));
