@@ -106,7 +106,16 @@ export async function refreshAppShell() {
         // The active worker keeps its current shell cache and removes only older
         // caches in this app's namespace. IndexedDB and authentication storage are untouched.
         const activeWorker = navigator.serviceWorker.controller || registration.active;
-        await askActiveWorkerToCleanStaleCaches(activeWorker);
+        const cleanedByWorker = await askActiveWorkerToCleanStaleCaches(activeWorker);
+
+        // Compatibility fallback for older workers that do not understand the
+        // cleanup message. Only this app's shell-cache namespace is affected.
+        if (!cleanedByWorker && "caches" in window) {
+          const keys = await caches.keys().catch(() => []);
+          await Promise.all(keys
+            .filter((key) => key.startsWith(SHELL_CACHE_PREFIX))
+            .map((key) => caches.delete(key).catch(() => false)));
+        }
       }
     } catch {
       // Service workers are not available in every Capacitor WebView.
