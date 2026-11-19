@@ -4,6 +4,7 @@ import { apiBaseURL, apiFetch } from '../api/api';
 import DocumentViewerModal from '../components/DocumentViewerModal';
 import PaymentMethodModal from '../components/PaymentMethodModal';
 import { downloadApprovedResource } from '../utils/downloadApprovedResource';
+import { findOfflineResourceByEndpoint, createOfflineObjectUrl } from '../utils/offlineStore';
 
 export default function CourseContent() {
   const { name } = useParams();
@@ -24,6 +25,9 @@ export default function CourseContent() {
   const openCourseVideo = async (index, video) => {
     const endpoint = `content/${courseData._id}/video/${index}`;
     try {
+      const cached = await findOfflineResourceByEndpoint(endpoint + '/download');
+      if (cached) { setDocumentFile({ title: cached.title, fileName: cached.fileName, mimeType: cached.mimeType, url: createOfflineObjectUrl(cached), isOffline: true }); return; }
+      if (navigator.onLine === false) throw new Error('This video is not saved offline yet.');
       if (!String(video.url || '').startsWith('/uploads/')) {
         setDocumentFile({ title: video.title || 'Video lesson', fileName: video.title || 'lesson.mp4', mimeType: video.mimeType || 'video/mp4', url: video.url, downloadEndpoint: endpoint + '/download' });
         return;
@@ -46,6 +50,9 @@ export default function CourseContent() {
   const openCourseFile = async (kind, index, item) => {
     try {
       const endpoint = `content/${courseData._id}/material/${kind}/${index}`;
+      const cached = await findOfflineResourceByEndpoint(endpoint + '?download=1');
+      if (cached) { setDocumentFile({ title: cached.title, fileName: cached.fileName, mimeType: cached.mimeType, url: createOfflineObjectUrl(cached), isOffline: true }); return; }
+      if (navigator.onLine === false) throw new Error('This material is not saved offline yet.');
       const response = await apiFetch(endpoint);
       if (!response.ok) {
         const result = await response.json().catch(() => ({}));

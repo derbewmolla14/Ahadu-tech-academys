@@ -4,6 +4,7 @@ import { apiFetch } from '../api/api';
 import DocumentViewerModal from '../components/DocumentViewerModal';
 import PaymentMethodModal from '../components/PaymentMethodModal';
 import { downloadApprovedResource } from '../utils/downloadApprovedResource';
+import { findOfflineResourceByEndpoint, createOfflineObjectUrl } from '../utils/offlineStore';
 
 export default function UniversityCourseContentPage() {
   const { courseId } = useParams();
@@ -61,7 +62,11 @@ function MaterialSection({ title, items, getUrl, courseId, protectedDownload = f
   const openProtectedFile = async (event, item, index) => {
     event.preventDefault();
     try {
-      const response = await apiFetch(getUrl(item, index));
+      const endpoint = getUrl(item, index);
+      const cached = await findOfflineResourceByEndpoint(endpoint + '?download=1');
+      if (cached) { setDocumentFile({ title: cached.title, fileName: cached.fileName, mimeType: cached.mimeType, url: createOfflineObjectUrl(cached), isOffline: true }); return; }
+      if (navigator.onLine === false) throw new Error('This lesson is not saved offline yet.');
+      const response = await apiFetch(endpoint);
       if (!response.ok) {
         const result = await response.json().catch(() => ({}));
         throw new Error(result.message || 'Unable to open this file.');
@@ -93,7 +98,7 @@ function MaterialSection({ title, items, getUrl, courseId, protectedDownload = f
                   Open {item.title || title} →
                 </button>
               ) : (
-                <button type="button" onClick={() => setDocumentFile({ title: item.title || title, fileName: item.fileName || item.title || 'lesson.mp4', mimeType: item.mimeType || 'video/mp4', url: getUrl(item, index), downloadEndpoint: `content/${courseId}/video/${index}/download` })} className="text-left text-sky-400 hover:underline">
+                <button type="button" onClick={async () => { const endpoint = `content/${courseId}/video/${index}/download`; const cached = await findOfflineResourceByEndpoint(endpoint); if (cached) { setDocumentFile({ title: cached.title, fileName: cached.fileName, mimeType: cached.mimeType, url: createOfflineObjectUrl(cached), isOffline: true }); return; } if (navigator.onLine === false) { window.alert('This video is not saved offline yet.'); return; } setDocumentFile({ title: item.title || title, fileName: item.fileName || item.title || 'lesson.mp4', mimeType: item.mimeType || 'video/mp4', url: getUrl(item, index), downloadEndpoint: endpoint }); }} className="text-left text-sky-400 hover:underline">
                   Watch {item.title || title} →
                 </button>
               )}
