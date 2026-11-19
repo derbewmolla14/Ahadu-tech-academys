@@ -66,6 +66,7 @@ export const AuthProvider = ({ children }) => {
     const response = await api.post('/auth/register', formData);
     localStorage.setItem('token', response.data.token);
     setUser(response.data.user);
+    cacheProfile(response.data.user);
     return response.data;
   }, []);
 
