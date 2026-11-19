@@ -17,6 +17,10 @@ function hashTelegramValue(value) {
   return crypto.createHash('sha256').update(String(value), 'utf8').digest('hex');
 }
 
+function hashTelegramOtp(value) {
+  return crypto.createHmac('sha256', process.env.JWT_SECRET).update(String(value), 'utf8').digest('hex');
+}
+
 function secureHashEquals(a, b) {
   const left = Buffer.from(String(a), 'hex');
   const right = Buffer.from(String(b), 'hex');
@@ -107,7 +111,7 @@ exports.requestTelegramOtp = async (req, res) => {
       userId: user._id,
       email: user.email,
       chatId: user.telegramChatId,
-      otpHash: hashTelegramValue(otp),
+      otpHash: hashTelegramOtp(otp),
       expiresAt: new Date(Date.now() + TELEGRAM_OTP_TTL_MS),
     });
 
@@ -152,7 +156,7 @@ exports.resetPasswordWithTelegramOtp = async (req, res) => {
       return res.status(429).json({ message: 'Too many incorrect attempts. Request a new code.' });
     }
 
-    const submittedHash = hashTelegramValue(otp);
+    const submittedHash = hashTelegramOtp(otp);
     if (!secureHashEquals(challenge.otpHash, submittedHash)) {
       const updated = await TelegramOtp.findOneAndUpdate(
         { _id: challenge._id, used: false, attempts: { $lt: TELEGRAM_OTP_MAX_ATTEMPTS }, expiresAt: { $gt: new Date() } },
@@ -425,6 +429,7 @@ exports.resetPassword = async (req, res) => {
     await user.save();
 
     await PasswordReset.deleteMany({ email });
+    await TelegramOtp.deleteMany({ email, purpose: 'password-reset' });
 
     res.json({ message: 'Password has been reset successfully' });
   } catch (e) {
