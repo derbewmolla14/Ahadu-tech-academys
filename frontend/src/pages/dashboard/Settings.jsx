@@ -66,7 +66,7 @@ export default function SettingsPage() {
   const isNativeApp = platform !== "web";
   const nativeBinaryUpdateRequired = isNativeApp && Boolean(latestVersion) && (
     latestVersion.nativeUpdateRequired === true ||
-    (latestVersion.webBundleMode !== "live" && compareVersions(latestVersion.version, currentVersion) > 0)
+    (latestVersion.webBundleMode !== "live" && (compareVersions(latestVersion.version, currentVersion) > 0 || latestVersion.forceRefresh))
   );
 
   useEffect(() => {
@@ -187,7 +187,7 @@ export default function SettingsPage() {
       const appUpdateAvailable = compareVersions(metadata.version, currentVersion) > 0 || Boolean(metadata.forceRefresh);
       const nativeUpdateAvailable = isNativeApp && (
         metadata.nativeUpdateRequired === true ||
-        (metadata.webBundleMode !== "live" && compareVersions(metadata.version, currentVersion) > 0)
+        (metadata.webBundleMode !== "live" && (compareVersions(metadata.version, currentVersion) > 0 || metadata.forceRefresh))
       );
       showNotice("success", appUpdateAvailable || nativeUpdateAvailable ? "An update is available." : "You're using the latest available app version.");
       return metadata;
@@ -478,8 +478,8 @@ export default function SettingsPage() {
                 </button>
                 {latestVersion && (compareVersions(latestVersion.version, currentVersion) > 0 || latestVersion.forceRefresh || nativeBinaryUpdateRequired) && (
                   <button type="button" onClick={updateNow} disabled={applyingUpdate} className={buttonClass}>
-                    {nativeBinaryUpdateRequired ? <ExternalLink size={16} /> : <Download size={16} />}
-                    {applyingUpdate ? "Updating…" : nativeBinaryUpdateRequired ? "Get Mobile App Update" : "Update Now"}
+                    {nativeBinaryUpdateRequired ? <ExternalLink size={16} /> : compareVersions(latestVersion.version, currentVersion) > 0 || latestVersion.forceRefresh ? <Download size={16} /> : <RefreshCw size={16} />}
+                    {applyingUpdate ? "Updating…" : nativeBinaryUpdateRequired ? "Get Mobile App Update" : compareVersions(latestVersion.version, currentVersion) > 0 || latestVersion.forceRefresh ? "Update Now" : "Refresh App Now"}
                   </button>
                 )}
               </div>
