@@ -5,7 +5,7 @@ const { validationResult, body } = require('express-validator');
 const User = require('../models/User');
 const PasswordReset = require('../models/PasswordReset');
 const { serializeUserDoc } = require('../utils/serializeUser');
-const { sendPasswordResetEmail } = require('../utils/sendEmail');
+const { sendPasswordResetEmail, verifyEmailService } = require('../utils/sendEmail');
 const { getJwtSecret } = require('../config/env');
 
 const signToken = (userId, role) =>
@@ -146,11 +146,6 @@ exports.forgotPassword = async (req, res) => {
         'If an account exists for that email, you will receive password reset instructions shortly.',
     };
 
-    const user = await User.findOne({ email: rawEmail });
-    if (!user) {
-      return res.status(200).json(generic);
-    }
-
     const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5173');
     if (!frontendUrl) {
       console.error('[password reset] FRONTEND_URL is required in production.');
@@ -165,6 +160,23 @@ exports.forgotPassword = async (req, res) => {
     } catch (configError) {
       console.error('[password reset] Invalid FRONTEND_URL:', configError.message);
       return res.status(503).json({ message: 'Password reset email is temporarily unavailable. Please try again later.' });
+    }
+
+    // Check mail readiness before looking up the account so SMTP outages/configuration
+    // errors produce the same response for known and unknown addresses.
+    try {
+      await verifyEmailService();
+    } catch (mailConfigError) {
+      console.error('[password reset] SMTP readiness check failed:', {
+        code: mailConfigError.code,
+        message: mailConfigError.message,
+      });
+      return res.status(503).json({ message: 'Password reset email is temporarily unavailable. Please try again later.' });
+    }
+
+    const user = await User.findOne({ email: rawEmail });
+    if (!user) {
+      return res.status(200).json(generic);
     }
 
     await PasswordReset.deleteMany({ email: rawEmail });
