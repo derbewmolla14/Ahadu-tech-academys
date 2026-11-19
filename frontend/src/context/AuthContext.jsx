@@ -82,11 +82,20 @@ export const AuthProvider = ({ children }) => {
     }
     try {
       const response = await api.patch('/auth/me', profileData);
-      setUser(response.data.user);
-      cacheProfile(response.data.user);
-      const savedLanguage = response.data.user?.preferences?.language;
+      const cachedUser = user || readCachedProfile() || {};
+      const updatedUser = {
+        ...cachedUser,
+        ...(response.data.user || {}),
+        preferences: {
+          ...(cachedUser.preferences || {}),
+          ...(response.data.user?.preferences || {}),
+        },
+      };
+      setUser(updatedUser);
+      cacheProfile(updatedUser);
+      const savedLanguage = updatedUser?.preferences?.language;
       if (savedLanguage) localStorage.setItem('language', savedLanguage);
-      return response.data;
+      return { ...response.data, user: updatedUser };
     } catch (error) {
       if (requestedLanguage === 'en' || requestedLanguage === 'am') {
         localStorage.setItem('language', previousLanguage);
@@ -97,7 +106,7 @@ export const AuthProvider = ({ children }) => {
       }
       throw error;
     }
-  }, []);
+  }, [user]);
 
   const logout = useCallback(() => {
     localStorage.removeItem('token');

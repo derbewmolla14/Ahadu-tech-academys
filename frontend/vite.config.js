@@ -6,6 +6,13 @@ const appVersion = process.env.npm_package_version || packageJson.version;
 const buildDate = new Date().toISOString();
 
 export default defineConfig({
+  // Keep React Router's context provider and Link hooks on one module instance.
+  resolve: {
+    dedupe: ['react', 'react-dom', 'react-router', 'react-router-dom'],
+  },
+  optimizeDeps: {
+    include: ['react-router', 'react-router-dom'],
+  },
   plugins: [react()],
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),

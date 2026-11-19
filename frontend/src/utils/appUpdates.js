@@ -39,6 +39,38 @@ export async function fetchLatestVersion() {
   return metadata;
 }
 
+function waitForControllerChange(timeoutMs = 5000) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      navigator.serviceWorker.removeEventListener("controllerchange", finish);
+      resolve();
+    };
+    const timeout = window.setTimeout(finish, timeoutMs);
+    navigator.serviceWorker.addEventListener("controllerchange", finish, { once: true });
+  });
+}
+
+async function askActiveWorkerToCleanStaleCaches(worker) {
+  if (!worker || typeof MessageChannel === "undefined") return false;
+  return new Promise((resolve) => {
+    const channel = new MessageChannel();
+    const timeout = window.setTimeout(() => {
+      channel.port1.close();
+      resolve(false);
+    }, 2500);
+    channel.port1.onmessage = (event) => {
+      window.clearTimeout(timeout);
+      channel.port1.close();
+      resolve(Boolean(event.data?.ok));
+    };
+    worker.postMessage({ type: "CLEAR_STALE_SHELL_CACHES" }, [channel.port2]);
+  });
+}
+
 export async function refreshAppShell() {
   let registration = null;
   if ("serviceWorker" in navigator) {
@@ -46,30 +78,51 @@ export async function refreshAppShell() {
       registration = await navigator.serviceWorker.getRegistration();
       if (registration) {
         await registration.update().catch(() => undefined);
-        if (registration.waiting) {
-          registration.waiting.postMessage({ type: "SKIP_WAITING" });
+
+        // Allow a newly discovered worker a short window to finish installing.
+        if (!registration.waiting && registration.installing) {
           await new Promise((resolve) => {
-            const timeout = window.setTimeout(resolve, 4000);
-            navigator.serviceWorker.addEventListener("controllerchange", () => {
-              window.clearTimeout(timeout);
-              resolve();
-            }, { once: true });
+            const worker = registration.installing;
+            const timeout = window.setTimeout(resolve, 7000);
+            const onStateChange = () => {
+              if (worker.state === "installed" || worker.state === "activated" || worker.state === "redundant") {
+                window.clearTimeout(timeout);
+                worker.removeEventListener("statechange", onStateChange);
+                resolve();
+              }
+            };
+            worker.addEventListener("statechange", onStateChange);
+            onStateChange();
           });
+        }
+
+        const waitingWorker = registration.waiting;
+        if (waitingWorker) {
+          const controllerChanged = waitForControllerChange();
+          waitingWorker.postMessage({ type: "SKIP_WAITING" });
+          await controllerChanged;
+        }
+
+        // The active worker keeps its current shell cache and removes only older
+        // caches in this app's namespace. IndexedDB and authentication storage are untouched.
+        const activeWorker = navigator.serviceWorker.controller || registration.active;
+        const cleanedByWorker = await askActiveWorkerToCleanStaleCaches(activeWorker);
+
+        // Compatibility fallback for older workers that do not understand the
+        // cleanup message. Only this app's shell-cache namespace is affected.
+        if (!cleanedByWorker && "caches" in window) {
+          const keys = await caches.keys().catch(() => []);
+          await Promise.all(keys
+            .filter((key) => key.startsWith(SHELL_CACHE_PREFIX))
+            .map((key) => caches.delete(key).catch(() => false)));
         }
       }
     } catch {
-      // A WebView or browser may not expose a usable service-worker registration.
+      // Service workers are not available in every Capacitor WebView.
     }
   }
 
-  // Only remove this app's static shell caches. Offline study files live in IndexedDB
-  // (ahadu-tech-offline) and are deliberately never touched here.
-  if ("caches" in window) {
-    const keys = await caches.keys().catch(() => []);
-    await Promise.all(keys
-      .filter((key) => key.startsWith(SHELL_CACHE_PREFIX))
-      .map((key) => caches.delete(key).catch(() => false)));
-  }
-
+  // Capacitor live-server builds refresh the WebView document; bundled builds
+  // reach this point only when no native binary replacement is required.
   window.location.reload();
 }

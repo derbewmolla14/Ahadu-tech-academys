@@ -237,3 +237,29 @@ html[data-theme="light"] select {
 }
 
 @media (max-width: 767px) { body { line-height: 1.45; } h1 { line-height: 1.2; } h2 { line-height: 1.25; } button, a { -webkit-tap-highlight-color: transparent; } }
+
+
+/* Desktop-only readability and spacing boost.
+   The mobile rules above remain unchanged below 768px. Increasing the root
+   rem scale also enlarges Tailwind text, padding, and gap utilities together. */
+@media (min-width: 768px) {
+  html {
+    font-size: clamp(16px, 1.1vw, 18px);
+  }
+
+  body {
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  h1 { line-height: 1.15; }
+  h2 { line-height: 1.2; }
+  h3, h4 { line-height: 1.3; }
+}
+
+@media (min-width: 1024px) {
+  /* Give reusable content cards more breathing room on desktop only. */
+  .app-card {
+    padding: 1.75rem;
+  }
+}

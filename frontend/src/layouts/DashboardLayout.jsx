@@ -25,27 +25,8 @@ import {
 } from "lucide-react";
 
 import { AuthContext } from "../context/AuthContext";
+import { getProfileImageUrl, getProfileInitials } from "../utils/profile";
 
-// ========================================
-// USER INITIALS
-// ========================================
-function initials(fullName, email) {
-  const raw = (fullName || "").trim();
-
-  if (raw.length >= 2) {
-    return raw
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase();
-  }
-
-  return (email || "?").slice(0, 1).toUpperCase();
-}
-
-// ========================================
-// NAVIGATION ITEM
 // ========================================
 function NavigationItem({
   to,
@@ -62,7 +43,7 @@ function NavigationItem({
       className={({ isActive }) =>
         [
           "flex items-center gap-3 rounded-lg px-3 py-3",
-          "text-[13px] font-semibold transition-all duration-200",
+          "text-[13px] md:text-sm lg:text-base font-semibold transition-all duration-200",
           isActive
             ? "border border-sky-500/30 bg-sky-500/15 text-sky-300 shadow-sm"
             : "border border-transparent text-slate-400 hover:bg-slate-800/70 hover:text-white",
@@ -80,7 +61,7 @@ function NavigationItem({
 // ========================================
 function SectionTitle({ children }) {
   return (
-    <p className="mb-2 mt-6 px-3 text-[10px] font-bold uppercase tracking-[1.8px] text-slate-500">
+    <p className="mb-2 mt-6 px-3 text-[10px] md:text-xs font-bold uppercase tracking-[1.8px] text-slate-500">
       {children}
     </p>
   );
@@ -102,30 +83,10 @@ export default function DashboardLayout() {
     "Account";
 
   const email = user?.email || "";
+  const profileInitials = getProfileInitials(user?.fullName);
 
-  // ========================================
-  // PROFILE PHOTO
-  // ========================================
-  const apiUrl = import.meta.env.VITE_API_URL || "/api";
+  const avatar = getProfileImageUrl(user);
 
-  const apiOrigin = new URL(
-    apiUrl,
-    window.location.origin
-  ).origin;
-
-  const photoPath =
-    user?.profilePhotoUrl || user?.profilePhoto;
-
-  const avatar = photoPath
-    ? photoPath.startsWith("http")
-      ? photoPath
-      : `${apiOrigin}${
-          photoPath.startsWith("/") ? "" : "/"
-        }${photoPath}`
-    : null;
-
-  // ========================================
-  // ROLE PERMISSIONS
   // ========================================
   const role = String(
     user?.role || "user"
@@ -180,7 +141,7 @@ export default function DashboardLayout() {
       <div className="border-b border-slate-800/80 px-4 py-6">
         <div className="flex flex-col items-center gap-3 text-center">
 
-          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-slate-700 bg-gradient-to-br from-slate-800 to-slate-900 shadow-lg">
+          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-slate-700 bg-gradient-to-br from-slate-800 to-slate-900 shadow-lg">
 
             {avatar ? (
               <img
@@ -190,7 +151,7 @@ export default function DashboardLayout() {
               />
             ) : (
               <span className="text-xl font-bold text-white">
-                {initials(user?.fullName, email)}
+                {profileInitials}
               </span>
             )}
 
@@ -318,7 +279,7 @@ export default function DashboardLayout() {
         <button
           type="button"
           onClick={handleLogout}
-          className="mt-3 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[13px] font-semibold text-red-400 transition hover:bg-red-500/10 hover:text-red-300"
+          className="mt-3 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[13px] md:text-sm lg:text-base font-semibold text-red-400 transition hover:bg-red-500/10 hover:text-red-300"
         >
           <LogOut size={17} />
           Logout

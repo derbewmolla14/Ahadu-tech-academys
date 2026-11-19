@@ -1,6 +1,7 @@
 import { useContext, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { getProfileImageUrl, getProfileInitials } from '../utils/profile';
 
 const navLinks = [
   { to: '/', label: 'Home' },
@@ -14,20 +15,20 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const closeMobile = () => setMobileOpen(false);
+  const profileImage = getProfileImageUrl(user);
+  const profileInitials = getProfileInitials(user?.fullName);
 
   const linkDesktop =
-    'whitespace-nowrap text-[#0f1b3d] font-semibold hover:text-orange-600 transition-colors duration-200 text-sm lg:text-base';
+    'whitespace-nowrap text-[#0f1b3d] font-semibold hover:text-orange-600 transition-colors duration-200 text-base lg:text-lg';
 
   const linkMobile =
     'block w-full border-b border-white/15 py-3 text-center text-sm font-semibold text-white hover:bg-white/10 transition-colors duration-200';
 
-  const initials =
-    user?.fullName?.trim()?.slice(0, 2)?.toUpperCase() || user?.email?.slice(0, 1)?.toUpperCase() || '?';
 
   return (
-    <header className="w-full shadow-md font-sans sticky top-0 z-50">
+    <header className="m-0 w-full p-0 shadow-md font-sans sticky top-0 z-50">
       {/* TOP BAR */}
-      <div className="hidden bg-[#0f1b3d] text-white px-6 py-1 sm:flex justify-end items-center gap-4 text-[11px]">
+      <div className="hidden bg-[#0f1b3d] text-white px-0 py-1 sm:flex justify-end items-center gap-4 text-[11px]">
         <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1">
           <span className="text-orange-500">📞</span>
           <span className="text-orange-400 font-medium whitespace-nowrap">call us now</span>
@@ -38,16 +39,16 @@ export default function Navbar() {
 
       {/* LOGO ROW + NAV */}
       <div className="relative border-b border-gray-100 bg-white">
-        <div className="flex min-h-14 items-center justify-between gap-3 px-3 py-2 sm:px-5 md:px-8">
+        <div className="flex min-h-14 items-center justify-between gap-2 px-2 py-1 sm:px-3 md:px-4">
           <Link to="/" className="flex min-w-0 items-center gap-2" onClick={closeMobile}>
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#0f1b3d] bg-gradient-to-br from-blue-50 to-blue-100 p-1 sm:h-9 sm:w-9">
               <span className="text-lg sm:text-xl">🎓</span>
             </div>
-            <div className="min-w-0 leading-none"><span className="block truncate text-[13px] font-extrabold tracking-tight text-[#0f1b3d] sm:text-sm md:text-base">AHADU TECH ACADEMY</span></div>
+            <div className="min-w-0 leading-none"><span className="block truncate text-[13px] font-extrabold tracking-tight text-[#0f1b3d] sm:text-sm md:text-lg lg:text-xl">AHADU TECH ACADEMY</span></div>
           </Link>
 
           {/* Desktop nav */}
-          <nav className="hidden items-center gap-3 lg:gap-5 md:flex" aria-label="Main">
+          <nav className="hidden items-center gap-2 lg:gap-4 md:flex m-0 p-0" aria-label="Main">
             {navLinks.map(({ to, label }) => (
               <Link key={to} to={to} className={`${linkDesktop} ${to === '/' ? '' : 'font-medium'}`}>
                 {label}
@@ -62,17 +63,14 @@ export default function Navbar() {
             {user ? (
               <Link
                 to="/dashboard"
-                className="flex items-center gap-2 rounded-full border border-[#0f1b3d]/15 bg-slate-50 py-2 pl-2 pr-4 text-[#0f1b3d] transition hover:bg-slate-100"
+                className="flex items-center rounded-full border border-[#0f1b3d]/15 bg-slate-50 p-1 transition hover:bg-slate-100"
               >
                 <span className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-[#0f1b3d] text-xs font-bold text-white">
-                  {user.profilePhotoUrl ? (
-                    <img src={user.profilePhotoUrl} alt="" className="h-full w-full object-cover" />
+                  {profileImage ? (
+                    <img src={profileImage} alt="Profile" className="h-full w-full object-cover" />
                   ) : (
-                    initials
+                    profileInitials
                   )}
-                </span>
-                <span className="max-w-[140px] truncate text-sm font-bold">
-                  {user.fullName?.trim() || user.email}
                 </span>
               </Link>
             ) : (
