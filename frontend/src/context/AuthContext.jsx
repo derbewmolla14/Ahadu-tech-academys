@@ -82,7 +82,7 @@ export const AuthProvider = ({ children }) => {
     }
     try {
       const response = await api.patch('/auth/me', profileData);
-      const cachedUser = readCachedProfile() || {};
+      const cachedUser = user || readCachedProfile() || {};
       const updatedUser = {
         ...cachedUser,
         ...(response.data.user || {}),
@@ -106,7 +106,7 @@ export const AuthProvider = ({ children }) => {
       }
       throw error;
     }
-  }, []);
+  }, [user]);
 
   const logout = useCallback(() => {
     localStorage.removeItem('token');
