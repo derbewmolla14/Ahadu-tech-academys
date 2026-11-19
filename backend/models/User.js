@@ -5,6 +5,8 @@ const userSchema = new mongoose.Schema(
     fullName: { type: String, trim: true, default: '' },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     phone: { type: String, trim: true, default: '' },
+    telegramChatId: { type: String, default: null, index: true },
+    telegramUsername: { type: String, trim: true, default: '' },
     password: { type: String, required: true, select: false },
     profilePhoto: { type: String, default: '' },
     preferences: {
