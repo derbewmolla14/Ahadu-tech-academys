@@ -16,10 +16,10 @@ export default function Navbar() {
   const closeMobile = () => setMobileOpen(false);
 
   const linkDesktop =
-    'text-[#0f1b3d] font-semibold hover:text-orange-600 transition-colors duration-200 text-lg';
+    'whitespace-nowrap text-[#0f1b3d] font-semibold hover:text-orange-600 transition-colors duration-200 text-sm lg:text-base';
 
   const linkMobile =
-    'block w-full border-b border-white/15 py-4 text-center text-base font-semibold text-white hover:bg-white/10 transition-colors duration-200';
+    'block w-full border-b border-white/15 py-3 text-center text-sm font-semibold text-white hover:bg-white/10 transition-colors duration-200';
 
   const initials =
     user?.fullName?.trim()?.slice(0, 2)?.toUpperCase() || user?.email?.slice(0, 1)?.toUpperCase() || '?';
@@ -27,7 +27,7 @@ export default function Navbar() {
   return (
     <header className="w-full shadow-md font-sans sticky top-0 z-50">
       {/* TOP BAR */}
-      <div className="bg-[#0f1b3d] text-white py-2 px-4 sm:px-6 flex justify-end items-center gap-4 sm:gap-6 text-xs sm:text-sm">
+      <div className="hidden bg-[#0f1b3d] text-white px-6 py-1 sm:flex justify-end items-center gap-4 text-[11px]">
         <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1">
           <span className="text-orange-500">📞</span>
           <span className="text-orange-400 font-medium whitespace-nowrap">call us now</span>
@@ -38,20 +38,16 @@ export default function Navbar() {
 
       {/* LOGO ROW + NAV */}
       <div className="relative border-b border-gray-100 bg-white">
-        <div className="flex items-center justify-between gap-4 px-4 py-4 md:px-8">
-          <Link to="/" className="flex min-w-0 items-center gap-3" onClick={closeMobile}>
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-[#0f1b3d] bg-gradient-to-br from-blue-50 to-blue-100 p-1">
-              <span className="text-2xl">🎓</span>
+        <div className="flex min-h-14 items-center justify-between gap-3 px-3 py-2 sm:px-5 md:px-8">
+          <Link to="/" className="flex min-w-0 items-center gap-2" onClick={closeMobile}>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#0f1b3d] bg-gradient-to-br from-blue-50 to-blue-100 p-1 sm:h-9 sm:w-9">
+              <span className="text-lg sm:text-xl">🎓</span>
             </div>
-            <div className="flex min-w-0 flex-col leading-tight">
-              <span className="text-lg font-bold tracking-tighter text-[#0f1b3d] sm:text-xl">AHADU</span>
-              <span className="text-lg font-bold tracking-tighter text-[#0f1b3d] sm:text-xl">TECH</span>
-              <span className="text-lg font-bold tracking-tighter text-[#0f1b3d] sm:text-xl">ACADEMY</span>
-            </div>
+            <div className="min-w-0 leading-none"><span className="block truncate text-[13px] font-extrabold tracking-tight text-[#0f1b3d] sm:text-sm md:text-base">AHADU TECH ACADEMY</span></div>
           </Link>
 
           {/* Desktop nav */}
-          <nav className="hidden items-center gap-6 md:flex" aria-label="Main">
+          <nav className="hidden items-center gap-3 lg:gap-5 md:flex" aria-label="Main">
             {navLinks.map(({ to, label }) => (
               <Link key={to} to={to} className={`${linkDesktop} ${to === '/' ? '' : 'font-medium'}`}>
                 {label}
@@ -82,7 +78,7 @@ export default function Navbar() {
             ) : (
               <Link
                 to="/login"
-                className="rounded-full bg-orange-600 px-8 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-200/80 transition-all duration-200 hover:bg-orange-500 hover:scale-[1.02]"
+                className="whitespace-nowrap rounded-full bg-orange-600 px-5 py-2 text-xs font-bold text-white shadow-md transition-all duration-200 hover:bg-orange-500"
               >
                 Login
               </Link>
@@ -94,7 +90,7 @@ export default function Navbar() {
             type="button"
             aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={mobileOpen}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[#0f1b3d]/15 text-2xl text-[#0f1b3d] transition-colors hover:bg-slate-100 md:hidden"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#0f1b3d]/15 text-xl text-[#0f1b3d] transition-colors hover:bg-slate-100 md:hidden"
             onClick={() => setMobileOpen((o) => !o)}
           >
             ☰

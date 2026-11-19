@@ -49,11 +49,13 @@
 
 html {
   min-height: 100%;
+  font-size: clamp(14px, 1vw, 16px);
   background: var(--app-bg);
 }
 
 body {
   margin: 0;
+  font-size: .9375rem;
   min-height: 100vh;
 
   font-family:
@@ -233,3 +235,5 @@ html[data-theme="light"] select {
   color: #172033;
   border-color: #cbd5e1;
 }
+
+@media (max-width: 767px) { body { line-height: 1.45; } h1 { line-height: 1.2; } h2 { line-height: 1.25; } button, a { -webkit-tap-highlight-color: transparent; } }

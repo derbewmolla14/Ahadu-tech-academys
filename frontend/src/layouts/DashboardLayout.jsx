@@ -10,6 +10,7 @@ import {
 
 import {
   LayoutDashboard,
+  Download,
   Plus,
   BookOpen,
   Upload,
@@ -296,6 +297,9 @@ export default function DashboardLayout() {
             )}
           </>
         )}
+
+        <SectionTitle>Learning</SectionTitle>
+        <NavigationItem to="/dashboard/offline-library" icon={Download} onClick={closeMenu}>My Offline Library</NavigationItem>
 
         {/* ACCOUNT */}
         <SectionTitle>
