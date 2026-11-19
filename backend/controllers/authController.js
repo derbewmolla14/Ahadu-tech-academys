@@ -125,6 +125,7 @@ exports.requestTelegramOtp = async (req, res) => {
     return res.status(200).json({
       message: 'A 6-digit code was sent to your linked Telegram account.',
       expiresInSeconds: 60,
+      expiresAt: challenge.expiresAt.toISOString(),
     });
   } catch (error) {
     console.error('[telegram otp] Request failed:', error.message);
