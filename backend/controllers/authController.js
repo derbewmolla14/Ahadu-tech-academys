@@ -151,38 +151,47 @@ exports.forgotPassword = async (req, res) => {
       return res.status(200).json(generic);
     }
 
-    await PasswordReset.deleteMany({ email: rawEmail });
+    const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5173');
+    if (!frontendUrl) {
+      console.error('[password reset] FRONTEND_URL is required in production.');
+      return res.status(503).json({ message: 'Password reset email is temporarily unavailable. Please try again later.' });
+    }
 
+    let frontendOrigin;
+    try {
+      const parsed = new URL(frontendUrl);
+      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Unsupported URL protocol');
+      frontendOrigin = parsed.toString().replace(/\/$/, '');
+    } catch (configError) {
+      console.error('[password reset] Invalid FRONTEND_URL:', configError.message);
+      return res.status(503).json({ message: 'Password reset email is temporarily unavailable. Please try again later.' });
+    }
+
+    await PasswordReset.deleteMany({ email: rawEmail });
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = hashResetToken(rawToken);
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    const resetUrl = frontendOrigin + '/reset-password?token=' + encodeURIComponent(rawToken) + '&email=' + encodeURIComponent(rawEmail);
 
-    await PasswordReset.create({ email: rawEmail, tokenHash, expiresAt });
+    const html = '<p>Hello,</p>' +
+      '<p>You requested to reset your Ahadu Tech Academy password.</p>' +
+      '<p><a href="' + resetUrl + '">Set a new password</a></p>' +
+      '<p>This link expires in one hour and can only be used once.</p>' +
+      '<p>If you did not request this, you can ignore this email.</p>';
+    const text = 'You requested to reset your Ahadu Tech Academy password.\n' +
+      'Open this link to choose a new password: ' + resetUrl + '\n' +
+      'This link expires in one hour and can only be used once.\n' +
+      'If you did not request this, you can ignore this email.';
 
-    const base = (
-      process.env.FRONTEND_URL || 'http://localhost:5173'
-    ).replace(/\/$/, '');
-    const resetUrl = `${base}/reset-password?token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(rawEmail)}`;
-
-    const html = `
-      <p>Hi,</p>
-      <p>You requested to reset your password for Ahadu Tech Academy.</p>
-      <p><a href="${resetUrl}">Set a new password</a></p>
-      <p>This link expires in one hour.</p>
-      <p>If you didn’t ask for this, you can ignore this email.</p>
-    `;
-
-    const result = await sendPasswordResetEmail(
-      rawEmail,
-      'Reset your Ahadu Tech Academy password',
-      html
-    );
-
-    if (result.sent === false && result.dev) {
-      console.log('[password reset] SMTP disabled — reset link:', resetUrl);
+    try {
+      await sendPasswordResetEmail(rawEmail, 'Reset your Ahadu Tech Academy password', { html, text });
+      await PasswordReset.create({ email: rawEmail, tokenHash, expiresAt });
+    } catch (mailError) {
+      console.error('[password reset] Email dispatch failed:', { name: mailError.name, code: mailError.code, responseCode: mailError.responseCode, message: mailError.message });
+      return res.status(503).json({ message: 'We could not send the password reset email right now. Please try again later.' });
     }
 
-    res.status(200).json(generic);
+    return res.status(200).json(generic);
   } catch (e) {
     console.error(e);
     res.status(500).json({ message: 'Could not process reset request' });
