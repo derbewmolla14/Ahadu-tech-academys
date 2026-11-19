@@ -85,7 +85,9 @@ export default function DashboardLayout() {
   const email = user?.email || "";
   const profileInitials = getProfileInitials(user?.fullName);
 
-    const avatar = getProfileImageUrl(user);\n\n// ========================================
+  const avatar = getProfileImageUrl(user);
+
+  // ========================================
   const role = String(
     user?.role || "user"
   ).toLowerCase();
