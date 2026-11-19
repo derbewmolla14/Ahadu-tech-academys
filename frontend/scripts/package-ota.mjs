@@ -9,7 +9,7 @@ const zipPath = path.join(distDir, "ota-bundle.zip");
 const manifestPath = path.join(distDir, "version.json");
 
 async function loadBuildEnvironment() {
-  for (const name of [".env", ".env.production", ".env.local", ".env.production.local"]) {
+  for (const name of [".env.production.local", ".env.local", ".env.production", ".env"]) {
     try {
       const contents = await fs.readFile(path.resolve(name), "utf8");
       for (const line of contents.split(/\r?\n/)) {
