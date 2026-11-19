@@ -491,7 +491,7 @@ export default function SettingsPage() {
                   <RefreshCw size={16} className={checkingUpdates ? "animate-spin" : ""} />
                   {checkingUpdates ? "Checking…" : "Check for Updates"}
                 </button>
-                <button type="button" onClick={updateNow} disabled={applyingUpdate || checkingUpdates || (isNativeApp && !otaUpdateAvailable && !latestVersion?.bundleUrl)} className={buttonClass}>
+                <button type="button" onClick={updateNow} disabled={applyingUpdate || checkingUpdates || (isNativeApp && !otaUpdateAvailable)} className={buttonClass}>
                   {applyingUpdate ? <RefreshCw size={16} className="animate-spin" /> : <Download size={16} />}
                   {applyingUpdate ? "Applying OTA update…" : "Update Now"}
                 </button>
