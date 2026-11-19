@@ -12,6 +12,9 @@ const {
   updateProfile,
   updateProfileValidators,
   changePassword,
+  requestTelegramOtp,
+  resetPasswordWithTelegramOtp,
+  requestTelegramLink,
 } = require('../controllers/authController');
 
 const router = express.Router();
@@ -27,6 +30,9 @@ router.post('/register', multerTrap(profileUpload.single('profilePhoto')), ...re
 router.post('/login', login);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', ...resetPasswordValidators, resetPassword);
+router.post('/telegram/otp/request', requestTelegramOtp);
+router.post('/telegram/otp/reset', resetPasswordWithTelegramOtp);
+router.post('/telegram/link/request', auth, requestTelegramLink);
 router.get('/me', auth, me);
 router.patch('/me', auth, multerTrap(profileUpload.single('profilePhoto')), ...updateProfileValidators, updateProfile);
 router.patch('/change-password', auth, changePassword);
