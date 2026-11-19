@@ -23,7 +23,7 @@ function requestValue(request) {
 }
 
 function keyOf(url = '') {
-  return String(url).replace(/^\\//, '').split('?')[0].split('#')[0];
+  return String(url).replace(/^\/+/, '').split('?')[0].split('#')[0];
 }
 
 export async function saveOfflineResource({ endpoint, blob, ...metadata }) {
