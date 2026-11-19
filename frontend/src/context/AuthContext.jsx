@@ -82,17 +82,20 @@ export const AuthProvider = ({ children }) => {
     }
     try {
       const response = await api.patch('/auth/me', profileData);
-      let updatedUser = response.data.user;
-      setUser((currentUser) => {
-        updatedUser = currentUser
-          ? { ...currentUser, ...(response.data.user || {}) }
-          : response.data.user;
-        cacheProfile(updatedUser);
-        return updatedUser;
-      });
+      const cachedUser = readCachedProfile() || {};
+      const updatedUser = {
+        ...cachedUser,
+        ...(response.data.user || {}),
+        preferences: {
+          ...(cachedUser.preferences || {}),
+          ...(response.data.user?.preferences || {}),
+        },
+      };
+      setUser(updatedUser);
+      cacheProfile(updatedUser);
       const savedLanguage = updatedUser?.preferences?.language;
       if (savedLanguage) localStorage.setItem('language', savedLanguage);
-      return response.data;
+      return { ...response.data, user: updatedUser };
     } catch (error) {
       if (requestedLanguage === 'en' || requestedLanguage === 'am') {
         localStorage.setItem('language', previousLanguage);
