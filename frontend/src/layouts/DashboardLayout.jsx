@@ -25,27 +25,8 @@ import {
 } from "lucide-react";
 
 import { AuthContext } from "../context/AuthContext";
+import { getProfileImageUrl, getProfileInitials } from "../utils/profile";
 
-// ========================================
-// USER INITIALS
-// ========================================
-function initials(fullName, email) {
-  const raw = (fullName || "").trim();
-
-  if (raw.length >= 2) {
-    return raw
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase();
-  }
-
-  return (email || "?").slice(0, 1).toUpperCase();
-}
-
-// ========================================
-// NAVIGATION ITEM
 // ========================================
 function NavigationItem({
   to,
@@ -102,31 +83,9 @@ export default function DashboardLayout() {
     "Account";
 
   const email = user?.email || "";
+  const profileInitials = getProfileInitials(user?.fullName);
 
-  // ========================================
-  // PROFILE PHOTO
-  // ========================================
-  const apiUrl = import.meta.env.VITE_API_URL || "/api";
-
-  const apiOrigin = new URL(
-    apiUrl,
-    window.location.origin
-  ).origin;
-
-  const photoPath =
-    user?.profilePhotoUrl || user?.profilePhoto;
-
-  const avatar = photoPath
-    ? photoPath.startsWith("http")
-      ? photoPath
-      : `${apiOrigin}${
-          photoPath.startsWith("/") ? "" : "/"
-        }${photoPath}`
-    : null;
-
-  // ========================================
-  // ROLE PERMISSIONS
-  // ========================================
+    const avatar = getProfileImageUrl(user);\n\n// ========================================
   const role = String(
     user?.role || "user"
   ).toLowerCase();
@@ -180,7 +139,7 @@ export default function DashboardLayout() {
       <div className="border-b border-slate-800/80 px-4 py-6">
         <div className="flex flex-col items-center gap-3 text-center">
 
-          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-slate-700 bg-gradient-to-br from-slate-800 to-slate-900 shadow-lg">
+          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-slate-700 bg-gradient-to-br from-slate-800 to-slate-900 shadow-lg">
 
             {avatar ? (
               <img
@@ -190,7 +149,7 @@ export default function DashboardLayout() {
               />
             ) : (
               <span className="text-xl font-bold text-white">
-                {initials(user?.fullName, email)}
+                {profileInitials}
               </span>
             )}
 
