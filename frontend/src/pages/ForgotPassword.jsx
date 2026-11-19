@@ -31,14 +31,14 @@ export default function ForgotPassword() {
           <p className="text-sm uppercase tracking-[0.35em] text-sky-400">Recover access</p>
           <h1 className="mt-4 text-4xl font-semibold text-white">Forgot password</h1>
           <p className="mt-3 text-slate-400">
-            We&apos;ll email a reset link when SMTP is configured. During local development without mail, reset URLs are printed on the backend console.
+            Enter the email address on your account. If email delivery is temporarily unavailable, you will see an error and can try again.
           </p>
         </div>
 
         <div className="rounded-3xl border border-slate-800 bg-slate-950/70 px-8 py-10 shadow-xl backdrop-blur">
           {sent ? (
             <div className="rounded-2xl border border-emerald-500/35 bg-emerald-500/10 px-5 py-4 text-emerald-100">
-              Request received. If an account matches this email you will hear from us shortly. Reset links expire in one hour.
+              If an account matches this email, password reset instructions have been sent. Check your inbox and spam folder. The link expires in one hour.
               <Link to="/login" className="mt-4 inline-block font-semibold text-sky-400 hover:text-sky-300">
                 Back to login
               </Link>
