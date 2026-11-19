@@ -25,7 +25,11 @@ export function getRuntimePlatform() {
 }
 
 export async function fetchLatestVersion() {
-  const response = await fetch(`/version.json?check=${Date.now()}`, {
+  const configuredManifestUrl = import.meta.env.VITE_UPDATE_MANIFEST_URL;
+  const manifestUrl = configuredManifestUrl || "/version.json";
+  const url = new URL(manifestUrl, window.location.origin);
+  url.searchParams.set("check", String(Date.now()));
+  const response = await fetch(url.toString(), {
     cache: "no-store",
     headers: { Accept: "application/json" },
   });
