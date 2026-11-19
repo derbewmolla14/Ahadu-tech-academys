@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Ahadu Tech Academy",
+  "short_name": "Ahadu Tech",
+  "description": "Quick access to Ahadu Tech Academy courses and learning dashboard.",
+  "version": "1.0.0",
+  "action": {
+    "default_title": "Ahadu Tech Academy",
+    "default_popup": "popup.html"
+  }
+}

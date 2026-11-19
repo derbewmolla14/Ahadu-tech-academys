@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>Ahadu Tech Academy</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="brand">
+        <img class="brand-mark" src="logo.svg" alt="" />
+        <div>
+          <p class="eyebrow">LEARN • BUILD • GROW</p>
+          <h1>Ahadu Tech Academy</h1>
+          <p class="brand-subtitle">Your learning space, one click away.</p>
+        </div>
+      </header>
+
+      <section class="welcome" aria-labelledby="welcome-title">
+        <p class="section-label">WELCOME</p>
+        <h2 id="welcome-title">Keep learning at your pace.</h2>
+        <p>Open your academy, continue a course, or jump straight to a study area.</p>
+        <button class="primary-button" type="button" data-route="/">Open full academy <span aria-hidden="true">↗</span></button>
+      </section>
+
+      <section class="quick-links" aria-labelledby="quick-title">
+        <div class="section-heading">
+          <h2 id="quick-title">Quick access</h2>
+          <span>STUDY AREAS</span>
+        </div>
+        <div class="link-grid">
+          <button class="link-card" type="button" data-route="/dashboard">
+            <span class="card-icon" aria-hidden="true">⌂</span>
+            <span><strong>My dashboard</strong><small>Continue learning</small></span>
+            <span class="chevron" aria-hidden="true">›</span>
+          </button>
+          <button class="link-card" type="button" data-route="/university">
+            <span class="card-icon" aria-hidden="true">▤</span>
+            <span><strong>University</strong><small>Departments & courses</small></span>
+            <span class="chevron" aria-hidden="true">›</span>
+          </button>
+          <button class="link-card" type="button" data-route="/elementary">
+            <span class="card-icon" aria-hidden="true">✎</span>
+            <span><strong>Elementary</strong><small>School learning</small></span>
+            <span class="chevron" aria-hidden="true">›</span>
+          </button>
+          <button class="link-card" type="button" data-route="/highschool">
+            <span class="card-icon" aria-hidden="true">▣</span>
+            <span><strong>High School</strong><small>Grades & materials</small></span>
+            <span class="chevron" aria-hidden="true">›</span>
+          </button>
+          <button class="link-card" type="button" data-route="/coding">
+            <span class="card-icon" aria-hidden="true">&lt;/&gt;</span>
+            <span><strong>Coding</strong><small>Build your skills</small></span>
+            <span class="chevron" aria-hidden="true">›</span>
+          </button>
+          <button class="link-card" type="button" data-route="/login">
+            <span class="card-icon" aria-hidden="true">↪</span>
+            <span><strong>Sign in</strong><small>Access your account</small></span>
+            <span class="chevron" aria-hidden="true">›</span>
+          </button>
+        </div>
+      </section>
+
+      <footer>
+        <p>Your account, course access, and Premium approvals are managed by the academy website.</p>
+        <a href="https://ahadu-tech-academys.vercel.app" target="_blank" rel="noreferrer">ahadu-tech-academys.vercel.app</a>
+      </footer>
+      <p id="status" class="sr-only" role="status" aria-live="polite"></p>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>
