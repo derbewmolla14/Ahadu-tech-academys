@@ -123,7 +123,7 @@ async function handleUpdate(update) {
     return;
   }
   const text = message.text.trim();
-  if (/^(?:menu|menu \/ ሜኑ|ሜኑ)$/i.test(text)) { await sendMenu(message.chat.id, true); return; }
+  if (/^(?:menu|menu \/ ሜኑ|ሜኑ|\/menu)$/i.test(text)) { await sendMenu(message.chat.id, true); return; }
   if (/^otp code$/i.test(text) || /^የotp ኮድ$/i.test(text)) { await sendOtpCodeForChat(message.chat.id); return; }
   if (/^login$/i.test(text) || /^መግቢያ$/i.test(text)) {
     await telegramRequest('sendMessage', { chat_id: message.chat.id, text: 'Sign in to Ahadu Tech Academy: ' + academyUrl('/login'), reply_markup: BOT_MENU_KEYBOARD }); return;
@@ -133,7 +133,8 @@ async function handleUpdate(update) {
   }
   if (/^\/link\b/i.test(text)) {
     await telegramRequest('sendMessage', { chat_id: message.chat.id, text: 'For security, account linking must start while signed in to the academy: Settings → Account & Profile → Link Telegram. We never link an account using an email address sent in chat. / ለደህንነት ሲባል ከአካዳሚው ውስጥ ገብተው መለያዎን ያገናኙ።', reply_markup: BOT_MENU_KEYBOARD });
-  }}
+  }
+}
 
 async function pollLoop() {
   while (polling) {
