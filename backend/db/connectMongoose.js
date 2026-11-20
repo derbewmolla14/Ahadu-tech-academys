@@ -27,8 +27,11 @@ async function migrateLegacyRoles() {
 }
 
 /** Register Mongoose lifecycle logs once — safe across retries */
+let connectionEventsWired = false;
 
 function wireConnectionEvents() {
+  if (connectionEventsWired) return;
+  connectionEventsWired = true;
   const connection = mongoose.connection;
 
   connection.on("connected", () => {
