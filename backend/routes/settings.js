@@ -22,24 +22,15 @@ function normalizeTelegramLink(input) {
 }
 
 router.get('/telegram-link', async (_req, res) => {
+  const fallbackLink = normalizeTelegramLink(process.env.TELEGRAM_BOT_USERNAME) || 'https://t.me/HorizonHydroOstechbot';
   try {
     const setting = await AppSetting.findOne({ key: KEY }).select('value');
-    const configured = setting?.value || process.env.TELEGRAM_BOT_USERNAME || 'HorizonHydroOstechbot';
-    const raw = String(configured).trim();
-    const username = /^@?[A-Za-z0-9_]{5,32}$/.test(raw)
-      ? raw.replace(/^@/, '')
-      : (() => {
-          try {
-            const parsed = new URL(/^https?:\/\//i.test(raw) ? raw : 'https://' + raw);
-            const parts = parsed.pathname.split('/').filter(Boolean);
-            return ['t.me', 'www.t.me', 'telegram.me', 'www.telegram.me'].includes(parsed.hostname.toLowerCase())
-              && parts.length === 1 && /^[A-Za-z0-9_]{5,32}$/.test(parts[0]) ? parts[0] : '';
-          } catch { return ''; }
-        })();
-    const link = username ? 'https://t.me/' + username : '';
-    res.json({ telegramLink: link });
+    const link = normalizeTelegramLink(setting?.value) || fallbackLink;
+    return res.json({ telegramLink: link });
   } catch {
-    res.status(500).json({ message: 'Unable to load Telegram contact settings.' });
+    // Keep the public bot link available even if the optional DB setting is
+    // temporarily unavailable; link creation itself reports DB failures.
+    return res.json({ telegramLink: fallbackLink });
   }
 });
 
