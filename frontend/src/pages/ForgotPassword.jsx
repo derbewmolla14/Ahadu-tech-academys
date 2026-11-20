@@ -244,7 +244,7 @@ export default function ForgotPassword() {
           {retryStatus ? <div role="status" aria-live="polite" className="mb-5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-200">{retryStatus}</div> : null}
           {error ? <div role="alert" className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-200">
             {error}
-            {telegramBotLink ? <a href={telegramBotLink} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex rounded-lg border border-sky-400/50 px-3 py-2 font-semibold text-sky-200">{tr(languageMode, 'Open Ahadu Tech Academy bot', 'የአሃዱ ቴክ አካዳሚ ቦትን ክፈት')} ↗</a> : null}
+            {telegramBotLink ? <a href={telegramBotLink.split('?')[0]} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex rounded-lg border border-sky-400/50 px-3 py-2 font-semibold text-sky-200">{tr(languageMode, 'Menu', 'ሜኑ')} ↗</a> : null}
             {error.includes('not linked') || error.includes('አልተገናኘም') ? <Link to="/login" className="ml-2 mt-3 inline-flex rounded-lg border border-slate-500/50 px-3 py-2 font-semibold text-white">{tr(languageMode, 'Sign in to link account', 'መለያዎን ለማገናኘት ይግቡ')}</Link> : null}
           </div> : null}
           {message ? <div role="status" className="mb-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">{message}</div> : null}
@@ -275,7 +275,7 @@ export default function ForgotPassword() {
                     <span className="text-sm text-slate-300">{tr(languageMode, "Code expires in", "ኮዱ የሚያበቃው በ")}</span>
                     <span className="font-mono text-xl font-bold tabular-nums text-sky-300">{countdown}</span>
                   </div>
-                  {telegramBotLink ? <a href={telegramBotLink} target="_blank" rel="noopener noreferrer" className="inline-flex w-full items-center justify-center rounded-xl border border-sky-400/40 px-4 py-3 text-sm font-semibold text-sky-200 hover:bg-sky-400/10">{tr(languageMode, 'Open Telegram bot', 'የቴሌግራም ቦትን ክፈት')} ↗</a> : null}
+                  {telegramBotLink ? <a href={telegramBotLink.split('?')[0]} target="_blank" rel="noopener noreferrer" className="inline-flex w-full items-center justify-center rounded-xl border border-sky-400/40 px-4 py-3 text-sm font-semibold text-sky-200 hover:bg-sky-400/10">{tr(languageMode, 'Menu', 'ሜኑ')} ↗</a> : null}
                   <form onSubmit={resetWithOtp} className="space-y-4">
                     <label className="block">
                       <span className="text-sm font-medium text-slate-200">{tr(languageMode, "6-digit Telegram code", "6 አሃዝ ያለው የቴሌግራም ኮድ")}</span>
