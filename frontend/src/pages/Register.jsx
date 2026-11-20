@@ -10,7 +10,7 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('user');
   const [inviteCode, setInviteCode] = useState('');
-  const referralCode = new URLSearchParams(window.location.search).get('ref') || '';
+  const [referralCode] = useState(() => {\n    const queryCode = new URLSearchParams(window.location.search).get('ref') || '';\n    if (queryCode) {\n      try { sessionStorage.setItem('ahadu-referral-code', queryCode.trim().toUpperCase()); } catch { /* Storage may be unavailable in restricted browser contexts. */ }\n      return queryCode.trim().toUpperCase();\n    }\n    try { return sessionStorage.getItem('ahadu-referral-code') || ''; } catch { return ''; }\n  });
   const [profilePhoto, setProfilePhoto] = useState(null);
   const [error, setError] = useState('');
   const navigate = useNavigate();
