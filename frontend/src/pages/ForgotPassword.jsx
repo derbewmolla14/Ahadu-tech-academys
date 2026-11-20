@@ -4,6 +4,20 @@ import api from '../api/api';
 
 const inputClass = 'mt-2 w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500 disabled:opacity-60';
 const buttonClass = 'w-full rounded-2xl bg-sky-500 px-5 py-3.5 font-bold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60';
+function getRequestFailureMessage(error, action) {
+  const status = error?.response?.status;
+  const code = String(error?.code || '');
+  const message = String(error?.message || '');
+  const transient = status === 503 || status === 502 || status === 504 ||
+    ['ERR_NETWORK', 'ECONNABORTED', 'ETIMEDOUT', 'ECONNRESET', 'ERR_HTTP2_PROTOCOL_ERROR'].includes(code) ||
+    /network error|failed to fetch|http2|connection (?:reset|closed)|temporarily unavailable/i.test(message);
+
+  if (transient) {
+    return `The service is temporarily unavailable while the server starts or reconnects. Your request was not confirmed. Please wait a moment and try ${action} again.`;
+  }
+  return error?.response?.data?.message || `Could not ${action}. Please try again.`;
+}
+
 
 export default function ForgotPassword() {
   const [method, setMethod] = useState('email');
@@ -38,11 +52,11 @@ export default function ForgotPassword() {
     setMessage('');
     setLoading(true);
     try {
-      await api.post('/auth/forgot-password', { email: email.trim().toLowerCase() });
+      await api.post('/auth/forgot-password', { email: email.trim().toLowerCase() }, { timeout: 30000 });
       setEmailSent(true);
       setMessage('If an account matches this email, password reset instructions have been sent. Check your inbox and spam folder. The link expires in one hour.');
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not send the reset link.');
+      setError(getRequestFailureMessage(err, 'send the password reset link'));
     } finally {
       setLoading(false);
     }
@@ -53,7 +67,7 @@ export default function ForgotPassword() {
     setMessage('');
     setLoading(true);
     try {
-      const response = await api.post('/auth/telegram/otp/request', { email: email.trim().toLowerCase() });
+      const response = await api.post('/auth/telegram/otp/request', { email: email.trim().toLowerCase() }, { timeout: 30000 });
       const seconds = Number(response.data?.expiresInSeconds || 60);
       const expiresAt = response.data?.expiresAt ? new Date(response.data.expiresAt).getTime() : Date.now() + seconds * 1000;
       setOtpExpiry(expiresAt);
@@ -66,7 +80,7 @@ export default function ForgotPassword() {
         setOtpExpiry(Date.now() + Number(data.expiresInSeconds) * 1000);
         setOtpSent(true);
       }
-      setError(data?.message || 'Could not send a Telegram code.');
+      setError(getRequestFailureMessage(err, 'request a Telegram code'));
     } finally {
       setLoading(false);
     }
