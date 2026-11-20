@@ -101,7 +101,7 @@ export default function PremiumCourseAccessAdmin() {
                   <option value="">Select a student</option>
                   {students.map(student => <option key={student._id} value={student._id}>{student.fullName || student.email} — {student.email}</option>)}
                 </select>
-                <button type="button" disabled={!selectedStudent[course._id] || Boolean(busyKey) || (course.isPremium && String(transactionReferences[course._id] || '').trim().length < 5)} onClick={() => { const student = students.find(item => item._id === selectedStudent[course._id]); if (student) changeAccess(course, student, !hasAccess(student, course._id)); }} className="rounded-xl bg-sky-600 px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
+                <button type="button" disabled={!selectedStudent[course._id] || Boolean(busyKey) || (course.isPremium && !hasAccess(students.find(item => item._id === selectedStudent[course._id]) || {}, course._id) && String(transactionReferences[course._id] || '').trim().length < 5)} onClick={() => { const student = students.find(item => item._id === selectedStudent[course._id]); if (student) changeAccess(course, student, !hasAccess(student, course._id)); }} className="rounded-xl bg-sky-600 px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
                   {busyKey.startsWith(course._id + ':') ? 'Updating…' : selectedStudent[course._id] && hasAccess(students.find(item => item._id === selectedStudent[course._id]) || {}, course._id) ? 'Revoke access' : 'Approve Download Access'}
                 </button>
               </div>
