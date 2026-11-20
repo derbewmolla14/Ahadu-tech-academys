@@ -193,14 +193,18 @@ export default function ForgotPassword() {
       const data = err.response?.data || {};
       const en = data.code === 'OTP_EXPIRED_OR_INVALID' || data.code === 'OTP_EXPIRED_OR_USED' || data.code === 'OTP_VERIFICATION_REQUIRED'
         ? 'This code has expired or was already used. Request a new code.'
-        : data.code === 'OTP_INCORRECT' || data.code === 'OTP_ATTEMPTS_EXCEEDED'
-          ? data.message || 'The code is incorrect or too many attempts were made. Request a new code.'
+        : data.code === 'TELEGRAM_LINK_CHANGED'
+          ? 'Your linked Telegram account changed. Link it again in Settings and request a new code.'
+          : data.code === 'OTP_INCORRECT' || data.code === 'OTP_ATTEMPTS_EXCEEDED'
+            ? data.message || 'The code is incorrect or too many attempts were made. Request a new code.'
           : data.message || 'Could not reset your password. Please try again.';
       const am = data.code === 'OTP_EXPIRED_OR_INVALID' || data.code === 'OTP_EXPIRED_OR_USED' || data.code === 'OTP_VERIFICATION_REQUIRED'
         ? 'ይህ ኮድ ጊዜው አልፎበታል ወይም ተጠቅመዋል። አዲስ ኮድ ይጠይቁ።'
-        : data.code === 'OTP_ATTEMPTS_EXCEEDED'
-          ? 'የተሳሳተ ሙከራ ብዛት አልፏል። አዲስ ኮድ ይጠይቁ።'
-          : 'የይለፍ ቃሉን መቀየር አልተቻለም። እባክዎ እንደገና ይሞክሩ።';
+        : data.code === 'TELEGRAM_LINK_CHANGED'
+          ? 'የተገናኘው ቴሌግራም መለያ ተቀይሯል። በSettings እንደገና ያገናኙና አዲስ ኮድ ይጠይቁ።'
+          : data.code === 'OTP_ATTEMPTS_EXCEEDED'
+            ? 'የተሳሳተ ሙከራ ብዛት አልፏል። አዲስ ኮድ ይጠይቁ።'
+            : 'የይለፍ ቃሉን መቀየር አልተቻለም። እባክዎ እንደገና ይሞክሩ።';
       setError(tr(languageMode, en, am));
     } finally {
       setLoading(false);
