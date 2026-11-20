@@ -311,10 +311,8 @@ export default function SettingsPage() {
         setOtaUpdateAvailable(false);
         if (result?.alreadyCurrent) {
           showNotice("success", "You're already using the latest available mobile app bundle.");
-        } else if (result?.reloadPending) {
-          showNotice("success", "The update was downloaded and scheduled. Close and reopen the app to finish applying it.");
-        } else {
-          showNotice("success", "The update was downloaded and the app is restarting with the new version.");
+        } else if (result?.restartRequired) {
+          showNotice("success", "The update was downloaded and verified. Close and reopen the app to apply the new version.");
         }
         return;
       }
