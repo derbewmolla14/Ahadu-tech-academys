@@ -269,7 +269,8 @@ async function finalizeRegister(req, res) {
     if (role !== 'admin' && req.body.referralCode) {
       const normalizedCode = String(req.body.referralCode).trim().toUpperCase();
       const referringUser = await User.findOne({ referralCode: normalizedCode, role: { $ne: 'admin' } }).select('_id');
-      if (referringUser) referrer = referringUser._id;
+      if (!referringUser) return res.status(400).json({ message: 'This referral link is invalid or no longer available.' });
+      referrer = referringUser._id;
     }
 
     const user = await User.create({
