@@ -260,7 +260,7 @@ async function finalizeRegister(req, res) {
     const hash = await bcrypt.hash(req.body.password, 12);
     let profilePhoto = '';
     if (req.file) {
-      profilePhoto = `/uploads/profiles/${req.file.filename}`;
+      profilePhoto = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
     }
 
     const user = await User.create({
@@ -472,7 +472,7 @@ exports.updateProfile = async (req, res) => {
       user.phone = req.body.phone.trim().slice(0, 48);
     }
     if (req.file) {
-      user.profilePhoto = `/uploads/profiles/${req.file.filename}`;
+      user.profilePhoto = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
     }
     if (typeof req.body.theme === 'string') {
       if (!['light', 'dark', 'system'].includes(req.body.theme)) {
