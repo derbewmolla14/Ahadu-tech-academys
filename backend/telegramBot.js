@@ -3,6 +3,7 @@ const TelegramOtp = require('./models/TelegramOtp');
 const User = require('./models/User');
 const TelegramBotRecord = require('./models/TelegramBotRecord');
 const TelegramBotSession = require('./models/TelegramBotSession');
+const { isDesignatedAdminEmail, syncUserAdminRole } = require('./utils/adminIdentity');
 
 const hashValue = (value) => crypto.createHash('sha256').update(String(value), 'utf8').digest('hex');
 let polling = false;
@@ -13,29 +14,31 @@ const ACTION_MENU_KEYBOARD = { keyboard: [[{ text: 'Login' }, { text: 'Register'
 const ADMIN_ACTION_MENU_KEYBOARD = { keyboard: [[{ text: 'Login' }, { text: 'Register' }], [{ text: 'OTP Code' }], [{ text: 'Information / ኢንፎርሜሽን' }, { text: 'Email / ኢሜይል' }], [{ text: 'Send Receipt / ሴንድ ሪሲፕት' }], [{ text: 'Total Users / ጠቅላላ ተጠቃሚዎች' }], [{ text: 'Menu / ሜኑ' }]], resize_keyboard: true, is_persistent: true };
 function academyUrl(path) { const base = String(process.env.FRONTEND_URL || 'https://ahadu-tech-academys.vercel.app').replace(/\/$/, ''); return base + path; }
 async function getLinkedAccount(chatId) {
-  return User.findOne({ telegramChatId: String(chatId) })
-    .select('_id fullName email role telegramChatId telegramUsername telegramLinkedAt')
-    .lean();
+  const user = await User.findOne({ telegramChatId: String(chatId) }).select('_id fullName email role telegramChatId telegramUsername telegramLinkedAt');
+  if (!user) return null;
+  await syncUserAdminRole(user);
+  return user.toObject();
 }
 async function getActionMenuKeyboard(chatId) {
   const user = await getLinkedAccount(chatId);
-  return user?.role === 'admin' ? ADMIN_ACTION_MENU_KEYBOARD : ACTION_MENU_KEYBOARD;
+  return user && isDesignatedAdminEmail(user.email) ? ADMIN_ACTION_MENU_KEYBOARD : ACTION_MENU_KEYBOARD;
 }
 async function sendEntryIdentification(message) {
   const chatId = String(message.chat.id);
   const user = await getLinkedAccount(chatId);
-  const keyboard = user?.role === 'admin' ? ADMIN_ACTION_MENU_KEYBOARD : BOT_MENU_KEYBOARD;
+  const keyboard = user && isDesignatedAdminEmail(user.email) ? ADMIN_ACTION_MENU_KEYBOARD : BOT_MENU_KEYBOARD;
   let text;
   if (!user) {
     text = 'AHADU TECH ACADEMY · IDENTIFICATION / መታወቂያ\n\nTelegram status: Not linked to an academy account. / የቴሌግራም ሁኔታ፦ ከአካዳሚ መለያ ጋር አልተገናኘም።\n\nTo link: sign in to the academy → Settings → Account & Profile → Link Telegram, then open the secure link and press Start. / ለማገናኘት ወደ አካዳሚው ይግቡ → Settings → Account & Profile → Link Telegram ከዚያ የደህንነት ሊንኩን ከፍተው Start ይጫኑ።';
   } else {
-    const roleLabel = user.role === 'admin' ? 'ADMIN / አስተዳዳሪ' : 'REGISTERED MEMBER / የተመዘገበ አባል';
+    const designatedAdmin = isDesignatedAdminEmail(user.email);
+    const roleLabel = designatedAdmin ? 'ADMIN / አስተዳዳሪ' : 'REGISTERED MEMBER / የተመዘገበ አባል';
     text = 'AHADU TECH ACADEMY · IDENTIFICATION / መታወቂያ\n\n' + roleLabel +
       '\nName: ' + (user.fullName || 'Not provided') +
       '\nRegistered email: ' + user.email +
       '\nAccount ID: ' + String(user._id) +
       '\nTelegram: Securely linked' +
-      (user.role === 'admin' ? '\n\nAdmin actions are enabled for this linked admin account. / ለዚህ የተገናኘ የአስተዳዳሪ መለያ የአስተዳዳሪ አማራጮች ነቅተዋል።' : '');
+      (designatedAdmin ? '\n\nAdmin actions are enabled for this designated admin account. / ለተመደበው የአስተዳዳሪ መለያ አማራጮች ነቅተዋል።' : '');
   }
   await clearActiveView(chatId, 'menu');
   await sendViewMessage(chatId, { text, reply_markup: keyboard });
