@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { getJwtSecret } = require('../config/env');
+const { syncUserAdminRole } = require('../utils/adminIdentity');
 
 module.exports = async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -12,6 +13,7 @@ module.exports = async (req, res, next) => {
     const decoded = jwt.verify(token, getJwtSecret());
     req.user = await User.findById(decoded.id).select('-password');
     if (!req.user) return res.status(401).json({ message: 'Invalid token user' });
+    await syncUserAdminRole(req.user);
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Invalid or expired token' });
