@@ -9,7 +9,7 @@ export default function HighSchoolGradePage() {
   const navigate = useNavigate();
   const { user, language } = useContext(AuthContext);
   const selectedLanguage = String(language || user?.preferences?.language || 'en').trim().toLowerCase();
-  const isAmharic = ['am', 'amharic', 'አማርኛ'].includes(selectedLanguage);
+  const languageMode = ['am', 'amharic', 'አማርኛ'].includes(selectedLanguage) ? 'amharic' : selectedLanguage === 'both' ? 'both' : 'english';
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -22,7 +22,7 @@ export default function HighSchoolGradePage() {
       setError('');
       try {
         const params = new URLSearchParams({ level: 'highschool', grade: String(id) });
-        if (isAmharic) params.set('language', 'am');
+        params.set('language', languageMode);
         const response = await apiFetch('content?' + params.toString(), { signal: controller.signal });
         const result = await response.json();
         if (!response.ok || !result.success) throw new Error(result.message || 'Unable to load High School courses.');
@@ -44,7 +44,7 @@ export default function HighSchoolGradePage() {
       window.removeEventListener('focus', refreshWhenVisible);
       document.removeEventListener('visibilitychange', refreshWhenVisible);
     };
-  }, [id, isAmharic]);
+  }, [id, languageMode]);
 
   return (
     <main className="mx-auto max-w-6xl space-y-6 p-5 text-white">
