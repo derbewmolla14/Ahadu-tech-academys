@@ -26,9 +26,9 @@ export default function Navbar() {
 
 
   return (
-    <header className="m-0 w-full p-0 shadow-md font-sans sticky top-0 z-50">
+    <header className="site-header m-0 w-full p-0 shadow-md font-sans">
       {/* TOP BAR */}
-      <div className="hidden bg-[#0f1b3d] text-white px-0 py-1 sm:flex justify-end items-center gap-4 text-[11px]">
+      <div className="site-header-topbar hidden px-0 py-1 sm:flex justify-end items-center gap-4 text-[11px]">
         <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1">
           <span className="text-orange-500">📞</span>
           <span className="text-orange-400 font-medium whitespace-nowrap">call us now</span>
@@ -38,7 +38,7 @@ export default function Navbar() {
       </div>
 
       {/* LOGO ROW + NAV */}
-      <div className="relative border-b border-[var(--app-border)] bg-[var(--app-card)]">
+      <div className="site-header-surface relative border-b">
         <div className="flex min-h-14 items-center justify-between gap-2 px-2 py-1 sm:px-3 md:px-4">
           <Link to="/" className="flex min-w-0 items-center gap-2" onClick={closeMobile}>
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#0f1b3d] bg-gradient-to-br from-blue-50 to-blue-100 p-1 sm:h-9 sm:w-9">
@@ -94,7 +94,7 @@ export default function Navbar() {
 
         {/* Mobile dropdown */}
         <div
-          className={`md:hidden overflow-hidden bg-[#0f1b3d] transition-[max-height] duration-300 ease-out ${
+          className={`site-header-mobile-menu md:hidden overflow-hidden transition-[max-height] duration-300 ease-out ${
             mobileOpen ? 'max-h-[36rem]' : 'max-h-0'
           }`}
         >
