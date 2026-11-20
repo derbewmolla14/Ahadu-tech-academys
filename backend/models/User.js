@@ -7,6 +7,7 @@ const userSchema = new mongoose.Schema(
     phone: { type: String, trim: true, default: '' },
     referralCode: { type: String, trim: true, uppercase: true, unique: true, sparse: true, index: true },
     referrer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
+    referralPaidOutETB: { type: Number, min: 0, default: 0 },
     payoutAccount: {
       provider: { type: String, trim: true, default: '' },
       accountName: { type: String, trim: true, default: '' },
