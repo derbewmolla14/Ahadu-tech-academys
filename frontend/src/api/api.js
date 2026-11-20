@@ -52,8 +52,12 @@ api.interceptors.request.use((config) => {
   // The instance-wide JSON default otherwise prevents Multer from parsing FormData.
   if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
     config.headers = config.headers || {};
-    delete config.headers['Content-Type'];
-    delete config.headers['content-type'];
+    if (typeof config.headers.delete === 'function') {
+      config.headers.delete('Content-Type');
+    } else {
+      delete config.headers['Content-Type'];
+      delete config.headers['content-type'];
+    }
   }
 
   // Keep every relative API request beneath the single configured /api prefix.
