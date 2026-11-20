@@ -33,8 +33,11 @@ async function sendOtpCodeForChat(chatId) {
 
 
 
-async function sendInformation(chatId) {
-  const records = await TelegramBotRecord.find({ type: 'information' }).sort({ createdAt: -1 }).limit(30).lean();
+async function sendInformation(chatId, page = 1) {
+  const pageSize = 20;
+  const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+  const total = await TelegramBotRecord.countDocuments({ type: 'information' });
+  const records = await TelegramBotRecord.find({ type: 'information' }).sort({ createdAt: -1 }).skip((safePage - 1) * pageSize).limit(pageSize).lean();
   if (!records.length) {
     await telegramRequest('sendMessage', { chat_id: chatId, text: 'No official information or announcements have been posted yet. / እስካሁን ምንም ይፋዊ መረጃ ወይም ማስታወቂያ አልተለጠፈም።', reply_markup: BOT_MENU_KEYBOARD });
     return;
@@ -115,17 +118,27 @@ async function saveAndForwardReceipt(message) {
 }
 
 async function publishInformation(message, text) {
-  const user = await User.findById(message.from?.id).select('_id').catch(() => null);
-  const record = await TelegramBotRecord.create({ type: 'information', chatId: String(message.chat.id), userId: user?._id || null, senderName: [message.from?.first_name, message.from?.last_name].filter(Boolean).join(' '), text });
-  const admins = await getTelegramAdmins();
+  const user = await User.findOne({ telegramChatId: String(message.chat.id), role: 'admin' }).select('_id');
+  const attachment = extractReceiptAttachment(message);
+  const record = await TelegramBotRecord.create({
+    type: 'information',
+    chatId: String(message.chat.id),
+    userId: user?._id || null,
+    senderName: [message.from?.first_name, message.from?.last_name].filter(Boolean).join(' '),
+    text,
+    caption: message.caption || '',
+    attachment,
+    telegramMessageId: message.message_id,
+  });
   const users = await User.find({ telegramChatId: { $type: 'string', $ne: '' } }).select('telegramChatId').lean();
   const recipients = [...new Set(users.map((entry) => String(entry.telegramChatId)))];
   for (const chatId of recipients) {
-    try { await telegramRequest('sendMessage', { chat_id: chatId, text: 'OFFICIAL INFORMATION / ይፋዊ መረጃ\\n\\n' + text.slice(0, 3900) }); }
-    catch (error) { console.error('[telegram bot] Information broadcast failed:', error.message); }
+    try {
+      await telegramRequest('sendMessage', { chat_id: chatId, text: 'OFFICIAL INFORMATION / ይፋዊ መረጃ\\n\\n' + (text || message.caption || 'Official record').slice(0, 3900) });
+      if (attachment?.fileId) await telegramRequest('copyMessage', { chat_id: chatId, from_chat_id: message.chat.id, message_id: message.message_id });
+    } catch (error) { console.error('[telegram bot] Information broadcast failed; record remains saved:', error.message); }
   }
   await telegramRequest('sendMessage', { chat_id: message.chat.id, text: 'Information saved permanently. Record: ' + record._id + '. Sent to ' + recipients.length + ' linked users.' });
-  return admins;
 }
 
 async function telegramRequest(method, payload = {}) {
@@ -229,17 +242,18 @@ async function handleUpdate(update) {
   if (/^register$/i.test(text) || /^ምዝገባ$/i.test(text)) {
     await telegramRequest('sendMessage', { chat_id: chatId, text: 'Register at Ahadu Tech Academy: ' + academyUrl('/register'), reply_markup: BOT_MENU_KEYBOARD }); return;
   }
-  if (/^(?:information|information \/ ኢንፎርሜሽን|ኢንፎርሜሽን|\/info)$/i.test(text)) {
+  if (/^(?:information(?: \/ ኢንፎርሜሽን)?|ኢንፎርሜሽን|\/info(?:@\w+)?(?:\s+\d+)?|\/info)$/i.test(text)) {
     const admin = await User.findOne({ telegramChatId: chatId, role: 'admin' }).select('_id');
     if (admin) await telegramRequest('sendMessage', { chat_id: chatId, text: 'Admin: send /announce followed by the official announcement text to save and broadcast it. /announce <message>' });
-    await sendInformation(chatId); return;
+    const pageMatch = text.match(/^\/info(?:@\w+)?\s+(\d+)$/i);
+    await sendInformation(chatId, pageMatch ? pageMatch[1] : 1); return;
   }
   if (/^(?:email|email \/ ኢሜይል|ኢሜይል)$/i.test(text)) { await sendAccountEmail(chatId); return; }
   if (/^(?:send receipt|send receipt \/ ሴንድ ሪሲፕት|ሴንድ ሪሲፕት)$/i.test(text)) { await beginReceiptSubmission(chatId); return; }
-  if (/^\/announce(?:@\w+)?\s+/i.test(text)) {
+  if (/^\/announce(?:@\w+)?(?:\s+|$)/i.test(text) && (text.replace(/^\/announce(?:@\w+)?/i, '').trim() || extractReceiptAttachment(message))) {
     const admin = await User.findOne({ telegramChatId: chatId, role: 'admin' }).select('_id');
     if (!admin) { await telegramRequest('sendMessage', { chat_id: chatId, text: 'Only linked academy administrators can publish official information.' }); return; }
-    await publishInformation(message, text.replace(/^\/announce(?:@\w+)?\s+/i, '').trim()); return;
+    await publishInformation(message, text.replace(/^\/announce(?:@\w+)?\s*/i, '').trim() || message.caption || ''); return;
   }
   if (/^\/done$/i.test(text)) {
     await TelegramBotSession.deleteOne({ chatId, mode: 'receipt' });
