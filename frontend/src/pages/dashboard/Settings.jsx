@@ -32,6 +32,8 @@ export default function SettingsPage() {
   const fileRef = useRef(null);
   const [activeTab, setActiveTab] = useState("account");
   const [fullName, setFullName] = useState(user?.fullName || "");
+  const [phone, setPhone] = useState(user?.phone || "");
+  const [telegramUsername, setTelegramUsername] = useState(user?.telegramUsername || "");
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState("");
   const [photoLoadFailed, setPhotoLoadFailed] = useState(false);
@@ -153,6 +155,8 @@ export default function SettingsPage() {
     try {
       const form = new FormData();
       form.append("fullName", fullName.trim());
+      form.append("phone", phone.trim());
+      form.append("telegramUsername", telegramUsername.trim());
       form.append("theme", theme);
       form.append("language", language);
       if (photoFile) form.append("profilePhoto", photoFile);
@@ -508,6 +512,15 @@ export default function SettingsPage() {
                   <div>
                     <label htmlFor="settings-name" className="text-sm font-semibold">Display name</label>
                     <input id="settings-name" className={fieldClass} value={fullName} onChange={(event) => setFullName(event.target.value)} minLength={2} maxLength={120} required autoComplete="name" />
+                  </div>
+                  <div>
+                    <label htmlFor="settings-phone" className="text-sm font-semibold">Phone number</label>
+                    <input id="settings-phone" type="tel" className={fieldClass} value={phone} onChange={(event) => setPhone(event.target.value)} maxLength={24} autoComplete="tel" placeholder="+251…" />
+                  </div>
+                  <div>
+                    <label htmlFor="settings-telegram-username" className="text-sm font-semibold">Telegram username</label>
+                    <input id="settings-telegram-username" type="text" className={fieldClass} value={telegramUsername} onChange={(event) => setTelegramUsername(event.target.value)} maxLength={33} autoComplete="username" placeholder="@username" />
+                    <p className="mt-2 text-xs text-[var(--app-muted)]">Enter your Telegram username. The @ prefix is added automatically when saved.</p>
                   </div>
                   <div>
                     <div className="flex items-center justify-between gap-3">
