@@ -38,6 +38,7 @@ export default function Register() {
 
     try {
       await registerAccount(formData);
+      try { sessionStorage.removeItem('ahadu-referral-code'); } catch { /* Ignore unavailable session storage. */ }
       navigate('/dashboard', { replace: true });
     } catch (err) {
       const apiMsg =
