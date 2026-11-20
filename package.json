@@ -4,5 +4,8 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^8.6.2"
+  },
+  "scripts": {
+    "build": "npm --prefix frontend ci --include=dev && npm --prefix frontend run build"
   }
 }
