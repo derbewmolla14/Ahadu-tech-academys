@@ -4,18 +4,37 @@ import api from '../api/api';
 
 const inputClass = 'mt-2 w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500 disabled:opacity-60';
 const buttonClass = 'w-full rounded-2xl bg-sky-500 px-5 py-3.5 font-bold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60';
-function getRequestFailureMessage(error, action) {
+function isTransientRequestFailure(error) {
   const status = error?.response?.status;
   const code = String(error?.code || '');
   const message = String(error?.message || '');
-  const transient = status === 503 || status === 502 || status === 504 ||
+  return [502, 503, 504].includes(status) ||
     ['ERR_NETWORK', 'ECONNABORTED', 'ETIMEDOUT', 'ECONNRESET', 'ERR_HTTP2_PROTOCOL_ERROR'].includes(code) ||
     /network error|failed to fetch|http2|connection (?:reset|closed)|temporarily unavailable/i.test(message);
+}
 
-  if (transient) {
-    return `The service is temporarily unavailable while the server starts or reconnects. Your request was not confirmed. Please wait a moment and try ${action} again.`;
+function getRequestFailureMessage(error, action) {
+  if (isTransientRequestFailure(error)) {
+    return `The service is temporarily unavailable. Your request was not confirmed. Please wait a moment and try ${action} again.`;
   }
   return error?.response?.data?.message || `Could not ${action}. Please try again.`;
+}
+
+const RETRY_DELAYS_MS = [1500, 2500];
+
+async function postWithShortRetry(path, payload, onRetry) {
+  let lastError;
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
+    try {
+      return await api.post(path, payload, { timeout: 30000 });
+    } catch (error) {
+      lastError = error;
+      if (!isTransientRequestFailure(error) || attempt >= RETRY_DELAYS_MS.length) throw error;
+      onRetry(attempt + 1, RETRY_DELAYS_MS[attempt]);
+      await new Promise((resolve) => window.setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
+    }
+  }
+  throw lastError;
 }
 
 
@@ -31,7 +50,7 @@ export default function ForgotPassword() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);\n  const [retryStatus, setRetryStatus] = useState('');
 
   useEffect(() => {
     if (!otpExpiry) {
@@ -50,24 +69,27 @@ export default function ForgotPassword() {
     event.preventDefault();
     setError('');
     setMessage('');
+    setRetryStatus('');
     setLoading(true);
     try {
-      await api.post('/auth/forgot-password', { email: email.trim().toLowerCase() }, { timeout: 30000 });
+      await postWithShortRetry('/auth/forgot-password', { email: email.trim().toLowerCase() }, (retry) => setRetryStatus(`Server is waking up, retrying… (${retry}/2)`));
       setEmailSent(true);
       setMessage('If an account matches this email, password reset instructions have been sent. Check your inbox and spam folder. The link expires in one hour.');
     } catch (err) {
       setError(getRequestFailureMessage(err, 'send the password reset link'));
     } finally {
       setLoading(false);
+      setRetryStatus('');
     }
   }
 
   async function sendTelegramOtp() {
     setError('');
     setMessage('');
+    setRetryStatus('');
     setLoading(true);
     try {
-      const response = await api.post('/auth/telegram/otp/request', { email: email.trim().toLowerCase() }, { timeout: 30000 });
+      const response = await postWithShortRetry('/auth/telegram/otp/request', { email: email.trim().toLowerCase() }, (retry) => setRetryStatus(`Server is waking up, retrying… (${retry}/2)`));
       const seconds = Number(response.data?.expiresInSeconds || 60);
       const expiresAt = response.data?.expiresAt ? new Date(response.data.expiresAt).getTime() : Date.now() + seconds * 1000;
       setOtpExpiry(expiresAt);
@@ -83,6 +105,7 @@ export default function ForgotPassword() {
       setError(getRequestFailureMessage(err, 'request a Telegram code'));
     } finally {
       setLoading(false);
+      setRetryStatus('');
     }
   }
 
@@ -142,7 +165,7 @@ export default function ForgotPassword() {
             </button>
           </div>
 
-          {error ? <div role="alert" className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div> : null}
+          {retryStatus ? <div role="status" aria-live="polite" className="mb-5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-200">{retryStatus}</div> : null}\n          {error ? <div role="alert" className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-200">{error}</div> : null}
           {message ? <div role="status" className="mb-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">{message}</div> : null}
 
           <label className="block">
