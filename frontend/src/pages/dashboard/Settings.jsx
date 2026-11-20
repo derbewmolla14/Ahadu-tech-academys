@@ -49,6 +49,8 @@ export default function SettingsPage() {
   const [loadingTelegramSettings, setLoadingTelegramSettings] = useState(false);
   const [savingTelegramSettings, setSavingTelegramSettings] = useState(false);
   const [editingTelegramLink, setEditingTelegramLink] = useState(false);
+  const [payoutAccount, setPayoutAccount] = useState({ provider: '', accountName: '', accountNumber: '' });
+  const [savingPayout, setSavingPayout] = useState(false);
   const isAdmin = user?.role === "admin";
   const [notice, setNotice] = useState({ type: "", text: "" });
   const [latestVersion, setLatestVersion] = useState(null);
@@ -66,6 +68,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     let active = true;
+    api.get('/referrals/mine').then((response) => { if (active) setPayoutAccount({ provider: response.data?.payoutAccount?.provider || '', accountName: response.data?.payoutAccount?.accountName || '', accountNumber: response.data?.payoutAccount?.accountNumber || '' }); }).catch(() => undefined);
     setLoadingTelegramSettings(true);
     api.get("/settings/telegram-link")
       .then((response) => {
@@ -182,6 +185,17 @@ export default function SettingsPage() {
     setLanguage(value);
     localStorage.setItem("language", value);
     savePreferences({ language: value });
+  }
+
+  async function savePayoutAccount(event) {
+    event.preventDefault();
+    setSavingPayout(true);
+    try {
+      await api.put('/referrals/payout', payoutAccount);
+      showNotice('success', 'Your payout account has been saved securely.');
+    } catch (error) {
+      showNotice('error', error.response?.data?.message || 'Unable to save your payout account.');
+    } finally { setSavingPayout(false); }
   }
 
   async function saveTelegramBotLink(event) {
@@ -456,6 +470,20 @@ export default function SettingsPage() {
                     )}
                   </div>
                 )}
+              </section>
+
+
+              <section className={cardClass}>
+                <div className="mb-5">
+                  <h2 className="text-lg font-bold">Referral commission payout account</h2>
+                  <p className="mt-1 text-sm text-[var(--app-muted)]">Save where eligible referral commissions should be paid. Only you can update your own payout details.</p>
+                </div>
+                <form onSubmit={savePayoutAccount} className="grid gap-4 sm:grid-cols-2">
+                  <label className="text-sm font-semibold">Bank or wallet provider<input className={fieldClass} value={payoutAccount.provider} onChange={event => setPayoutAccount(prev => ({ ...prev, provider: event.target.value }))} placeholder="e.g. CBE, Telebirr" required maxLength={60} /></label>
+                  <label className="text-sm font-semibold">Account holder name<input className={fieldClass} value={payoutAccount.accountName} onChange={event => setPayoutAccount(prev => ({ ...prev, accountName: event.target.value }))} required maxLength={120} /></label>
+                  <label className="text-sm font-semibold sm:col-span-2">Account or wallet number<input className={fieldClass} value={payoutAccount.accountNumber} onChange={event => setPayoutAccount(prev => ({ ...prev, accountNumber: event.target.value }))} required maxLength={80} autoComplete="off" /></label>
+                  <div className="sm:col-span-2"><button type="submit" disabled={savingPayout} className={buttonClass}><Save size={16} />{savingPayout ? 'Saving…' : 'Save payout account'}</button></div>
+                </form>
               </section>
 
               <section className={cardClass}>
