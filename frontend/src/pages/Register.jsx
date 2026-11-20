@@ -10,6 +10,7 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('user');
   const [inviteCode, setInviteCode] = useState('');
+  const referralCode = new URLSearchParams(window.location.search).get('ref') || '';
   const [profilePhoto, setProfilePhoto] = useState(null);
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ export default function Register() {
     formData.append('password', password);
     formData.append('role', role);
     if (role === 'admin') formData.append('inviteCode', inviteCode.trim());
+    if (role !== 'admin' && referralCode) formData.append('referralCode', referralCode.trim());
     if (profilePhoto) formData.append('profilePhoto', profilePhoto);
 
     try {

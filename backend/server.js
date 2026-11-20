@@ -69,6 +69,7 @@ if (!fs.existsSync(profilesDir)) {
 
 const authRoutes = require('./routes/auth');
 const settingsRoutes = require('./routes/settings');
+const referralRoutes = require('./routes/referrals');
 const { startTelegramBot } = require('./telegramBot');
 const adminRoutes = require('./routes/admin');
 const paymentPricingRoutes = require('./routes/paymentPricing');
@@ -156,6 +157,7 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/referrals', referralRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/payment-pricing', paymentPricingRoutes);
 app.use('/api/courses', courseRoutes);

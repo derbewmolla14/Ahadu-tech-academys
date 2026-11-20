@@ -55,6 +55,8 @@ import UniversityLearningPage from "./pages/UniversityLearningPage";
 import AdminUniversityResources from "./pages/AdminUniversityResources";
 import AdminPaymentPricing from "./pages/AdminPaymentPricing";
 import OfflineLibrary from "./pages/OfflineLibrary";
+import ReferralDashboard from "./pages/ReferralDashboard";
+import AdminReferrals from "./pages/AdminReferrals";
 
 // ========================================
 // PRIVATE ROUTE
@@ -111,6 +113,7 @@ function AppRoutes() {
         />
 
         <Route path="offline-library" element={<OfflineLibrary />} />
+        <Route path="referrals" element={<ReferralDashboard />} />
 
         {/* Account settings */}
         <Route
@@ -220,6 +223,7 @@ function AppRoutes() {
         />
 
         <Route path="admin/payment-pricing" element={<PrivateRoute><AdminPaymentPricing /></PrivateRoute>} />
+        <Route path="admin/referrals" element={<PrivateRoute><AdminReferrals /></PrivateRoute>} />
 
         <Route
           path="admin/premium-course-access"

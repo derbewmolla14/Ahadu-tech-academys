@@ -6,6 +6,7 @@ export default function PremiumCourseAccessAdmin() {
   const [courses, setCourses] = useState([]);
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState({});
+  const [transactionReferences, setTransactionReferences] = useState({});
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState('');
   const [error, setError] = useState('');
@@ -35,7 +36,7 @@ export default function PremiumCourseAccessAdmin() {
 
   useEffect(() => { load(); }, []);
 
-  const hasAccess = (student, courseId) => (student.unlockedCourseContents || []).some(item => String(item?._id || item) === String(courseId));
+  const hasAccess = (student, courseId) => (student.unlockedCourseContents || []).some(item => String(item?._id || item) === String(courseId)) || (student.downloadApprovals || []).some(entry => entry.resourceModel === 'CourseContent' && entry.status === 'approved' && String(entry.resourceId?._id || entry.resourceId) === String(courseId));
 
   const toggleCoursePremium = async (course) => {
     setError(''); setMessage('');
@@ -56,7 +57,7 @@ export default function PremiumCourseAccessAdmin() {
       const response = await apiFetch(
         grant ? `content/${course._id}/unlock` : `content/${course._id}/unlock/${student._id}`,
         grant
-          ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: student._id }) }
+          ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: student._id, transactionReference: transactionReferences[course._id] || '' }) }
           : { method: 'DELETE' }
       );
       const result = await response.json();
@@ -94,16 +95,17 @@ export default function PremiumCourseAccessAdmin() {
                   {course.description && <p className="mt-2 text-sm text-slate-300">{course.description}</p>}
                 </div>
               </div>
+              {course.isPremium && <label className="mt-5 block text-sm font-medium text-slate-300">Verified bank / Telebirr transaction reference<input value={transactionReferences[course._id] || ""} onChange={event => setTransactionReferences(prev => ({ ...prev, [course._id]: event.target.value }))} placeholder="Enter receipt transaction ID" className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white" /></label>}
               <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
                 <select value={selectedStudent[course._id] || ''} onChange={event => setSelectedStudent(prev => ({ ...prev, [course._id]: event.target.value }))} className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white">
                   <option value="">Select a student</option>
                   {students.map(student => <option key={student._id} value={student._id}>{student.fullName || student.email} — {student.email}</option>)}
                 </select>
-                <button type="button" disabled={!selectedStudent[course._id] || Boolean(busyKey)} onClick={() => { const student = students.find(item => item._id === selectedStudent[course._id]); if (student) changeAccess(course, student, !hasAccess(student, course._id)); }} className="rounded-xl bg-sky-600 px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
+                <button type="button" disabled={!selectedStudent[course._id] || Boolean(busyKey) || (course.isPremium && !hasAccess(students.find(item => item._id === selectedStudent[course._id]) || {}, course._id) && String(transactionReferences[course._id] || '').trim().length < 5)} onClick={() => { const student = students.find(item => item._id === selectedStudent[course._id]); if (student) changeAccess(course, student, !hasAccess(student, course._id)); }} className="rounded-xl bg-sky-600 px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
                   {busyKey.startsWith(course._id + ':') ? 'Updating…' : selectedStudent[course._id] && hasAccess(students.find(item => item._id === selectedStudent[course._id]) || {}, course._id) ? 'Revoke access' : 'Approve Download Access'}
                 </button>
               </div>
-              <p className="mt-3 text-xs text-slate-400">Verify the student's bank/Telebirr receipt before unlocking. Access is granted only to the selected student for this specific course.</p>
+              <p className="mt-3 text-xs text-slate-400">For Premium: verify the bank/Telebirr receipt, enter its transaction reference, then approve. Duplicate references are rejected. Free-course approvals do not create payments or referral commissions.</p>
             </section>
           ))}
         </div>
