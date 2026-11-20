@@ -95,7 +95,7 @@ export default function AdminReferrals() {
           const draft = payoutDrafts[user._id] || {};
           return <article key={user._id} className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div><h3 className="font-semibold">{user.fullName || 'User'}</h3><p className="text-xs text-slate-400">{user.email} · Code: {user.referralCode || '—'}</p><p className="mt-1 text-xs text-slate-400">Current referrer: {user.referrer?.fullName || user.referrer?.email || 'None'}</p></div>
+              <div><h3 className="font-semibold">{user.fullName || 'User'}</h3><p className="text-xs text-slate-400">{user.email} · Code: {user.referralCode || '—'}</p><p className="mt-1 text-xs text-slate-400">Current referrer: {user.referrer?.fullName || user.referrer?.email || 'None'}</p><p className="mt-1 text-xs text-slate-400">Payout account: {user.payoutAccount?.provider ? user.payoutAccount.provider + ' · ' + user.payoutAccount.accountName + ' · ' + user.payoutAccount.accountNumber : 'Not provided'}</p></div>
               <div className="grid grid-cols-3 gap-2 text-right text-xs">
                 <div><p className="text-slate-400">Earned</p><p className="mt-1 font-bold text-emerald-300">{money(totals.earnedETB)}</p></div>
                 <div><p className="text-slate-400">Paid out</p><p className="mt-1 font-bold">{money(totals.paidOutETB)}</p></div>
