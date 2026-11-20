@@ -84,6 +84,7 @@ async function sendOtpCodeForChat(chatId) {
 
 async function sendInformation(chatId, page = 1) {
   await clearActiveView(chatId, 'information');
+  const admin = await User.findOne({ telegramChatId: String(chatId), role: 'admin' }).select('_id');
   const pageSize = 10;
   const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
   const total = await TelegramBotRecord.countDocuments({ type: 'information' });
@@ -99,6 +100,7 @@ async function sendInformation(chatId, page = 1) {
   }
 
   const lines = ['INFORMATION & OFFICIAL ANNOUNCEMENTS / መረጃዎች እና ይፋዊ ማስታወቂያዎች', 'Page ' + safePage + ' · ' + total + ' saved record(s)', ''];
+  if (admin) lines.push('Admin: publish an official notice with /announce followed by its text.');
   for (const record of [...records].reverse()) {
     const stamp = new Date(record.createdAt).toLocaleString('en-GB', { timeZone: 'Africa/Addis_Ababa' });
     lines.push('━━━━━━━━━━━━━━━━', stamp, record.text || record.caption || 'Official record / ይፋዊ መዝገብ');
@@ -317,8 +319,6 @@ async function handleUpdate(update) {
     await sendViewMessage(chatId, { text: 'REGISTER / ምዝገባ\\nRegister at Ahadu Tech Academy: ' + academyUrl('/register'), reply_markup: ACTION_MENU_KEYBOARD }); return;
   }
   if (/^(?:information(?: \/ ኢንፎርሜሽን)?|ኢንፎርሜሽን|\/info(?:@\w+)?(?:\s+\d+)?|\/info)$/i.test(text)) {
-    const admin = await User.findOne({ telegramChatId: chatId, role: 'admin' }).select('_id');
-    if (admin) await telegramRequest('sendMessage', { chat_id: chatId, text: 'Admin: send /announce followed by the official announcement text to save and broadcast it. /announce <message>' });
     const pageMatch = text.match(/^\/info(?:@\w+)?\s+(\d+)$/i);
     await sendInformation(chatId, pageMatch ? pageMatch[1] : 1); return;
   }
@@ -336,7 +336,8 @@ async function handleUpdate(update) {
   const session = await TelegramBotSession.findOne({ chatId, mode: 'receipt' });
   if (session) { await saveAndForwardReceipt(message); return; }
   if (/^\/link\b/i.test(text)) {
-    await telegramRequest('sendMessage', { chat_id: chatId, text: 'For security, account linking must start while signed in to the academy: Settings → Account & Profile → Link Telegram. We never link an account using an email address sent in chat.', reply_markup: BOT_MENU_KEYBOARD });
+    await clearActiveView(chatId, 'menu');
+    await sendViewMessage(chatId, { text: 'For security, account linking must start while signed in to the academy: Settings → Account & Profile → Link Telegram. We never link an account using an email address sent in chat.', reply_markup: ACTION_MENU_KEYBOARD });
   }
 }
 async function pollLoop() {
