@@ -745,6 +745,13 @@ export default function SettingsPage() {
               {updateCheckedAt && <p className="mt-3 text-xs text-[var(--app-muted)]">Last checked: {updateCheckedAt}</p>}
 
               <div className="mt-5 flex flex-wrap gap-3">
+                <a
+                  href="https://github.com/derbewmolla14/Ahadu-tech-academys/releases/download/v1.0.3-mobile-ui/Ahadu-Tech-Academy.apk"
+                  className="${buttonClass}"
+                  aria-label="Download Ahadu Tech Academy APK"
+                >
+                  <Download size={16} /> Download Ahadu Tech Academy APK
+                </a>
                 <button type="button" onClick={checkForUpdates} disabled={checkingUpdates || applyingUpdate} className={buttonClass}>
                   <RefreshCw size={16} className={checkingUpdates ? "animate-spin" : ""} />
                   {checkingUpdates ? "Checking…" : "Check for Updates"}
