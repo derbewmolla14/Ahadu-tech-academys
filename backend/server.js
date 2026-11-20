@@ -155,6 +155,19 @@ app.get('/api/health', (req, res) => {
   res.status(200).json(healthJson());
 });
 
+// Fail fast for password recovery when MongoDB is not connected instead of
+// allowing Mongoose buffering to leave the request hanging until the proxy times out.
+app.use(['/api/auth/forgot-password', '/api/auth/telegram/otp/request'], (req, res, next) => {
+  if (mongoose.connection.readyState !== 1) {
+    res.set('Retry-After', '3');
+    return res.status(503).json({
+      message: 'The account service is starting or reconnecting. Please retry shortly.',
+      code: 'AUTH_DATABASE_UNAVAILABLE',
+    });
+  }
+  return next();
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/referrals', referralRoutes);
