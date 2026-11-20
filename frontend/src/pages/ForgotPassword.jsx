@@ -68,6 +68,7 @@ export default function ForgotPassword() {
   const [otpExpiry, setOtpExpiry] = useState(0);
   const [remaining, setRemaining] = useState(0);
   const [otp, setOtp] = useState('');
+  const [otpVerified, setOtpVerified] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
@@ -113,12 +114,14 @@ export default function ForgotPassword() {
     setLoading(true);
     try {
       const response = await postWithShortRetry('/auth/telegram/otp/request', { email: email.trim().toLowerCase() }, (retry) => setRetryStatus(`Server is waking up, retrying… (${retry}/2)`));
-      const seconds = Number(response.data?.expiresInSeconds || 60);
+      const seconds = Number(response.data?.expiresInSeconds || 120);
       const expiresAt = response.data?.expiresAt ? new Date(response.data.expiresAt).getTime() : Date.now() + seconds * 1000;
       setOtpExpiry(expiresAt);
+      setTelegramBotLink(response.data?.telegramDeepLink || response.data?.telegramBotLink || '');
+      setOtpVerified(false);
       setOtpSent(true);
       setOtp('');
-      setMessage(tr(languageMode, 'A 6-digit code was sent to your linked Telegram account.', '6 አሃዝ ያለው ኮድ ከተገናኘው የቴሌግራም መለያዎ ተልኳል።'));
+      setMessage(tr(languageMode, 'A 6-digit code was sent to your linked Telegram account. It is valid until the 2-minute window ends.', '6 አሃዝ ያለው ኮድ ወደ ተገናኘው ቴሌግራም ተልኳል። የ2 ደቂቃ ጊዜው እስኪያበቃ ድረስ ይሰራል።'));
     } catch (err) {
       const data = err.response?.data;
       if (data?.expiresInSeconds) {
@@ -153,25 +156,30 @@ export default function ForgotPassword() {
     }
     setLoading(true);
     try {
-      const response = await api.post('/auth/telegram/otp/reset', {
+      await api.post('/auth/telegram/otp/verify', {
         email: email.trim().toLowerCase(),
         otp: otp.trim(),
+      });
+      setOtpVerified(true);
+      await api.post('/auth/telegram/otp/reset', {
+        email: email.trim().toLowerCase(),
         password,
       });
       setMessage(tr(languageMode, 'Password reset successfully. You can now sign in.', 'የይለፍ ቃሉ በተሳካ ሁኔታ ተቀይሯል። አሁን መግባት ይችላሉ።'));
       setOtpSent(false);
       setOtpExpiry(0);
+      setOtpVerified(false);
       setOtp('');
       setPassword('');
       setConfirmPassword('');
     } catch (err) {
       const data = err.response?.data || {};
-      const en = data.code === 'OTP_EXPIRED_OR_INVALID' || data.code === 'OTP_EXPIRED_OR_USED'
+      const en = data.code === 'OTP_EXPIRED_OR_INVALID' || data.code === 'OTP_EXPIRED_OR_USED' || data.code === 'OTP_VERIFICATION_REQUIRED'
         ? 'This code has expired or was already used. Request a new code.'
         : data.code === 'OTP_INCORRECT' || data.code === 'OTP_ATTEMPTS_EXCEEDED'
           ? data.message || 'The code is incorrect or too many attempts were made. Request a new code.'
           : data.message || 'Could not reset your password. Please try again.';
-      const am = data.code === 'OTP_EXPIRED_OR_INVALID' || data.code === 'OTP_EXPIRED_OR_USED'
+      const am = data.code === 'OTP_EXPIRED_OR_INVALID' || data.code === 'OTP_EXPIRED_OR_USED' || data.code === 'OTP_VERIFICATION_REQUIRED'
         ? 'ይህ ኮድ ጊዜው አልፎበታል ወይም ተጠቅመዋል። አዲስ ኮድ ይጠይቁ።'
         : data.code === 'OTP_ATTEMPTS_EXCEEDED'
           ? 'የተሳሳተ ሙከራ ብዛት አልፏል። አዲስ ኮድ ይጠይቁ።'
@@ -244,6 +252,7 @@ export default function ForgotPassword() {
                     <span className="text-sm text-slate-300">{tr(languageMode, "Code expires in", "ኮዱ የሚያበቃው በ")}</span>
                     <span className="font-mono text-xl font-bold tabular-nums text-sky-300">{countdown}</span>
                   </div>
+                  {telegramBotLink ? <a href={telegramBotLink} target="_blank" rel="noopener noreferrer" className="inline-flex w-full items-center justify-center rounded-xl border border-sky-400/40 px-4 py-3 text-sm font-semibold text-sky-200 hover:bg-sky-400/10">{tr(languageMode, 'Open Telegram bot', 'የቴሌግራም ቦትን ክፈት')} ↗</a> : null}
                   <form onSubmit={resetWithOtp} className="space-y-4">
                     <label className="block">
                       <span className="text-sm font-medium text-slate-200">{tr(languageMode, "6-digit Telegram code", "6 አሃዝ ያለው የቴሌግራም ኮድ")}</span>
@@ -262,13 +271,13 @@ export default function ForgotPassword() {
                         onChange={(event) => setConfirmPassword(event.target.value)} className={inputClass} />
                     </label>
                     <button type="submit" disabled={loading || remaining === 0 || otp.length !== 6 || !password || !confirmPassword} className={buttonClass}>
-                      {loading ? tr(languageMode, 'Verifying…', 'በማረጋገጥ ላይ…') : tr(languageMode, 'Verify code & reset password', 'ኮዱን አረጋግጥና የይለፍ ቃሉን ቀይር')}
+                      {loading ? tr(languageMode, 'Verifying…', 'በማረጋገጥ ላይ…') : tr(languageMode, 'Verify code & save new password', 'ኮዱን አረጋግጥና አዲሱን የይለፍ ቃል አስቀምጥ')}
                     </button>
                   </form>
                   {remaining === 0 ? <p className="text-sm text-amber-300">{tr(languageMode, "This code has expired. Request a new code to continue.", "ይህ ኮድ ጊዜው አልፎበታል። ለመቀጠል አዲስ ኮድ ይጠይቁ።")}</p> : null}
                 </>
               )}
-              <p className="text-xs leading-5 text-slate-500">{tr(languageMode, "Telegram OTP is valid for 60 seconds and can be used once. You can request another code after this one expires. A maximum of five incorrect attempts is allowed.", "የቴሌግራም ኮድ ለ60 ሰከንድ ይሰራል እና አንድ ጊዜ ብቻ ይጠቀማል። ከጊዜው በኋላ አዲስ ኮድ መጠየቅ ይችላሉ። ቢበዛ አምስት የተሳሳቱ ሙከራዎች ይፈቀዳሉ።")}</p>
+              <p className="text-xs leading-5 text-slate-500">{tr(languageMode, "Telegram OTP is bound to your email and current 2-minute window. It can be used once; request a new code when the window expires. A maximum of five incorrect attempts is allowed.", "የቴሌግራም ኮድ ከኢሜይልዎ እና ከአሁኑ የ2 ደቂቃ ጊዜ ጋር ተያይዟል። አንድ ጊዜ ብቻ ይጠቀማል፤ ጊዜው ሲያበቃ አዲስ ኮድ ይጠይቁ። ቢበዛ አምስት የተሳሳቱ ሙከራዎች ይፈቀዳሉ።")}</p>
             </div>
           )}
 
