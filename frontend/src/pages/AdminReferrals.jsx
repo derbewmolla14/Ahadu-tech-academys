@@ -50,6 +50,10 @@ export default function AdminReferrals() {
       <Link to="/admin/dashboard" className="text-sm text-sky-400 hover:underline">← Admin Dashboard</Link>
       <h1 className="mt-3 text-3xl font-bold">Referral Administration</h1>
       <p className="mt-2 text-sm text-slate-400">Only administrators can assign or change referral attribution. Users cannot edit referral relationships.</p>
+      <div className="mt-5 flex flex-wrap gap-3">
+        <Link to="/admin/payment-pricing" className="rounded-lg border border-sky-500/40 bg-sky-500/10 px-4 py-2.5 text-sm font-semibold text-sky-300 hover:bg-sky-500/20">Configure course prices</Link>
+        <Link to="/admin/premium-course-access" className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2.5 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/20">Verify receipts & approve access</Link>
+      </div>
     </header>
     {error && <div role="alert" className="rounded-xl border border-red-700 bg-red-950/40 p-4 text-red-200">{error}</div>}
     {message && <div role="status" className="rounded-xl border border-emerald-700 bg-emerald-950/30 p-4 text-emerald-200">{message}</div>}
