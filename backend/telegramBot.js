@@ -218,7 +218,7 @@ async function sendReceiptInbox(chatId, page = 1) {
   if (!records.length) lines.push('No receipt submissions yet.');
   if (safePage * pageSize < total) lines.push('', 'Next page: /receipts ' + (safePage + 1));
   if (safePage > 1) lines.push('Latest: /receipts 1');
-  await sendViewMessage(chatId, { text: lines.join('\\n').slice(0, 3900), reply_markup: ADMIN_ACTION_MENU_KEYBOARD });
+  await sendViewMessage(chatId, { text: lines.join('\n').slice(0, 3900), reply_markup: ADMIN_ACTION_MENU_KEYBOARD });
   for (const record of records) {
     if (!record.attachment?.fileId) continue;
     const field = ['photo', 'video', 'audio'].includes(record.attachment.type) ? record.attachment.type : 'document';
