@@ -50,7 +50,7 @@ export default function Navbar() {
         <div className="flex min-h-14 items-center justify-between gap-2 px-2 py-1 sm:px-3 md:px-4">
           <Link to="/" className="flex min-w-0 items-center gap-2" onClick={closeMobile}>
             <img
-              src="/icon.svg"
+              src="/icon.png"
               alt="Ahadu Tech Academy"
               className="h-8 w-8 shrink-0 rounded-full object-contain sm:h-9 sm:w-9"
             />
