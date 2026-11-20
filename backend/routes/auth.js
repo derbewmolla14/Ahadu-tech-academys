@@ -13,6 +13,7 @@ const {
   updateProfileValidators,
   changePassword,
   requestTelegramOtp,
+  verifyTelegramOtp,
   resetPasswordWithTelegramOtp,
   requestTelegramLink,
 } = require('../controllers/authController');
@@ -31,6 +32,7 @@ router.post('/login', login);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', ...resetPasswordValidators, resetPassword);
 router.post('/telegram/otp/request', requestTelegramOtp);
+router.post('/telegram/otp/verify', verifyTelegramOtp);
 router.post('/telegram/otp/reset', resetPasswordWithTelegramOtp);
 router.post('/telegram/link/request', auth, requestTelegramLink);
 router.get('/me', auth, me);
