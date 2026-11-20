@@ -25,11 +25,11 @@ export default function Footer() {
           </ul>
         </nav>
         <div>
-          <h2 className="text-sm font-bold uppercase tracking-wider text-white">Contact</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--app-text)]">Contact</h2>
           <p className="mt-4 text-sm text-[var(--app-muted)]">Questions or feedback? Email our team.</p>
           <a className="mt-3 inline-flex break-all text-sm font-semibold text-sky-600 hover:text-sky-500 hover:underline" href="mailto:derbewmolla14@gmail.com">derbewmolla14@gmail.com</a>
-          <div className="mt-4 space-y-2 text-sm text-slate-300">
-            <a className="block hover:text-white" href="tel:+251924122893">+251 924 12 28 93</a>
+          <div className="mt-4 space-y-2 text-sm text-[var(--app-muted)]">
+            <a className="block hover:text-[var(--app-text)]" href="tel:+251924122893">+251 924 12 28 93</a>
             <a className="block hover:text-white" href="tel:+251937100547">+251 937 10 05 47</a>
           </div>
         </div>
