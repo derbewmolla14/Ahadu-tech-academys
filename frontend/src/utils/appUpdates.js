@@ -49,6 +49,27 @@ async function getLiveUpdate() {
   return module.LiveUpdate || null;
 }
 
+// The plugin must confirm the currently running bundle before any bundle
+// download or switch. Share one initialization promise to avoid races between
+// app startup and a user pressing Update immediately after opening Settings.
+let liveUpdateReadyPromise = null;
+let otaApplyInFlight = null;
+
+async function ensureLiveUpdateReady() {
+  if (!liveUpdateReadyPromise) {
+    liveUpdateReadyPromise = (async () => {
+      const liveUpdate = await getLiveUpdate();
+      if (!liveUpdate) throw new Error("OTA updates are available only in the installed Capacitor app.");
+      await liveUpdate.ready();
+      return liveUpdate;
+    })().catch((error) => {
+      liveUpdateReadyPromise = null;
+      throw error;
+    });
+  }
+  return liveUpdateReadyPromise;
+}
+
 export async function getCurrentOtaBundleId() {
   const liveUpdate = await getLiveUpdate();
   if (!liveUpdate) return null;
@@ -57,36 +78,17 @@ export async function getCurrentOtaBundleId() {
 }
 
 export async function applyOtaBundle(metadata) {
-  const liveUpdate = await getLiveUpdate();
-  if (!liveUpdate) throw new Error("OTA updates are available only in the installed Capacitor app.");
-  if (!metadata?.bundleId || !metadata?.bundleUrl) throw new Error("The update manifest is missing bundleId or bundleUrl.");
-  if (!metadata?.checksum) throw new Error("The OTA bundle checksum is missing; refusing an unverified download.");
+  if (otaApplyInFlight) return otaApplyInFlight;
 
-  await liveUpdate.downloadBundle({
-    artifactType: "zip",
-    bundleId: metadata.bundleId,
-    checksum: metadata.checksum,
-    url: metadata.bundleUrl,
-  });
-  await liveUpdate.setNextBundle({ bundleId: metadata.bundleId });
-  await liveUpdate.reload();
-}
+  otaApplyInFlight = (async () => {
+    if (!metadata?.bundleId || !metadata?.bundleUrl) throw new Error("The update manifest is missing bundleId or bundleUrl.");
+    if (!metadata?.checksum) throw new Error("The OTA bundle checksum is missing; refusing an unverified download.");
 
-export async function initializeLiveUpdates() {
-  if (getRuntimePlatform() === "web") return;
-  try {
-    const liveUpdate = await getLiveUpdate();
-    if (!liveUpdate) return;
-    // ready() must run on every native launch, including offline launches,
-    // so the plugin can confirm the active bundle and avoid rollback.
-    await liveUpdate.ready();
-    if (!navigator.onLine) return;
-
-    const metadata = await fetchLatestVersion();
-    if (!metadata.bundleId || !metadata.bundleUrl || !metadata.checksum) return;
-
+    const liveUpdate = await ensureLiveUpdateReady();
     const current = await liveUpdate.getCurrentBundle();
-    if (current?.bundleId === metadata.bundleId) return;
+    if (current?.bundleId === metadata.bundleId) {
+      return { alreadyCurrent: true, reloadPending: false };
+    }
 
     await liveUpdate.downloadBundle({
       artifactType: "zip",
@@ -95,10 +97,38 @@ export async function initializeLiveUpdates() {
       url: metadata.bundleUrl,
     });
     await liveUpdate.setNextBundle({ bundleId: metadata.bundleId });
-    await liveUpdate.reload();
+
+    // Some Android WebViews take longer to release resources while reloading.
+    // Never leave the Settings action spinning forever: the downloaded bundle
+    // remains selected and will be applied on the next app launch if reload stalls.
+    let reloadTimer;
+    const reloadStatus = await Promise.race([
+      liveUpdate.reload().then(() => "reloaded").catch(() => "pending"),
+      new Promise((resolve) => {
+        reloadTimer = window.setTimeout(() => resolve("pending"), 12000);
+      }),
+    ]);
+    if (reloadTimer) window.clearTimeout(reloadTimer);
+    return { alreadyCurrent: false, reloadPending: reloadStatus !== "reloaded" };
+  })();
+
+  try {
+    return await otaApplyInFlight;
+  } finally {
+    otaApplyInFlight = null;
+  }
+}
+
+export async function initializeLiveUpdates() {
+  if (getRuntimePlatform() === "web") return;
+  try {
+    // Confirm the running bundle on every native launch, even when offline.
+    // Downloads are deliberately user-initiated from Settings to prevent a
+    // startup download racing with the Update button's own download.
+    await ensureLiveUpdateReady();
   } catch (error) {
-    // OTA failures must never block startup or offline study access.
-    console.warn("Automatic OTA update check failed; continuing with the installed bundle.", error);
+    // OTA initialization must never block startup or offline study access.
+    console.warn("Live Update initialization failed; continuing with the installed bundle.", error);
   }
 }
 
