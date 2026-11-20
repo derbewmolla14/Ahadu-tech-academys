@@ -186,6 +186,15 @@ exports.verifyTelegramOtp = async (req, res) => {
     if (!challenge) {
       return res.status(400).json({ code: 'OTP_EXPIRED_OR_INVALID', message: 'This code has expired or is invalid. Request a new code.' });
     }
+    const linkedUser = await User.findOne({
+      _id: challenge.userId,
+      email,
+      telegramChatId: challenge.chatId,
+    }).select('_id');
+    if (!linkedUser) {
+      await TelegramOtp.updateOne({ _id: challenge._id }, { $set: { used: true } });
+      return res.status(409).json({ code: 'TELEGRAM_LINK_CHANGED', message: 'The linked Telegram account has changed. Link Telegram again and request a new code.' });
+    }
     if (challenge.attempts >= TELEGRAM_OTP_MAX_ATTEMPTS) {
       await TelegramOtp.updateOne({ _id: challenge._id, used: false }, { $set: { used: true } });
       return res.status(429).json({ code: 'OTP_ATTEMPTS_EXCEEDED', message: 'Too many incorrect attempts. Request a new code.' });
@@ -251,7 +260,7 @@ exports.resetPasswordWithTelegramOtp = async (req, res) => {
       return res.status(400).json({ code: 'OTP_VERIFICATION_REQUIRED', message: 'Verify a current Telegram code before saving your new password.' });
     }
 
-    const user = await User.findOne({ _id: challenge.userId, email }).select('+password');
+    const user = await User.findOne({ _id: challenge.userId, email, telegramChatId: challenge.chatId }).select('+password');
     if (!user) return res.status(400).json({ message: 'Unable to reset this account password.' });
 
     const consumed = await TelegramOtp.findOneAndUpdate(
