@@ -7,6 +7,7 @@ const telegramOtpSchema = new mongoose.Schema(
     email: { type: String, required: true, lowercase: true, trim: true, index: true },
     chatId: { type: String, default: null },
     otpHash: { type: String, required: true },
+    flowTokenHash: { type: String, default: null, index: true },
     slotNumber: { type: Number, default: null, index: true },
     verified: { type: Boolean, default: false, index: true },
     verifiedAt: { type: Date, default: null },
