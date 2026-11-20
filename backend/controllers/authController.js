@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const { validationResult, body } = require('express-validator');
 const User = require('../models/User');
 const PasswordReset = require('../models/PasswordReset');
@@ -391,13 +392,33 @@ exports.forgotPassword = async (req, res) => {
         console.error('[password reset] Failed to remove undelivered token:', cleanupError.message);
       });
       console.error('[password reset] Email dispatch failed:', { name: mailError.name, code: mailError.code, responseCode: mailError.responseCode, message: mailError.message });
-      return res.status(503).json({ message: 'We could not send the password reset email right now. Please try again later.' });
+      const configurationError = ['EMAIL_NOT_CONFIGURED', 'EMAIL_INVALID_CONFIG'].includes(mailError.code);
+      return res.status(503).json({
+        code: configurationError ? mailError.code : 'EMAIL_TEMPORARILY_UNAVAILABLE',
+        message: configurationError
+          ? 'Password reset email is not configured correctly. Please contact support.'
+          : 'The email service is temporarily unavailable. Please try again shortly.',
+      });
     }
 
     return res.status(200).json(generic);
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: 'Could not process reset request' });
+    console.error('[password reset] Request processing failed:', {
+      name: e.name,
+      code: e.code,
+      message: e.message,
+      mongoReadyState: mongoose.connection.readyState,
+    });
+    const databaseUnavailable = mongoose.connection.readyState !== 1 ||
+      ['MongoServerSelectionError', 'MongooseServerSelectionError', 'MongoNetworkError'].includes(e.name);
+    if (databaseUnavailable) {
+      res.set('Retry-After', '3');
+      return res.status(503).json({
+        code: 'AUTH_DATABASE_UNAVAILABLE',
+        message: 'The account service is reconnecting. Please retry shortly.',
+      });
+    }
+    return res.status(500).json({ message: 'Could not process reset request' });
   }
 };
 
