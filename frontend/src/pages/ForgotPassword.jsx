@@ -68,6 +68,7 @@ export default function ForgotPassword() {
   const [otpExpiry, setOtpExpiry] = useState(0);
   const [remaining, setRemaining] = useState(0);
   const [otp, setOtp] = useState('');
+  const [otpVerified, setOtpVerified] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
@@ -126,6 +127,7 @@ export default function ForgotPassword() {
       const expiresAt = response.data?.expiresAt ? new Date(response.data.expiresAt).getTime() : Date.now() + seconds * 1000;
       setOtpExpiry(expiresAt);
       setTelegramBotLink(response.data?.telegramDeepLink || response.data?.telegramBotLink || '');
+      setOtpVerified(false);
       setOtpSent(true);
       setOtp('');
       setMessage(tr(languageMode, 'A 6-digit code was sent to your linked Telegram account. It is valid until the 2-minute window ends.', '6 አሃዝ ያለው ኮድ ወደ ተገናኘው ቴሌግራም ተልኳል። የ2 ደቂቃ ጊዜው እስኪያበቃ ድረስ ይሰራል።'));
@@ -163,10 +165,13 @@ export default function ForgotPassword() {
     }
     setLoading(true);
     try {
-      await api.post('/auth/telegram/otp/verify', {
-        email: email.trim().toLowerCase(),
-        otp: otp.trim(),
-      });
+      if (!otpVerified) {
+        await api.post('/auth/telegram/otp/verify', {
+          email: email.trim().toLowerCase(),
+          otp: otp.trim(),
+        });
+        setOtpVerified(true);
+      }
       await api.post('/auth/telegram/otp/reset', {
         email: email.trim().toLowerCase(),
         password,
