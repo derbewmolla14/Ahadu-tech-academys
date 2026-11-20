@@ -178,7 +178,7 @@ export default function AboutUs() {
   const isAmharic = language === "am";
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 pb-10">
+    <div className="about-page mx-auto max-w-6xl space-y-8 pb-10">
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0f1b3d] via-[#172b59] to-sky-900 px-6 py-10 text-white shadow-xl sm:px-10 sm:py-14">
         <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-sky-400/10 blur-2xl" />
         <div className="relative z-10 flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">

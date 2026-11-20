@@ -24,6 +24,10 @@ import ResetPassword from "./pages/ResetPassword";
 // Main pages
 import Home from "./pages/Home";
 import AboutUs from "./pages/AboutUs";
+import ContactUs from "./pages/ContactUs";
+import FAQ from "./pages/FAQ";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfUse from "./pages/TermsOfUse";
 import DashboardHome from "./pages/dashboard/DashboardHome";
 import Settings from "./pages/dashboard/Settings";
 
@@ -147,8 +151,12 @@ function AppRoutes() {
           element={<Home />}
         />
 
-        {/* About Us */}
+        {/* Public information and support pages */}
         <Route path="about" element={<AboutUs />} />
+        <Route path="contact" element={<ContactUs />} />
+        <Route path="faq" element={<FAQ />} />
+        <Route path="privacy" element={<PrivacyPolicy />} />
+        <Route path="terms" element={<TermsOfUse />} />
 
         {/* Authentication */}
         <Route path="login" element={<Login />} />
@@ -264,7 +272,7 @@ export default function App() {
         v7_relativeSplatPath: true,
       }}
     >
-      <div className="min-h-screen bg-slate-950 text-white">
+      <div className="app-shell min-h-screen">
         <AppRoutes />
       </div>
     </Router>
