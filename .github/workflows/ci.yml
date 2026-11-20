@@ -1,0 +1,62 @@
+name: Build and validate Ahadu Tech Academy
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, feature/fresh-university-learning-flow, feature/academic-categories-premium-polish]
+
+jobs:
+  frontend-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      # npm install refreshes the lockfile for the newly added Capacitor OTA packages.
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+
+  chrome-extension-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validate Manifest V3 configuration
+        run: |
+          node -e "const fs = require('node:fs'); const m = JSON.parse(fs.readFileSync('chrome-extension/manifest.json', 'utf8')); if (m.manifest_version !== 3 || m.action?.default_popup !== 'popup.html') process.exit(1); console.log('Manifest V3 configuration valid')"
+          node --check chrome-extension/popup.js
+
+  backend-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - name: Check server and University learning modules
+        run: |
+          node --check server.js
+          node --check models/CourseContent.js
+          node --check controllers/courseContentController.js
+          node --check models/UniversityResource.js
+          node --check controllers/universityFlowController.js
+          node --check routes/courseContent.js
+          node --check routes/universityFlow.js
