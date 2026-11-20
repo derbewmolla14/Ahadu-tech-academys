@@ -26,7 +26,12 @@ export function getRuntimePlatform() {
 
 function getManifestUrl() {
   const configured = import.meta.env.VITE_UPDATE_MANIFEST_URL;
-  return new URL(configured || "/version.json", window.location.origin);
+  // Capacitor runs from capacitor://localhost, not the deployed web origin.
+  // Keep an absolute production fallback for native builds missing Vite env.
+  const fallback = getRuntimePlatform() === "web"
+    ? "/version.json"
+    : "https://ahadu-tech-academys.vercel.app/version.json";
+  return new URL(configured || fallback, window.location.origin);
 }
 
 export async function fetchLatestVersion() {
