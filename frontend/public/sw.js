@@ -51,7 +51,14 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith(fetch(request).then((response) => {
-      if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put("/index.html", response.clone()));
+      // Clone synchronously before returning the response to the page. Cache only
+      // successful same-origin navigation responses; never cache API/error bodies.
+      if (response.ok && !response.bodyUsed && response.type !== "opaque") {
+        const cacheCopy = response.clone();
+        caches.open(CACHE_NAME)
+          .then((cache) => cache.put("/index.html", cacheCopy))
+          .catch(() => undefined);
+      }
       return response;
     }).catch(async () => (await caches.match("/index.html")) || (await caches.match("/"))));
     return;
@@ -60,7 +67,14 @@ self.addEventListener("fetch", (event) => {
   if (["script", "style", "image", "font"].includes(request.destination)) {
     event.respondWith(caches.match(request).then((cached) => {
       const network = fetch(request).then((response) => {
-        if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
+        // A failed asset response must not enter the app-shell cache. Clone before
+        // yielding the original response, and treat storage failures as non-fatal.
+        if (response.ok && !response.bodyUsed && response.type !== "opaque") {
+          const cacheCopy = response.clone();
+          caches.open(CACHE_NAME)
+            .then((cache) => cache.put(request, cacheCopy))
+            .catch(() => undefined);
+        }
         return response;
       });
       return cached || network;
