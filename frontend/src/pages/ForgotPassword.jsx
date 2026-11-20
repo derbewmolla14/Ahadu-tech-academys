@@ -35,7 +35,7 @@ async function postWithShortRetry(path, payload, onRetry) {
   let lastError;
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
     try {
-      return await api.post(path, payload, { timeout: 30000 });
+      return await api.post(path, payload, { timeout: 40000 });
     } catch (error) {
       lastError = error;
       if (!isTransientRequestFailure(error) || attempt >= RETRY_DELAYS_MS.length) throw error;
