@@ -258,11 +258,13 @@ export default function SettingsPage() {
       const generatedLink = String(response.data?.telegramLink || "").trim();
       if (!generatedLink) throw new Error(response.data?.message || "The server did not return a Telegram link. Check the bot username configuration and try again.");
       setTelegramLink(generatedLink);
-      showNotice("success", response.data?.message || "Your secure Telegram link is ready. Opening Telegram…");
-      try {
-        await openTelegramUrl(generatedLink);
-      } catch {
-        showNotice("error", "Your secure link was created, but Telegram could not be opened automatically. Use the Open Telegram button below.");
+      showNotice("success", response.data?.message || "Your secure Telegram link is ready. Open Telegram to finish linking.");
+      if (isNativeApp) {
+        try {
+          await openTelegramUrl(generatedLink);
+        } catch {
+          showNotice("error", "Your secure link was created, but Telegram could not be opened automatically. Use the Open Telegram button below.");
+        }
       }
     } catch (error) {
       showNotice("error", error.response?.data?.message || error.message || "Unable to create a Telegram link. Check your connection and try again.");
