@@ -341,7 +341,7 @@ exports.forgotPassword = async (req, res) => {
     const rawEmail = typeof req.body?.email === 'string'
       ? req.body.email.trim().toLowerCase()
       : '';
-    if (!rawEmail || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(rawEmail)) {
+    if (!rawEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail)) {
       return res.status(400).json({ code: 'INVALID_EMAIL', message: 'Enter a valid email address.' });
     }
 
@@ -394,10 +394,19 @@ exports.forgotPassword = async (req, res) => {
 
     // Persist the token before dispatch so a quickly opened email link is
     // already valid. Keep previous links until the new message is accepted.
+    processingStage = 'create_reset_token';
     const resetRecord = await PasswordReset.create({ email: rawEmail, tokenHash, expiresAt });
     try {
+      processingStage = 'send_reset_email';
       await sendPasswordResetEmail(rawEmail, 'Reset your Ahadu Tech Academy password', { html, text });
-      await PasswordReset.deleteMany({ email: rawEmail, _id: { $ne: resetRecord._id } });
+      processingStage = 'cleanup_previous_tokens';
+      await PasswordReset.deleteMany({ email: rawEmail, _id: { $ne: resetRecord._id } }).catch((cleanupError) => {
+        console.error('[password reset] Email was accepted, but previous token cleanup failed:', {
+          name: cleanupError.name,
+          code: cleanupError.code,
+          message: cleanupError.message,
+        });
+      });
     } catch (mailError) {
       await PasswordReset.deleteOne({ _id: resetRecord._id }).catch((cleanupError) => {
         console.error('[password reset] Failed to remove undelivered token:', cleanupError.message);
