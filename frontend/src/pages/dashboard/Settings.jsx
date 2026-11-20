@@ -3,7 +3,7 @@ import {
   Camera, Check, ChevronRight, Eye, EyeOff, Globe2, LockKeyhole,
   Monitor, Moon, Palette, Save, ShieldCheck, Sun, UserRound,
   RefreshCw, Download, Smartphone, Globe, CheckCircle2, AlertTriangle, ExternalLink,
-  Mail, Users, BookOpen, GraduationCap, DownloadCloud,
+  Mail, Users, BookOpen, GraduationCap, DownloadCloud, Phone, AtSign,
 } from "lucide-react";
 import { AuthContext } from "../../context/AuthContext";
 import api from "../../api/api";
@@ -431,6 +431,20 @@ export default function SettingsPage() {
                         <p className="text-xs font-semibold text-[var(--app-muted)]">Registered email</p>
                         <p className="mt-1 break-all text-sm font-bold text-[var(--app-text)]">{user?.email || "Not available"}</p>
                         <p className="mt-0.5 text-xs text-[var(--app-muted)]">Private account information</p>
+                      </div>
+                    </div>
+                    <div className="flex min-w-0 items-start gap-3 rounded-2xl border border-[var(--app-border)] bg-[var(--app-bg)] p-4">
+                      <span className="rounded-xl bg-sky-500/10 p-2.5 text-sky-600"><Phone size={18} /></span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-[var(--app-muted)]">Phone number</p>
+                        <p className="mt-1 break-words text-sm font-bold text-[var(--app-text)]">{user?.phone || "Not provided"}</p>
+                      </div>
+                    </div>
+                    <div className="flex min-w-0 items-start gap-3 rounded-2xl border border-[var(--app-border)] bg-[var(--app-bg)] p-4">
+                      <span className="rounded-xl bg-sky-500/10 p-2.5 text-sky-600"><AtSign size={18} /></span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-[var(--app-muted)]">Telegram username</p>
+                        <p className="mt-1 break-words text-sm font-bold text-[var(--app-text)]">{user?.telegramUsername || "Not provided"}</p>
                       </div>
                     </div>
                   </div>
