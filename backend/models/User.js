@@ -15,7 +15,7 @@ const userSchema = new mongoose.Schema(
     },
     telegramChatId: { type: String, default: null, index: true },
     telegramLinkedAt: { type: Date, default: null },
-    telegramUsername: { type: String, trim: true, default: '' },
+    telegramUsername: { type: String, trim: true, maxlength: 33, default: '' },
     password: { type: String, required: true, select: false },
     profilePhoto: { type: String, default: '' },
     preferences: {
