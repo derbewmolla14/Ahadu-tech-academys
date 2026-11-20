@@ -31,6 +31,9 @@ const userSchema = new mongoose.Schema(
       status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved' },
       approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
       approvedAt: { type: Date, default: null },
+      paymentTransaction: { type: mongoose.Schema.Types.ObjectId, ref: 'PaymentTransaction', default: null },
+      transactionReference: { type: String, trim: true, default: '' },
+      amountETB: { type: Number, min: 0, default: null },
     }],
   },
   { timestamps: true }
