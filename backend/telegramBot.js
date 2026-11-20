@@ -11,7 +11,7 @@ let offset = 0;
 
 const BOT_MENU_KEYBOARD = { keyboard: [[{ text: 'Menu / ሜኑ' }]], resize_keyboard: true, is_persistent: true };
 const ACTION_MENU_KEYBOARD = { keyboard: [[{ text: 'Login' }, { text: 'Register' }], [{ text: 'OTP Code' }], [{ text: 'Information / ኢንፎርሜሽን' }, { text: 'Email / ኢሜይል' }], [{ text: 'Send Receipt / ሴንድ ሪሲፕት' }], [{ text: 'Menu / ሜኑ' }]], resize_keyboard: true, is_persistent: true };
-const ADMIN_ACTION_MENU_KEYBOARD = { keyboard: [[{ text: 'Login' }, { text: 'Register' }], [{ text: 'OTP Code' }], [{ text: 'Information / ኢንፎርሜሽን' }, { text: 'Email / ኢሜይል' }], [{ text: 'Send Receipt / ሴንድ ሪሲፕት' }], [{ text: 'Total Users / ጠቅላላ ተጠቃሚዎች' }], [{ text: 'Menu / ሜኑ' }]], resize_keyboard: true, is_persistent: true };
+const ADMIN_ACTION_MENU_KEYBOARD = { keyboard: [[{ text: 'Login' }, { text: 'Register' }], [{ text: 'OTP Code' }], [{ text: 'Information / ኢንፎርሜሽን' }, { text: 'Email / ኢሜይል' }], [{ text: 'Send Receipt / ሴንድ ሪሲፕት' }], [{ text: 'Total Users / ጠቅላላ ተጠቃሚዎች' }], [{ text: 'Receipt Inbox / የደረሰኝ ሳጥን' }], [{ text: 'Menu / ሜኑ' }]], resize_keyboard: true, is_persistent: true };
 function academyUrl(path) { const base = String(process.env.FRONTEND_URL || 'https://ahadu-tech-academys.vercel.app').replace(/\/$/, ''); return base + path; }
 async function getLinkedAccount(chatId) {
   const user = await User.findOne({ telegramChatId: String(chatId) }).select('_id fullName email role telegramChatId telegramUsername telegramLinkedAt');
@@ -197,6 +197,35 @@ async function getTelegramAdmins() {
   return admin?.telegramChatId ? [String(admin.telegramChatId)] : [];
 }
 
+async function sendReceiptInbox(chatId, page = 1) {
+  const admin = await getLinkedAccount(chatId);
+  if (!admin || !isDesignatedAdminEmail(admin.email)) {
+    await sendViewMessage(chatId, { text: 'Receipt inbox is available only to the designated website administrator.' });
+    return;
+  }
+  await clearActiveView(chatId, 'receiptInbox');
+  const pageSize = 8;
+  const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+  const [total, records] = await Promise.all([
+    TelegramBotRecord.countDocuments({ type: 'receipt' }),
+    TelegramBotRecord.find({ type: 'receipt' }).sort({ createdAt: -1 }).skip((safePage - 1) * pageSize).limit(pageSize).lean(),
+  ]);
+  const lines = ['RECEIPT INBOX / የደረሰኝ ሳጥን', 'Total submissions: ' + total, 'Page ' + safePage, ''];
+  for (const record of records) {
+    lines.push('━━━━━━━━━━━━━━━━', new Date(record.createdAt).toLocaleString('en-GB', { timeZone: 'Africa/Addis_Ababa' }), 'From: ' + (record.email || record.senderName || record.chatId), 'Reference: ' + String(record._id), record.text || record.caption || '[Attachment]' );
+    if (record.attachment?.fileName) lines.push('File: ' + record.attachment.fileName);
+  }
+  if (!records.length) lines.push('No receipt submissions yet.');
+  if (safePage * pageSize < total) lines.push('', 'Next page: /receipts ' + (safePage + 1));
+  if (safePage > 1) lines.push('Latest: /receipts 1');
+  await sendViewMessage(chatId, { text: lines.join('\\n').slice(0, 3900), reply_markup: ADMIN_ACTION_MENU_KEYBOARD });
+  for (const record of records) {
+    if (!record.attachment?.fileId) continue;
+    const field = ['photo', 'video', 'audio'].includes(record.attachment.type) ? record.attachment.type : 'document';
+    const method = field === 'photo' ? 'sendPhoto' : field === 'video' ? 'sendVideo' : field === 'audio' ? 'sendAudio' : 'sendDocument';
+    await sendViewMedia(chatId, method, { [field]: record.attachment.fileId, caption: String(record.caption || record.text || '').slice(0, 900) || undefined });
+  }
+}
 async function beginReceiptSubmission(chatId) {
   await clearActiveView(chatId, 'receipt');
   await TelegramBotSession.updateOne(
@@ -372,7 +401,7 @@ async function handleUpdate(update) {
   if (/^(?:menu|menu \/ ሜኑ|ሜኑ|\/menu)$/i.test(text)) { await sendMenu(chatId, true); return; }
   const totalUsersMatch = text.match(/^(?:total users(?: \/ ጠቅላላ ተጠቃሚዎች)?|ጠቅላላ ተጠቃሚዎች|\/users(?:@\w+)?(?:\s+(\d+))?)$/i);
   if (totalUsersMatch) { await sendTotalUsers(chatId, totalUsersMatch[1] || 1); return; }
-  if (/^otp code$/i.test(text) || /^የotp ኮድ$/i.test(text)) { await sendOtpCodeForChat(chatId); return; }
+  const receiptPageMatch = text.match(/^\\/receipts(?:@\\w+)?(?:\\s+(\\d+))?$/i);\n  if (/^(?:receipt inbox(?: \/ የደረሰኝ ሳጥን)?|የደረሰኝ ሳጥን)$/i.test(text) || receiptPageMatch) { await sendReceiptInbox(chatId, receiptPageMatch?.[1] || 1); return; }\n  if (/^otp code$/i.test(text) || /^የotp ኮድ$/i.test(text)) { await sendOtpCodeForChat(chatId); return; }
   if (/^login$/i.test(text) || /^መግቢያ$/i.test(text)) {
     await clearActiveView(chatId, 'login');
     await sendViewMessage(chatId, { text: 'LOGIN / መግቢያ\nSign in to Ahadu Tech Academy: ' + academyUrl('/login'), reply_markup: ACTION_MENU_KEYBOARD }); return;
