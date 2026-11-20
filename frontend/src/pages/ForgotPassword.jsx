@@ -118,7 +118,7 @@ export default function ForgotPassword() {
       setOtpExpiry(expiresAt);
       setOtpSent(true);
       setOtp('');
-      setMessage(response.data?.message || 'A code was sent to your linked Telegram account.');
+      setMessage(tr(languageMode, 'A 6-digit code was sent to your linked Telegram account.', '6 አሃዝ ያለው ኮድ ከተገናኘው የቴሌግራም መለያዎ ተልኳል።'));
     } catch (err) {
       const data = err.response?.data;
       if (data?.expiresInSeconds) {
@@ -148,7 +148,7 @@ export default function ForgotPassword() {
     setError('');
     setMessage('');
     if (password !== confirmPassword) {
-      setError('The new password and confirmation do not match.');
+      setError(tr(languageMode, 'The new password and confirmation do not match.', 'አዲሱ የይለፍ ቃል እና ማረጋገጫው አይዛመዱም።'));
       return;
     }
     setLoading(true);
@@ -158,7 +158,7 @@ export default function ForgotPassword() {
         otp: otp.trim(),
         password,
       });
-      setMessage(response.data?.message || 'Password reset successfully. You can now sign in.');
+      setMessage(tr(languageMode, 'Password reset successfully. You can now sign in.', 'የይለፍ ቃሉ በተሳካ ሁኔታ ተቀይሯል። አሁን መግባት ይችላሉ።'));
       setOtpSent(false);
       setOtpExpiry(0);
       setOtp('');
