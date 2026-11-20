@@ -224,6 +224,7 @@ exports.registerValidators = [
     .withMessage('Password must include at least one letter and one number'),
   body('role').optional().isIn(['user', 'admin']).withMessage('Invalid role'),
   body('inviteCode').optional().isString(),
+  body('referralCode').optional().isString().trim().isLength({ min: 6, max: 20 }),
 ];
 
 exports.updateProfileValidators = [
@@ -263,6 +264,14 @@ async function finalizeRegister(req, res) {
       profilePhoto = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
     }
 
+    const referralCode = crypto.randomBytes(5).toString('hex').toUpperCase();
+    let referrer = null;
+    if (role !== 'admin' && req.body.referralCode) {
+      const normalizedCode = String(req.body.referralCode).trim().toUpperCase();
+      const referringUser = await User.findOne({ referralCode: normalizedCode, role: { $ne: 'admin' } }).select('_id');
+      if (referringUser) referrer = referringUser._id;
+    }
+
     const user = await User.create({
       fullName: req.body.fullName.trim(),
       email,
@@ -270,6 +279,8 @@ async function finalizeRegister(req, res) {
       password: hash,
       profilePhoto,
       role,
+      referralCode,
+      referrer,
       approved: true,
     });
 
