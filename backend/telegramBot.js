@@ -8,7 +8,7 @@ let offset = 0;
 
 const BOT_MENU_KEYBOARD = { keyboard: [[{ text: 'Menu / ሜኑ' }]], resize_keyboard: true, is_persistent: true };
 const ACTION_MENU_KEYBOARD = { keyboard: [[{ text: 'Login' }, { text: 'Register' }], [{ text: 'OTP Code' }], [{ text: 'Menu / ሜኑ' }]], resize_keyboard: true, is_persistent: true };
-function academyUrl(path) { const base = String(process.env.FRONTEND_URL || 'https://ahadu-tech-academys.vercel.app').replace(/\\/$/, ''); return base + path; }
+function academyUrl(path) { const base = String(process.env.FRONTEND_URL || 'https://ahadu-tech-academys.vercel.app').replace(/\/$/, ''); return base + path; }
 async function sendMenu(chatId, showActions = false) {
   await telegramRequest('sendMessage', { chat_id: chatId, text: showActions ? 'Choose Login, Register, or OTP Code. / መግቢያ፣ ምዝገባ ወይም የOTP ኮድ ይምረጡ።' : 'Tap Menu to see options. / አማራጮቹን ለማየት ሜኑን ይጫኑ።', reply_markup: showActions ? ACTION_MENU_KEYBOARD : BOT_MENU_KEYBOARD });
 }
@@ -26,7 +26,7 @@ async function sendOtpCodeForChat(chatId) {
   const otp = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
   await TelegramOtp.create({ purpose: 'password-reset', userId: user._id, email, chatId: String(user.telegramChatId), otpHash: crypto.createHmac('sha256', process.env.JWT_SECRET).update(otp, 'utf8').digest('hex'), flowTokenHash: null, slotNumber, verified: false, verifiedAt: null, expiresAt });
   const seconds = Math.max(1, Math.ceil((expiresAt.getTime() - Date.now()) / 1000));
-  await telegramRequest('sendMessage', { chat_id: chatId, text: 'Ahadu Tech Academy OTP Code: ' + otp + '\\nEmail: ' + email + '\\nValid for ' + seconds + ' seconds (current 2-minute window). Use it on the academy password recovery page. Do not share this code. / የOTP ኮድ ለ2 ደቂቃ ይሰራል። በአካዳሚው የይለፍ ቃል መመለሻ ገጽ ይጠቀሙበት።', reply_markup: BOT_MENU_KEYBOARD });
+  await telegramRequest('sendMessage', { chat_id: chatId, text: 'Ahadu Tech Academy OTP Code: ' + otp + '\nEmail: ' + email + '\nValid for ' + seconds + ' seconds (current 2-minute window). Use it on the academy password recovery page. Do not share this code. / የOTP ኮድ ለ2 ደቂቃ ይሰራል። በአካዳሚው የይለፍ ቃል መመለሻ ገጽ ይጠቀሙበት።', reply_markup: BOT_MENU_KEYBOARD });
 }
 
 async function telegramRequest(method, payload = {}) {
