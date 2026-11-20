@@ -4,7 +4,7 @@ const telegramBotSessionSchema = new mongoose.Schema({
   chatId: { type: String, required: true, unique: true, index: true },
   mode: {
     type: String,
-    enum: ['receipt', 'menu', 'login', 'register', 'otp', 'information', 'email', 'users', 'idle'],
+    enum: ['receipt', 'menu', 'login', 'register', 'otp', 'information', 'email', 'users', 'receiptInbox', 'idle'],
     default: 'idle',
     index: true,
   },
