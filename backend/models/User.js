@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema(
     profilePhoto: { type: String, default: '' },
     preferences: {
       theme: { type: String, enum: ['light', 'dark', 'system'], default: 'system' },
-      language: { type: String, enum: ['en', 'am', 'both'], default: 'en' },
+      language: { type: String, enum: ['en', 'am', 'english', 'amharic', 'both'], default: 'en' },
     },
     role: { type: String, enum: ['user', 'student', 'admin'], default: 'user' },
     approved: { type: Boolean, default: true },
