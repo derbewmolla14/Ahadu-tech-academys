@@ -19,7 +19,7 @@ export default function Navbar() {
   const profileInitials = getProfileInitials(user?.fullName);
 
   const linkDesktop =
-    'whitespace-nowrap text-[#0f1b3d] font-semibold hover:text-orange-600 transition-colors duration-200 text-base lg:text-lg';
+    'whitespace-nowrap font-semibold text-[var(--app-text)] hover:text-orange-600 transition-colors duration-200 text-base lg:text-lg';
 
   const linkMobile =
     'block w-full border-b border-white/15 py-3 text-center text-sm font-semibold text-white hover:bg-white/10 transition-colors duration-200';
@@ -38,13 +38,13 @@ export default function Navbar() {
       </div>
 
       {/* LOGO ROW + NAV */}
-      <div className="relative border-b border-gray-100 bg-white">
+      <div className="relative border-b border-[var(--app-border)] bg-[var(--app-card)]">
         <div className="flex min-h-14 items-center justify-between gap-2 px-2 py-1 sm:px-3 md:px-4">
           <Link to="/" className="flex min-w-0 items-center gap-2" onClick={closeMobile}>
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#0f1b3d] bg-gradient-to-br from-blue-50 to-blue-100 p-1 sm:h-9 sm:w-9">
               <span className="text-lg sm:text-xl">🎓</span>
             </div>
-            <div className="min-w-0 leading-none"><span className="block truncate text-[13px] font-extrabold tracking-tight text-[#0f1b3d] sm:text-sm md:text-lg lg:text-xl">AHADU TECH ACADEMY</span></div>
+            <div className="min-w-0 leading-none"><span className="block truncate text-[13px] font-extrabold tracking-tight text-[var(--app-text)] sm:text-sm md:text-lg lg:text-xl">AHADU TECH ACADEMY</span></div>
           </Link>
 
           {/* Desktop nav */}
@@ -60,7 +60,7 @@ export default function Navbar() {
             {user ? (
               <Link
                 to="/dashboard"
-                className="flex items-center rounded-full border border-[#0f1b3d]/15 bg-slate-50 p-1 transition hover:bg-slate-100"
+                className="flex items-center rounded-full border border-[var(--app-border)] bg-[var(--app-bg)] p-1 transition hover:bg-sky-500/10"
               >
                 <span className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-[#0f1b3d] text-xs font-bold text-white">
                   {profileImage ? (
@@ -85,7 +85,7 @@ export default function Navbar() {
             type="button"
             aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={mobileOpen}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#0f1b3d]/15 text-xl text-[#0f1b3d] transition-colors hover:bg-slate-100 md:hidden"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--app-border)] text-xl text-[var(--app-text)] transition-colors hover:bg-sky-500/10 md:hidden"
             onClick={() => setMobileOpen((o) => !o)}
           >
             ☰

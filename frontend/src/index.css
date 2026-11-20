@@ -233,3 +233,20 @@ html[data-theme="light"] textarea::placeholder { color: var(--app-muted); }
     transition-duration: .01ms !important;
   }
 }
+
+
+/* Marketing surfaces follow the same saved light/dark preference as Settings. */
+.about-page { color: var(--app-text); }
+.about-page .bg-white,
+.about-page .bg-slate-50 { background-color: var(--app-card); }
+.about-page .border-slate-200 { border-color: var(--app-border); }
+.about-page .text-slate-900 { color: var(--app-text); }
+.about-page .text-slate-600,
+.about-page .text-slate-500 { color: var(--app-muted); }
+.about-page .bg-slate-900 { background-color: #0f172a; }
+.about-page .text-white { color: #fff; }
+.about-page .text-slate-300 { color: #cbd5e1; }
+.about-page .bg-amber-50 { background-color: color-mix(in srgb, #fef3c7 88%, var(--app-card)); }
+.about-page .border-amber-200 { border-color: #fcd34d; }
+.about-page .text-amber-950 { color: #451a03; }
+.about-page .text-amber-900 { color: #78350f; }
