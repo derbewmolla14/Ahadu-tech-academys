@@ -77,7 +77,7 @@ async function sendOtpCodeForChat(chatId) {
   const otp = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
   await TelegramOtp.create({ purpose: 'password-reset', userId: user._id, email, chatId: String(user.telegramChatId), otpHash: crypto.createHmac('sha256', process.env.JWT_SECRET).update(otp, 'utf8').digest('hex'), flowTokenHash: null, slotNumber, verified: false, verifiedAt: null, expiresAt });
   const seconds = Math.max(1, Math.ceil((expiresAt.getTime() - Date.now()) / 1000));
-  await telegramRequest('sendMessage', { chat_id: chatId, text: 'Ahadu Tech Academy OTP Code: ' + otp + '\nEmail: ' + email + '\nValid for ' + seconds + ' seconds (current 2-minute window). Use it on the academy password recovery page. Do not share this code. / የOTP ኮድ ለ2 ደቂቃ ይሰራል። በአካዳሚው የይለፍ ቃል መመለሻ ገጽ ይጠቀሙበት።', reply_markup: BOT_MENU_KEYBOARD });
+  await sendViewMessage(chatId, { text: 'Ahadu Tech Academy OTP Code: ' + otp + '\nEmail: ' + email + '\nValid for ' + seconds + ' seconds (current 2-minute window). Use it on the academy password recovery page. Do not share this code. / የOTP ኮድ ለ2 ደቂቃ ይሰራል። በአካዳሚው የይለፍ ቃል መመለሻ ገጽ ይጠቀሙበት።', reply_markup: ACTION_MENU_KEYBOARD });
 }
 
 
@@ -312,11 +312,11 @@ async function handleUpdate(update) {
   if (/^otp code$/i.test(text) || /^የotp ኮድ$/i.test(text)) { await sendOtpCodeForChat(chatId); return; }
   if (/^login$/i.test(text) || /^መግቢያ$/i.test(text)) {
     await clearActiveView(chatId, 'login');
-    await sendViewMessage(chatId, { text: 'LOGIN / መግቢያ\\nSign in to Ahadu Tech Academy: ' + academyUrl('/login'), reply_markup: ACTION_MENU_KEYBOARD }); return;
+    await sendViewMessage(chatId, { text: 'LOGIN / መግቢያ\nSign in to Ahadu Tech Academy: ' + academyUrl('/login'), reply_markup: ACTION_MENU_KEYBOARD }); return;
   }
   if (/^register$/i.test(text) || /^ምዝገባ$/i.test(text)) {
     await clearActiveView(chatId, 'register');
-    await sendViewMessage(chatId, { text: 'REGISTER / ምዝገባ\\nRegister at Ahadu Tech Academy: ' + academyUrl('/register'), reply_markup: ACTION_MENU_KEYBOARD }); return;
+    await sendViewMessage(chatId, { text: 'REGISTER / ምዝገባ\nRegister at Ahadu Tech Academy: ' + academyUrl('/register'), reply_markup: ACTION_MENU_KEYBOARD }); return;
   }
   if (/^(?:information(?: \/ ኢንፎርሜሽን)?|ኢንፎርሜሽን|\/info(?:@\w+)?(?:\s+\d+)?|\/info)$/i.test(text)) {
     const pageMatch = text.match(/^\/info(?:@\w+)?\s+(\d+)$/i);
