@@ -35,7 +35,7 @@ export default function SettingsPage() {
   const [photoPreview, setPhotoPreview] = useState("");
   const [photoLoadFailed, setPhotoLoadFailed] = useState(false);
   const [theme, setTheme] = useState(user?.preferences?.theme || getSavedTheme());
-  const [language, setLanguage] = useState(user?.preferences?.language || localStorage.getItem("language") || "en");
+  const [language, setLanguage] = useState(({ en: "english", am: "amharic", english: "english", amharic: "amharic", both: "both" }[user?.preferences?.language || localStorage.getItem("language")] || "english"));
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -83,7 +83,7 @@ export default function SettingsPage() {
   useEffect(() => {
     setFullName(user?.fullName || "");
     if (user?.preferences?.theme) setTheme(user.preferences.theme);
-    if (user?.preferences?.language) setLanguage(user.preferences.language);
+    if (user?.preferences?.language) setLanguage(({ en: "english", am: "amharic", english: "english", amharic: "amharic", both: "both" }[user.preferences.language] || "english"));
   }, [user]);
 
   useEffect(() => () => {
@@ -617,18 +617,24 @@ export default function SettingsPage() {
                 <h2 className="text-lg font-bold">Language</h2>
                 <p className="mt-1 text-sm text-[var(--app-muted)]">Select your preferred platform language.</p>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <button type="button" onClick={() => selectLanguage("en")} disabled={savingPreferences}
-                  className={"rounded-2xl border p-5 text-left transition " + (language === "en" ? "border-sky-500 bg-sky-500/5 ring-2 ring-sky-500/10" : "border-[var(--app-border)] hover:border-sky-500/50")}>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <button type="button" onClick={() => selectLanguage("english")} disabled={savingPreferences}
+                  className={"rounded-2xl border p-5 text-left transition " + (language === "english" || language === "en" ? "border-sky-500 bg-sky-500/5 ring-2 ring-sky-500/10" : "border-[var(--app-border)] hover:border-sky-500/50")}>
                   <span className="block text-lg font-bold">English</span>
                   <span className="mt-1 block text-xs text-[var(--app-muted)]">English</span>
-                  {language === "en" && <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-sky-600"><Check size={14} /> Selected</span>}
+                  {(language === "english" || language === "en") && <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-sky-600"><Check size={14} /> Selected</span>}
                 </button>
-                <button type="button" onClick={() => selectLanguage("am")} disabled={savingPreferences}
-                  className={"rounded-2xl border p-5 text-left transition " + (language === "am" ? "border-sky-500 bg-sky-500/5 ring-2 ring-sky-500/10" : "border-[var(--app-border)] hover:border-sky-500/50")}>
+                <button type="button" onClick={() => selectLanguage("amharic")} disabled={savingPreferences}
+                  className={"rounded-2xl border p-5 text-left transition " + (language === "amharic" || language === "am" ? "border-sky-500 bg-sky-500/5 ring-2 ring-sky-500/10" : "border-[var(--app-border)] hover:border-sky-500/50")}>
                   <span className="block text-lg font-bold">አማርኛ</span>
                   <span className="mt-1 block text-xs text-[var(--app-muted)]">Amharic</span>
-                  {language === "am" && <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-sky-600"><Check size={14} /> ተመርጧል</span>}
+                  {(language === "amharic" || language === "am") && <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-sky-600"><Check size={14} /> ተመርጧል</span>}
+                </button>
+                <button type="button" onClick={() => selectLanguage("both")} disabled={savingPreferences}
+                  className={"rounded-2xl border p-5 text-left transition " + (language === "both" ? "border-sky-500 bg-sky-500/5 ring-2 ring-sky-500/10" : "border-[var(--app-border)] hover:border-sky-500/50")}>
+                  <span className="block text-lg font-bold">Both</span>
+                  <span className="mt-1 block text-xs text-[var(--app-muted)]">Show English and Amharic content</span>
+                  {language === "both" && <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-sky-600"><Check size={14} /> Selected</span>}
                 </button>
               </div>
               <p className="mt-5 text-xs text-[var(--app-muted)]">Your language preference is saved to your account. Some platform sections may remain in English until their translations are added.</p>
