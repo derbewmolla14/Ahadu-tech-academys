@@ -55,19 +55,29 @@ async function sendWithResend(to, subject, { html, text }) {
     error.code = cause?.name === 'TimeoutError' || cause?.name === 'AbortError'
       ? 'EMAIL_PROVIDER_TIMEOUT'
       : 'EMAIL_PROVIDER_NETWORK_ERROR';
+    error.provider = 'resend';
+    error.causeCode = cause?.code;
+    error.causeName = cause?.name;
     error.cause = cause;
     throw error;
   }
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok || !data.id) {
-    const error = new Error(data.message || data.error || 'Resend did not accept the email.');
+    const providerMessage = typeof data.message === 'string'
+      ? data.message
+      : typeof data.error === 'string'
+        ? data.error
+        : 'Resend did not accept the email.';
+    const error = new Error(providerMessage);
+    error.provider = 'resend';
+    error.providerStatus = response.status;
+    error.providerCode = typeof data.name === 'string' ? data.name : undefined;
     error.code = response.status === 401 || response.status === 403
       ? 'EMAIL_INVALID_CONFIG'
       : response.status >= 500 || response.status === 429
         ? 'EMAIL_PROVIDER_TEMPORARILY_UNAVAILABLE'
         : 'EMAIL_PROVIDER_REJECTED';
-    error.status = response.status;
     throw error;
   }
 
