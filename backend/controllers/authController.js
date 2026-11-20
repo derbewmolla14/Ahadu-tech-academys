@@ -417,6 +417,7 @@ exports.forgotPassword = async (req, res) => {
         code: mailError.code,
         providerStatus: mailError.providerStatus || mailError.status,
         providerCode: mailError.providerCode || mailError.responseCode,
+        providerRequestId: mailError.providerRequestId,
         causeName: mailError.causeName || mailError.cause?.name,
         causeCode: mailError.causeCode || mailError.cause?.code,
         message: mailError.message,
