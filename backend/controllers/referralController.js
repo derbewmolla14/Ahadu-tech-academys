@@ -31,7 +31,7 @@ exports.getMine = async (req, res) => {
     let frontier = directIds;
     let indirect = 0;
     // Count every descendant from level 2 onward, not only the immediate second level.
-    for (let depth = 0; frontier.length && depth < 100; depth += 1) {
+    while (frontier.length) {
       const children = await User.find({ referrer: { $in: frontier } }).distinct('_id');
       const nextFrontier = children.filter((id) => !seen.has(String(id)));
       nextFrontier.forEach((id) => seen.add(String(id)));
