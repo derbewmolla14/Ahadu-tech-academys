@@ -3,7 +3,6 @@ import {
   Camera, Check, ChevronRight, Eye, EyeOff, Globe2, LockKeyhole,
   Monitor, Moon, Palette, Save, ShieldCheck, Sun, UserRound,
   RefreshCw, Download, Smartphone, Globe, CheckCircle2, AlertTriangle, ExternalLink,
-  Copy, Share2, Users, Wallet, Link2,
 } from "lucide-react";
 import { AuthContext } from "../../context/AuthContext";
 import api from "../../api/api";
@@ -12,8 +11,9 @@ import { getProfileImageUrl, getProfileInitials } from "../../utils/profile";
 import { applyOtaBundle, compareVersions, fetchLatestVersion, getAppVersion, getBuildDate, getCurrentOtaBundleId, getRuntimePlatform, openExternalUpdateUrl, refreshAppShell } from "../../utils/appUpdates";
 
 const tabs = [
-  { id: "account", label: "Account & Profile", icon: UserRound },
   { id: "appearance", label: "Appearance", icon: Palette },
+  { id: "profile", label: "Profile", icon: UserRound },
+  { id: "account", label: "Account & Profile", icon: LockKeyhole },
   { id: "language", label: "Language", icon: Globe2 },
   { id: "updates", label: "App & Web Updates", icon: RefreshCw },
 ];
@@ -50,12 +50,6 @@ export default function SettingsPage() {
   const [loadingTelegramSettings, setLoadingTelegramSettings] = useState(false);
   const [savingTelegramSettings, setSavingTelegramSettings] = useState(false);
   const [editingTelegramLink, setEditingTelegramLink] = useState(false);
-  const [payoutAccount, setPayoutAccount] = useState({ provider: '', accountName: '', accountNumber: '' });
-  const [savingPayout, setSavingPayout] = useState(false);
-  const [referralData, setReferralData] = useState(null);
-  const [loadingReferral, setLoadingReferral] = useState(true);
-  const [referralError, setReferralError] = useState("");
-  const [referralCopied, setReferralCopied] = useState(false);
   const isAdmin = user?.role === "admin";
   const [notice, setNotice] = useState({ type: "", text: "" });
   const [latestVersion, setLatestVersion] = useState(null);
@@ -73,21 +67,6 @@ export default function SettingsPage() {
 
   useEffect(() => {
     let active = true;
-    api.get('/referrals/mine')
-      .then((response) => {
-        if (!active) return;
-        setReferralData(response.data);
-        setReferralError("");
-        setPayoutAccount({
-          provider: response.data?.payoutAccount?.provider || '',
-          accountName: response.data?.payoutAccount?.accountName || '',
-          accountNumber: response.data?.payoutAccount?.accountNumber || '',
-        });
-      })
-      .catch((error) => {
-        if (active) setReferralError(error.response?.data?.message || "Referral information is temporarily unavailable.");
-      })
-      .finally(() => { if (active) setLoadingReferral(false); });
     setLoadingTelegramSettings(true);
     api.get("/settings/telegram-link")
       .then((response) => {
@@ -204,69 +183,6 @@ export default function SettingsPage() {
     setLanguage(value);
     localStorage.setItem("language", value);
     savePreferences({ language: value });
-  }
-
-  function getReferralShareUrl() {
-    const value = String(referralData?.referralLink || "").trim();
-    if (!value) return "";
-    if (/^https?:\/\//i.test(value)) return value;
-    return window.location.origin.replace(/\/$/, "") + (value.startsWith("/") ? value : "/" + value);
-  }
-
-  async function copyReferralLink() {
-    const link = getReferralShareUrl();
-    if (!link) {
-      showNotice("error", "Your referral link is not ready yet. Refresh Settings and try again.");
-      return;
-    }
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(link);
-      } else {
-        const field = document.createElement("textarea");
-        field.value = link;
-        field.setAttribute("readonly", "");
-        field.style.position = "fixed";
-        field.style.opacity = "0";
-        document.body.appendChild(field);
-        field.select();
-        const copied = document.execCommand("copy");
-        field.remove();
-        if (!copied) throw new Error("Copy is not available in this browser.");
-      }
-      setReferralCopied(true);
-      showNotice("success", "Referral link copied. Share it with your friends.");
-    } catch (error) {
-      showNotice("error", error.message || "Unable to copy your referral link.");
-    }
-  }
-
-  async function shareReferralLink() {
-    const link = getReferralShareUrl();
-    if (!link) {
-      showNotice("error", "Your referral link is not ready yet. Refresh Settings and try again.");
-      return;
-    }
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: "Join Ahadu Tech Academy", text: "Register with my Ahadu Tech Academy referral link.", url: link });
-      } else {
-        await copyReferralLink();
-      }
-    } catch (error) {
-      if (error?.name !== "AbortError") await copyReferralLink();
-    }
-  }
-
-  async function savePayoutAccount(event) {
-    event.preventDefault();
-    setSavingPayout(true);
-    try {
-      await api.put('/referrals/payout', payoutAccount);
-      showNotice('success', 'Your payout account has been saved securely.');
-    } catch (error) {
-      showNotice('error', error.response?.data?.message || 'Unable to save your payout account.');
-    } finally { setSavingPayout(false); }
   }
 
   async function saveTelegramBotLink(event) {
@@ -430,55 +346,7 @@ export default function SettingsPage() {
       </header>
 
 
-      <section className={cardClass} aria-labelledby="settings-referral-heading">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-sky-600">Invite & earn</p>
-            <h2 id="settings-referral-heading" className="mt-2 text-xl font-bold">Referral Link</h2>
-            <p className="mt-1 max-w-2xl text-sm text-[var(--app-muted)]">Invite learners to Ahadu Tech Academy. Commissions are counted only after an administrator verifies a premium-course payment receipt and approves access.</p>
-          </div>
-          <span className="inline-flex items-center gap-2 rounded-full border border-sky-500/25 bg-sky-500/10 px-3 py-1.5 text-xs font-semibold text-sky-600"><Link2 size={14}/> Your personal link</span>
-        </div>
 
-        {referralError && <p role="alert" className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-600">{referralError}</p>}
-        {loadingReferral ? <p className="mt-5 text-sm text-[var(--app-muted)]">Loading your referral link and statistics…</p> : (
-          <>
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-              <input aria-label="Your personal referral link" readOnly value={getReferralShareUrl()} placeholder="Your referral link will appear here" className={fieldClass + " min-w-0 flex-1"} />
-              <button type="button" onClick={copyReferralLink} disabled={!referralData?.referralLink} className={buttonClass}><Copy size={16}/>{referralCopied ? "Copied" : "Copy link"}</button>
-              <button type="button" onClick={shareReferralLink} disabled={!referralData?.referralLink} className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--app-border)] px-5 py-3 text-sm font-semibold transition hover:bg-[var(--app-bg)] disabled:cursor-not-allowed disabled:opacity-50"><Share2 size={16}/>Share</button>
-            </div>
-            {referralData?.referralCode && <p className="mt-2 text-xs text-[var(--app-muted)]">Referral code: <span className="font-semibold tracking-wider">{referralData.referralCode}</span></p>}
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-bg)] p-4"><div className="flex items-center gap-2 text-sm text-[var(--app-muted)]"><Users size={16}/>Direct referrals</div><p className="mt-2 text-2xl font-bold tabular-nums">{referralData?.counts?.direct ?? 0}</p></div>
-              <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-bg)] p-4"><div className="flex items-center gap-2 text-sm text-[var(--app-muted)]"><Users size={16}/>Second-level+ referrals</div><p className="mt-2 text-2xl font-bold tabular-nums">{referralData?.counts?.indirect ?? 0}</p><p className="mt-1 text-xs text-[var(--app-muted)]">All levels below direct</p></div>
-              <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-bg)] p-4"><div className="flex items-center gap-2 text-sm text-[var(--app-muted)]"><Wallet size={16}/>Total earned</div><p className="mt-2 text-2xl font-bold tabular-nums">{new Intl.NumberFormat("en-ET", { style: "currency", currency: "ETB", maximumFractionDigits: 2 }).format(Number(referralData?.earningsETB || 0))}</p><p className="mt-1 text-xs text-[var(--app-muted)]">Verified premium payments only</p></div>
-              <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-bg)] p-4"><div className="flex items-center gap-2 text-sm text-[var(--app-muted)]"><Wallet size={16}/>Paid out / sent</div><p className="mt-2 text-2xl font-bold tabular-nums">{new Intl.NumberFormat("en-ET", { style: "currency", currency: "ETB", maximumFractionDigits: 2 }).format(Number(referralData?.paidOutETB || 0))}</p><p className="mt-1 text-xs text-[var(--app-muted)]">Recorded by an administrator</p></div>
-              <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-bg)] p-4"><div className="flex items-center gap-2 text-sm text-[var(--app-muted)]"><Wallet size={16}/>Remaining balance</div><p className="mt-2 text-2xl font-bold tabular-nums">{new Intl.NumberFormat("en-ET", { style: "currency", currency: "ETB", maximumFractionDigits: 2 }).format(Number(referralData?.remainingBalanceETB || 0))}</p><p className="mt-1 text-xs text-[var(--app-muted)]">Earned minus paid out</p></div>
-            </div>
-          </>
-        )}
-
-        <div className="mt-6 border-t border-[var(--app-border)] pt-5">
-          <h3 className="text-base font-bold">Recent payouts</h3>
-          <p className="mt-1 text-sm text-[var(--app-muted)]">Administrator-recorded transfers reduce your remaining balance.</p>
-          <div className="mt-3 space-y-2">
-            {(referralData?.payouts || []).slice(0, 5).map((item, index) => <div key={item.transactionReference + index} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--app-border)] bg-[var(--app-bg)] px-3 py-2 text-sm"><span className="font-medium">{item.transactionReference}</span><span className="font-semibold">{new Intl.NumberFormat("en-ET", { style: "currency", currency: "ETB", maximumFractionDigits: 2 }).format(Number(item.amountETB || 0))}</span><span className="text-xs text-[var(--app-muted)]">{new Date(item.paidAt).toLocaleDateString()}</span></div>)}
-            {!referralData?.payouts?.length && <p className="text-sm text-[var(--app-muted)]">No payouts recorded yet.</p>}
-          </div>
-        </div>
-
-        <div className="mt-6 border-t border-[var(--app-border)] pt-5">
-          <h3 className="text-base font-bold">Payout account</h3>
-          <p className="mt-1 text-sm text-[var(--app-muted)]">Add the bank or mobile-wallet details where your eligible referral commissions can be paid.</p>
-          <form onSubmit={savePayoutAccount} className="mt-4 grid gap-4 sm:grid-cols-2">
-            <label className="text-sm font-semibold">Bank or wallet provider<input className={fieldClass} value={payoutAccount.provider} onChange={event => setPayoutAccount(prev => ({ ...prev, provider: event.target.value }))} placeholder="e.g. CBE, Telebirr" required maxLength={60}/></label>
-            <label className="text-sm font-semibold">Account holder name<input className={fieldClass} value={payoutAccount.accountName} onChange={event => setPayoutAccount(prev => ({ ...prev, accountName: event.target.value }))} required maxLength={120}/></label>
-            <label className="text-sm font-semibold sm:col-span-2">Account or wallet number<input className={fieldClass} value={payoutAccount.accountNumber} onChange={event => setPayoutAccount(prev => ({ ...prev, accountNumber: event.target.value }))} required maxLength={80} autoComplete="off"/></label>
-            <div className="sm:col-span-2"><button type="submit" disabled={savingPayout} className={buttonClass}><Save size={16}/>{savingPayout ? "Saving…" : "Save payout account"}</button></div>
-          </form>
-        </div>
-      </section>
 
       {notice.text && (
         <div role="status" className={"rounded-xl border px-4 py-3 text-sm " + (notice.type === "error" ? "border-rose-500/30 bg-rose-500/10 text-rose-600" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-600")}>
@@ -503,8 +371,7 @@ export default function SettingsPage() {
         </nav>
 
         <div className="min-w-0 space-y-6">
-          {activeTab === "account" && (
-            <>
+          {activeTab === "profile" && (
               <section className={cardClass}>
                 <div className="mb-6">
                   <h2 className="text-lg font-bold">Profile information</h2>
@@ -593,8 +460,9 @@ export default function SettingsPage() {
                   </div>
                 )}
               </section>
+          )}
 
-
+          {activeTab === "account" && (
               <section className={cardClass}>
                 <div className="mb-5 flex items-start gap-3">
                   <div className="rounded-xl bg-amber-500/10 p-2.5 text-amber-600"><LockKeyhole size={19} /></div>
@@ -629,7 +497,6 @@ export default function SettingsPage() {
                   </div>
                 </form>
               </section>
-            </>
           )}
 
           {activeTab === "appearance" && (
