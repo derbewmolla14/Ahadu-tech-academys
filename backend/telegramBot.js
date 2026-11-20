@@ -11,13 +11,62 @@ let offset = 0;
 const BOT_MENU_KEYBOARD = { keyboard: [[{ text: 'Menu / ሜኑ' }]], resize_keyboard: true, is_persistent: true };
 const ACTION_MENU_KEYBOARD = { keyboard: [[{ text: 'Login' }, { text: 'Register' }], [{ text: 'OTP Code' }], [{ text: 'Information / ኢንፎርሜሽን' }, { text: 'Email / ኢሜይል' }], [{ text: 'Send Receipt / ሴንድ ሪሲፕት' }], [{ text: 'Menu / ሜኑ' }]], resize_keyboard: true, is_persistent: true };
 function academyUrl(path) { const base = String(process.env.FRONTEND_URL || 'https://ahadu-tech-academys.vercel.app').replace(/\/$/, ''); return base + path; }
+
+async function clearActiveView(chatId, mode = 'idle') {
+  const key = String(chatId);
+  const session = await TelegramBotSession.findOne({ chatId: key }).lean();
+  for (const messageId of session?.activeViewMessageIds || []) {
+    try {
+      await telegramRequest('deleteMessage', { chat_id: key, message_id: messageId });
+    } catch (error) {
+      console.warn('[telegram bot] Previous view message could not be removed:', error.message);
+    }
+  }
+  await TelegramBotSession.findOneAndUpdate(
+    { chatId: key },
+    { $set: { mode, activeViewMessageIds: [], viewUpdatedAt: new Date(), startedAt: new Date() } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+}
+
+async function sendViewMessage(chatId, payload) {
+  const result = await telegramRequest('sendMessage', { ...payload, chat_id: chatId });
+  if (result?.message_id != null) {
+    await TelegramBotSession.updateOne(
+      { chatId: String(chatId) },
+      { $addToSet: { activeViewMessageIds: result.message_id }, $set: { viewUpdatedAt: new Date() } },
+      { upsert: true }
+    );
+  }
+  return result;
+}
+
+async function sendViewMedia(chatId, method, payload) {
+  const result = await telegramRequest(method, { ...payload, chat_id: chatId });
+  if (result?.message_id != null) {
+    await TelegramBotSession.updateOne(
+      { chatId: String(chatId) },
+      { $addToSet: { activeViewMessageIds: result.message_id }, $set: { viewUpdatedAt: new Date() } },
+      { upsert: true }
+    );
+  }
+  return result;
+}
+
 async function sendMenu(chatId, showActions = false) {
-  await telegramRequest('sendMessage', { chat_id: chatId, text: showActions ? 'Choose Login, Register, or OTP Code. / መግቢያ፣ ምዝገባ ወይም የOTP ኮድ ይምረጡ።' : 'Tap Menu to see options. / አማራጮቹን ለማየት ሜኑን ይጫኑ።', reply_markup: showActions ? ACTION_MENU_KEYBOARD : BOT_MENU_KEYBOARD });
+  await clearActiveView(chatId, 'menu');
+  await sendViewMessage(chatId, {
+    text: showActions
+      ? 'Choose an option below. / ከታች ያለውን አማራጭ ይምረጡ።'
+      : 'Tap Menu to see options. / አማራጮቹን ለማየት ሜኑን ይጫኑ።',
+    reply_markup: showActions ? ACTION_MENU_KEYBOARD : BOT_MENU_KEYBOARD,
+  });
 }
 async function sendOtpCodeForChat(chatId) {
+  await clearActiveView(chatId, 'otp');
   const user = await User.findOne({ telegramChatId: String(chatId) }).select('_id email telegramChatId');
   if (!user || !user.email) {
-    await telegramRequest('sendMessage', { chat_id: chatId, text: 'No academy account is linked to this Telegram chat. Sign in to Ahadu Tech Academy, open Settings → Account & Profile → Link Telegram, then press Start in the secure bot link. / ከዚህ ቴሌግራም ጋር የተገናኘ መለያ የለም። ወደ አካዳሚው ይግቡና Settings → Account & Profile → Link Telegram ይጠቀሙ።', reply_markup: BOT_MENU_KEYBOARD });
+    await sendViewMessage(chatId, { text: 'No academy account is linked to this Telegram chat. Sign in to Ahadu Tech Academy, open Settings → Account & Profile → Link Telegram, then press Start in the secure bot link. / ከዚህ ቴሌግራም ጋር የተገናኘ መለያ የለም። ወደ አካዳሚው ይግቡና Settings → Account & Profile → Link Telegram ይጠቀሙ።', reply_markup: ACTION_MENU_KEYBOARD });
     return;
   }
   const email = String(user.email).trim().toLowerCase();
@@ -34,35 +83,52 @@ async function sendOtpCodeForChat(chatId) {
 
 
 async function sendInformation(chatId, page = 1) {
-  const pageSize = 20;
+  await clearActiveView(chatId, 'information');
+  const pageSize = 10;
   const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
   const total = await TelegramBotRecord.countDocuments({ type: 'information' });
-  const records = await TelegramBotRecord.find({ type: 'information' }).sort({ createdAt: -1 }).skip((safePage - 1) * pageSize).limit(pageSize).lean();
+  const records = await TelegramBotRecord.find({ type: 'information' })
+    .sort({ createdAt: -1 }).skip((safePage - 1) * pageSize).limit(pageSize).lean();
+
   if (!records.length) {
-    await telegramRequest('sendMessage', { chat_id: chatId, text: 'No official information or announcements have been posted yet. / እስካሁን ምንም ይፋዊ መረጃ ወይም ማስታወቂያ አልተለጠፈም።', reply_markup: BOT_MENU_KEYBOARD });
+    const emptyText = total
+      ? 'No more information on this page. / በዚህ ገጽ ላይ ተጨማሪ መረጃ የለም။\nUse /info 1 to view the latest announcements. / አዳዲስ ማስታወቂያዎችን ለማየት /info 1 ይጠቀሙ።'
+      : 'INFORMATION / መረጃ\n\nThere are no official announcements yet. Please check again later. Official notices and identification/reference records (መታወቂያዎች) will appear here when published by the academy admin.\n\nእስካሁን ይፋዊ ማስታወቂያ የለም። እባክዎ በኋላ ይመለሱ። በአካዳሚው አስተዳዳሪ የሚታተሙ ማስታወቂያዎችና የመታወቂያ መዝገቦች እዚህ ይታያሉ።';
+    await sendViewMessage(chatId, { text: emptyText, reply_markup: ACTION_MENU_KEYBOARD });
     return;
   }
-  await telegramRequest('sendMessage', { chat_id: chatId, text: 'Official Information & Announcements / ይፋዊ መረጃዎች\\nSaved records: ' + records.length, reply_markup: BOT_MENU_KEYBOARD });
-  for (const record of records.reverse()) {
+
+  const lines = ['INFORMATION & OFFICIAL ANNOUNCEMENTS / መረጃዎች እና ይፋዊ ማስታወቂያዎች', 'Page ' + safePage + ' · ' + total + ' saved record(s)', ''];
+  for (const record of [...records].reverse()) {
     const stamp = new Date(record.createdAt).toLocaleString('en-GB', { timeZone: 'Africa/Addis_Ababa' });
-    const body = '[' + stamp + ']\\n' + (record.text || record.caption || 'Official record');
-    await telegramRequest('sendMessage', { chat_id: chatId, text: body.slice(0, 3900) });
-    if (record.attachment?.fileId) {
-      const method = record.attachment.type === 'photo' ? 'sendPhoto' : record.attachment.type === 'document' ? 'sendDocument' : record.attachment.type === 'video' ? 'sendVideo' : 'sendDocument';
-      await telegramRequest(method, { chat_id: chatId, [record.attachment.type === 'photo' ? 'photo' : record.attachment.type === 'video' ? 'video' : 'document']: record.attachment.fileId, caption: record.caption || undefined });
-    }
+    lines.push('━━━━━━━━━━━━━━━━', stamp, record.text || record.caption || 'Official record / ይፋዊ መዝገብ');
+  }
+  if (safePage * pageSize < total) lines.push('', 'Older records: /info ' + (safePage + 1));
+  if (safePage > 1) lines.push('Latest records: /info 1');
+  await sendViewMessage(chatId, { text: lines.join('\n').slice(0, 3900), reply_markup: ACTION_MENU_KEYBOARD });
+
+  for (const record of records) {
+    if (!record.attachment?.fileId) continue;
+    const field = ['photo', 'video', 'audio'].includes(record.attachment.type) ? record.attachment.type : 'document';
+    const method = field === 'photo' ? 'sendPhoto' : field === 'video' ? 'sendVideo' : field === 'audio' ? 'sendAudio' : 'sendDocument';
+    await sendViewMedia(chatId, method, {
+      [field]: record.attachment.fileId,
+      caption: String(record.caption || '').slice(0, 900) || undefined,
+    });
   }
 }
-
 async function sendAccountEmail(chatId) {
+  await clearActiveView(chatId, 'email');
   const user = await User.findOne({ telegramChatId: String(chatId) }).select('email fullName');
   if (!user) {
-    await telegramRequest('sendMessage', { chat_id: chatId, text: 'This Telegram chat is not linked to an academy account. Link it from Settings → Account & Profile → Link Telegram. / ይህ ቴሌግራም ከአካዳሚ መለያ ጋር አልተገናኘም።', reply_markup: BOT_MENU_KEYBOARD });
+    await sendViewMessage(chatId, { text: 'This Telegram chat is not linked to an academy account. Link it from Settings → Account & Profile → Link Telegram. / ይህ ቴሌግራም ከአካዳሚ መለያ ጋር አልተገናኘም።', reply_markup: ACTION_MENU_KEYBOARD });
     return;
   }
-  await telegramRequest('sendMessage', { chat_id: chatId, text: 'Your registered academy email / በአካዳሚው የተመዘገበ ኢሜይል:\\n' + user.email + '\\n\\nTo change your email, use your signed-in account profile. / ኢሜይሉን ለመቀየር ወደ መለያዎ ገብተው Profile ይጠቀሙ።', reply_markup: BOT_MENU_KEYBOARD });
+  await sendViewMessage(chatId, {
+    text: 'ACCOUNT EMAIL / የመለያ ኢሜይል\n\nYour registered academy email: ' + user.email + '\n\nTo change your email, use your signed-in account profile. / ኢሜይሉን ለመቀየር ወደ መለያዎ ገብተው Profile ይጠቀሙ።',
+    reply_markup: ACTION_MENU_KEYBOARD,
+  });
 }
-
 async function getTelegramAdmins() {
   const admins = await User.find({ role: 'admin', telegramChatId: { $type: 'string', $ne: '' } }).select('telegramChatId').lean();
   const configured = String(process.env.TELEGRAM_ADMIN_CHAT_IDS || '').split(',').map((value) => value.trim()).filter(Boolean);
@@ -70,14 +136,17 @@ async function getTelegramAdmins() {
 }
 
 async function beginReceiptSubmission(chatId) {
-  await TelegramBotSession.findOneAndUpdate(
+  await clearActiveView(chatId, 'receipt');
+  await TelegramBotSession.updateOne(
     { chatId: String(chatId) },
-    { $set: { mode: 'receipt', startedAt: new Date() } },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { $set: { mode: 'receipt', startedAt: new Date(), activeViewMessageIds: [] } },
+    { upsert: true }
   );
-  await telegramRequest('sendMessage', { chat_id: chatId, text: 'Send your message, payment note, or receipt photo/document now. Each submission is saved and sent to the academy admin. Send /done when finished.\\n\\nጽሑፍ፣ የክፍያ ማስታወሻ ወይም ደረሰኝ ፎቶ/ሰነድ አሁን ይላኩ። እያንዳንዱ መልዕክት ተቀምጦ ለአስተዳዳሪው ይደርሳል። ለመጨረስ /done ይላኩ።', reply_markup: { keyboard: [[{ text: '/done' }, { text: 'Menu / ሜኑ' }]], resize_keyboard: true, is_persistent: true } });
+  await sendViewMessage(chatId, {
+    text: 'SEND RECEIPT / ደረሰኝ ይላኩ\n\nSend your message, payment note, or receipt photo/document now. Each submission is saved and sent to the academy admin. Send /done when finished.\n\nጽሑፍ፣ የክፍያ ማስታወሻ ወይም ደረሰኝ ፎቶ/ሰነድ አሁን ይላኩ። እያንዳንዱ መልዕክት ተቀምጦ ለአስተዳዳሪው ይደርሳል። ለመጨረስ /done ይላኩ።',
+    reply_markup: { keyboard: [[{ text: '/done' }, { text: 'Menu / ሜኑ' }]], resize_keyboard: true, is_persistent: true },
+  });
 }
-
 function extractReceiptAttachment(message) {
   if (Array.isArray(message.photo) && message.photo.length) return { type: 'photo', fileId: message.photo[message.photo.length - 1].file_id };
   if (message.document) return { type: 'document', fileId: message.document.file_id, fileName: message.document.file_name || '' };
@@ -114,7 +183,8 @@ async function saveAndForwardReceipt(message) {
       console.error('[telegram bot] Receipt copy failed; record remains saved:', error.message);
     }
   }
-  await telegramRequest('sendMessage', { chat_id: chatId, text: 'Your submission has been saved' + (admins.length ? ' and forwarded to the academy admin.' : '. The academy team will review it.') + ' Reference: ' + record._id + ' / መልዕክትዎ ተቀምጧል።', reply_markup: { keyboard: [[{ text: '/done' }, { text: 'Menu / ሜኑ' }]], resize_keyboard: true, is_persistent: true } });
+  await clearActiveView(chatId, 'receipt');
+  await sendViewMessage(chatId, { text: 'Your submission has been saved' + (admins.length ? ' and forwarded to the academy admin.' : '. The academy team will review it.') + ' Reference: ' + record._id + ' / መልዕክትዎ ተቀምጧል።', reply_markup: { keyboard: [[{ text: '/done' }, { text: 'Menu / ሜኑ' }]], resize_keyboard: true, is_persistent: true } });
   return true;
 }
 
@@ -239,10 +309,12 @@ async function handleUpdate(update) {
   if (/^(?:menu|menu \/ ሜኑ|ሜኑ|\/menu)$/i.test(text)) { await sendMenu(chatId, true); return; }
   if (/^otp code$/i.test(text) || /^የotp ኮድ$/i.test(text)) { await sendOtpCodeForChat(chatId); return; }
   if (/^login$/i.test(text) || /^መግቢያ$/i.test(text)) {
-    await telegramRequest('sendMessage', { chat_id: chatId, text: 'Sign in to Ahadu Tech Academy: ' + academyUrl('/login'), reply_markup: BOT_MENU_KEYBOARD }); return;
+    await clearActiveView(chatId, 'login');
+    await sendViewMessage(chatId, { text: 'LOGIN / መግቢያ\\nSign in to Ahadu Tech Academy: ' + academyUrl('/login'), reply_markup: ACTION_MENU_KEYBOARD }); return;
   }
   if (/^register$/i.test(text) || /^ምዝገባ$/i.test(text)) {
-    await telegramRequest('sendMessage', { chat_id: chatId, text: 'Register at Ahadu Tech Academy: ' + academyUrl('/register'), reply_markup: BOT_MENU_KEYBOARD }); return;
+    await clearActiveView(chatId, 'register');
+    await sendViewMessage(chatId, { text: 'REGISTER / ምዝገባ\\nRegister at Ahadu Tech Academy: ' + academyUrl('/register'), reply_markup: ACTION_MENU_KEYBOARD }); return;
   }
   if (/^(?:information(?: \/ ኢንፎርሜሽን)?|ኢንፎርሜሽን|\/info(?:@\w+)?(?:\s+\d+)?|\/info)$/i.test(text)) {
     const admin = await User.findOne({ telegramChatId: chatId, role: 'admin' }).select('_id');
@@ -258,8 +330,8 @@ async function handleUpdate(update) {
     await publishInformation(message, text.replace(/^\/announce(?:@\w+)?\s*/i, '').trim() || message.caption || ''); return;
   }
   if (/^\/done$/i.test(text)) {
-    await TelegramBotSession.deleteOne({ chatId, mode: 'receipt' });
-    await telegramRequest('sendMessage', { chat_id: chatId, text: 'Receipt submission closed. Your saved submissions remain available to the academy admin. / ማስገባቱ ተጠናቋል።', reply_markup: BOT_MENU_KEYBOARD }); return;
+    await clearActiveView(chatId, 'menu');
+    await sendViewMessage(chatId, { text: 'Receipt submission closed. Your saved submissions remain available to the academy admin. / ማስገባቱ ተጠናቋል።', reply_markup: ACTION_MENU_KEYBOARD }); return;
   }
   const session = await TelegramBotSession.findOne({ chatId, mode: 'receipt' });
   if (session) { await saveAndForwardReceipt(message); return; }
