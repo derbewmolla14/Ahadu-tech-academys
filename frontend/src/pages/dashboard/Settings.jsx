@@ -280,18 +280,42 @@ export default function SettingsPage() {
     setUpdateError("");
     showNotice("", "");
     try {
-      // Always fetch the manifest at click time so this is a true one-tap flow.
+      // Fetch a fresh manifest at click time; users do not need to check first.
       const metadata = await fetchLatestVersion();
       setLatestVersion(metadata);
       setUpdateCheckedAt(new Date().toLocaleString());
 
-      if (isNativeApp && metadata.bundleId && metadata.bundleUrl) {
-        await applyOtaBundle(metadata);
+      if (isNativeApp && metadata.nativeUpdateRequired === true) {
+        setOtaUpdateAvailable(false);
+        setUpdateError("A native app update is required. Use Download Latest APK below.");
         return;
       }
 
-      if (isNativeApp && metadata.nativeUpdateRequired === true) {
-        setUpdateError("A native app update is required. Use Download Latest APK below.");
+      if (isNativeApp) {
+        if (!metadata.bundleId || !metadata.bundleUrl) {
+          setOtaUpdateAvailable(false);
+          const hasNewVersion = compareVersions(metadata.version, currentVersion) > 0 || Boolean(metadata.forceRefresh);
+          if (hasNewVersion) {
+            setUpdateError("A newer release is listed, but its OTA bundle is not published yet. Please try again later or install the latest app release.");
+          } else {
+            showNotice("success", "You're already using the latest available mobile app bundle.");
+          }
+          return;
+        }
+
+        if (!metadata.checksum) {
+          throw new Error("The published OTA bundle is missing its SHA-256 checksum. The update was not installed.");
+        }
+
+        const result = await applyOtaBundle(metadata);
+        setOtaUpdateAvailable(false);
+        if (result?.alreadyCurrent) {
+          showNotice("success", "You're already using the latest available mobile app bundle.");
+        } else if (result?.reloadPending) {
+          showNotice("success", "The update was downloaded and scheduled. Close and reopen the app to finish applying it.");
+        } else {
+          showNotice("success", "The update was downloaded and the app is restarting with the new version.");
+        }
         return;
       }
 
@@ -721,18 +745,11 @@ export default function SettingsPage() {
               {updateCheckedAt && <p className="mt-3 text-xs text-[var(--app-muted)]">Last checked: {updateCheckedAt}</p>}
 
               <div className="mt-5 flex flex-wrap gap-3">
-                <a
-                  href="https://github.com/derbewmolla14/Ahadu-tech-academys/releases/download/v1.0.3-mobile-ui/Ahadu-Tech-Academy.apk"
-                  className="${buttonClass}"
-                  aria-label="Download Ahadu Tech Academy APK"
-                >
-                  <Download size={16} /> Download Ahadu Tech Academy APK
-                </a>
                 <button type="button" onClick={checkForUpdates} disabled={checkingUpdates || applyingUpdate} className={buttonClass}>
                   <RefreshCw size={16} className={checkingUpdates ? "animate-spin" : ""} />
                   {checkingUpdates ? "Checking…" : "Check for Updates"}
                 </button>
-                <button type="button" onClick={updateNow} disabled={applyingUpdate || checkingUpdates || (isNativeApp && !otaUpdateAvailable)} className={buttonClass}>
+                <button type="button" onClick={updateNow} disabled={applyingUpdate || checkingUpdates} className={buttonClass}>
                   {applyingUpdate ? <RefreshCw size={16} className="animate-spin" /> : <Download size={16} />}
                   {applyingUpdate ? "Applying OTA update…" : "Update Now"}
                 </button>
