@@ -1,0 +1,14 @@
+{
+  "name": "Ahadu Tech Academy",
+  "short_name": "Ahadu Academy",
+  "description": "Ahadu Tech Academy — learning resources, courses and offline study.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#102b4b",
+  "theme_color": "#102b4b",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

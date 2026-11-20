@@ -44,7 +44,7 @@ export default function Navbar() {
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#0f1b3d] bg-gradient-to-br from-blue-50 to-blue-100 p-1 sm:h-9 sm:w-9">
               <span className="text-lg sm:text-xl">🎓</span>
             </div>
-            <div className="min-w-0 leading-none"><span className="block truncate text-[13px] font-extrabold tracking-tight text-[#0f1b3d] sm:text-sm md:text-lg lg:text-xl">AHADU TECH ACADEMY</span></div>
+            <div className="min-w-0 leading-none"><span className="block truncate text-[13px] font-extrabold tracking-tight text-[#0f1b3d] sm:text-sm md:text-lg lg:text-xl">AHADU <br />TECH <br />ACADEMY</span></div>
           </Link>
 
           {/* Desktop nav */}
