@@ -59,7 +59,8 @@ export default function ForgotPassword() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);\n  const [retryStatus, setRetryStatus] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [retryStatus, setRetryStatus] = useState('');
 
   useEffect(() => {
     if (!otpExpiry) {
@@ -174,7 +175,8 @@ export default function ForgotPassword() {
             </button>
           </div>
 
-          {retryStatus ? <div role="status" aria-live="polite" className="mb-5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-200">{retryStatus}</div> : null}\n          {error ? <div role="alert" className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-200">{error}</div> : null}
+          {retryStatus ? <div role="status" aria-live="polite" className="mb-5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-200">{retryStatus}</div> : null}
+          {error ? <div role="alert" className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-200">{error}</div> : null}
           {message ? <div role="status" className="mb-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">{message}</div> : null}
 
           <label className="block">
