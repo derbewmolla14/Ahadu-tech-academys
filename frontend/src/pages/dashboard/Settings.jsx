@@ -487,7 +487,7 @@ export default function SettingsPage() {
       )}
 
       <div className="grid gap-6 md:grid-cols-[220px_minmax(0,1fr)]">
-        <nav aria-label="Settings sections" className="flex gap-2 overflow-x-auto rounded-2xl border border-[var(--app-border)] bg-[var(--app-card)] p-2 md:block md:space-y-1 md:self-start">
+        <nav aria-label="Settings sections" className="flex gap-2 overflow-x-auto rounded-2xl border border-[var(--app-border)] bg-[var(--app-card)] p-2 md:sticky md:top-6 md:max-h-[calc(100vh-3rem)] md:overflow-y-auto md:block md:space-y-1 md:self-start">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const selected = activeTab === tab.id;
