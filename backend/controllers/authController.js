@@ -12,7 +12,7 @@ const { getJwtSecret } = require('../config/env');
 const TelegramOtp = require('../models/TelegramOtp');
 const AppSetting = require('../models/AppSetting');
 
-const TELEGRAM_OTP_TTL_MS = 60 * 1000;
+const TELEGRAM_OTP_TTL_MS = 2 * 60 * 1000;
 const TELEGRAM_OTP_MAX_ATTEMPTS = 5;
 
 function hashTelegramValue(value) {
@@ -92,8 +92,8 @@ exports.requestTelegramOtp = async (req, res) => {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ code: 'INVALID_EMAIL', message: 'Enter a valid registered email address.' });
     }
-    if (!process.env.TELEGRAM_BOT_TOKEN) {
-      return res.status(503).json({ message: 'Telegram password reset is not configured yet.' });
+    if (!process.env.TELEGRAM_BOT_TOKEN?.trim()) {
+      return res.status(503).json({ code: 'TELEGRAM_NOT_CONFIGURED', message: 'Telegram password reset is not configured yet.' });
     }
 
     const user = await User.findOne({ email }).select('_id email telegramChatId');
@@ -105,19 +105,19 @@ exports.requestTelegramOtp = async (req, res) => {
       const telegramBotLink = match?.[1] ? 'https://t.me/' + match[1] : '';
       return res.status(409).json({
         code: 'TELEGRAM_NOT_LINKED',
-        message: 'No Telegram account is linked to this account. Sign in, open Settings → Account & Profile → Link Telegram, open the generated secure link, and press Start in the bot. You can also use Reset via Email.',
+        message: 'No Telegram account is linked to this account. Sign in, open Settings → Account & Profile → Link Telegram, and press Start in the bot. You can also use Reset via Email.',
         telegramBotLink,
         nextStep: 'SIGN_IN_AND_CREATE_SECURE_LINK',
       });
     }
 
-    const active = await TelegramOtp.findOne({
-      userId: user._id, purpose: 'password-reset', used: false, expiresAt: { $gt: new Date() },
-    }).select('_id expiresAt');
-    if (active) {
-      const remaining = Math.max(1, Math.ceil((active.expiresAt.getTime() - Date.now()) / 1000));
-      return res.status(429).json({ code: 'OTP_ACTIVE', message: 'A Telegram code is already active. Enter the code you received, or wait for its countdown to finish before requesting another.', expiresInSeconds: remaining });
-    }
+    const now = Date.now();
+    const slotNumber = Math.floor(now / TELEGRAM_OTP_TTL_MS);
+    const expiresAt = new Date((slotNumber + 1) * TELEGRAM_OTP_TTL_MS);
+    await TelegramOtp.updateMany(
+      { userId: user._id, purpose: 'password-reset', used: false },
+      { $set: { used: true } }
+    );
 
     const otp = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
     const challenge = await TelegramOtp.create({
@@ -126,82 +126,148 @@ exports.requestTelegramOtp = async (req, res) => {
       email: user.email,
       chatId: user.telegramChatId,
       otpHash: hashTelegramOtp(otp),
-      expiresAt: new Date(Date.now() + TELEGRAM_OTP_TTL_MS),
+      slotNumber,
+      verified: false,
+      verifiedAt: null,
+      expiresAt,
     });
 
     try {
       await telegramApi('sendMessage', {
         chat_id: user.telegramChatId,
-        text: 'Ahadu Tech Academy password reset code: ' + otp + '\nThis code expires in 60 seconds. Do not share it with anyone.',
+        text: 'Ahadu Tech Academy password reset code: ' + otp + '\nThis code is valid only in the current 2-minute window. Do not share it with anyone.',
       });
     } catch (deliveryError) {
       await TelegramOtp.deleteOne({ _id: challenge._id });
       console.error('[telegram otp] Delivery failed:', { code: deliveryError.code, message: deliveryError.message });
-      return res.status(503).json({ code: 'TELEGRAM_DELIVERY_FAILED', message: 'Telegram could not deliver your code. Please check the bot is available and try again.' });
+      return res.status(503).json({ code: 'TELEGRAM_DELIVERY_FAILED', message: 'Telegram could not deliver your code. Please check the bot and try again.' });
     }
 
+    const savedBotSetting = await AppSetting.findOne({ key: 'telegramBotLink' }).select('value');
+    const configuredLink = String(savedBotSetting?.value || process.env.TELEGRAM_BOT_USERNAME || '').trim();
+    const match = configuredLink.match(/(?:https?:\/\/(?:www\.)?(?:t\.me|telegram\.me)\/)?@?([A-Za-z0-9_]{5,32})\/?$/i);
+    const telegramBotLink = match?.[1] ? 'https://t.me/' + match[1] : '';
     return res.status(200).json({
       message: 'A 6-digit code was sent to your linked Telegram account.',
-      expiresInSeconds: 60,
-      expiresAt: challenge.expiresAt.toISOString(),
+      telegramBotLink,
+      telegramDeepLink: telegramBotLink,
+      expiresInSeconds: Math.max(1, Math.ceil((expiresAt.getTime() - Date.now()) / 1000)),
+      expiresAt: expiresAt.toISOString(),
+      slotNumber,
     });
   } catch (error) {
-    console.error('[telegram otp] Request failed:', error.message);
-    return res.status(500).json({ message: 'Could not send a Telegram code. Please try again.' });
+    console.error('[telegram otp] Request failed:', { name: error.name, code: error.code, message: error.message });
+    return res.status(500).json({ code: 'OTP_REQUEST_FAILED', message: 'Could not send a Telegram code. Please try again.' });
   }
 };
 
-exports.resetPasswordWithTelegramOtp = async (req, res) => {
+exports.verifyTelegramOtp = async (req, res) => {
   try {
     const email = String(req.body.email || '').trim().toLowerCase();
     const otp = String(req.body.otp || '').trim();
-    const password = String(req.body.password || '');
-    if (!email || !/^\d{6}$/.test(otp)) return res.status(400).json({ message: 'Enter your email and the 6-digit Telegram code.' });
-    if (password.length < 8 || password.length > 128 || !/^(?=.*[A-Za-z])(?=.*\d)/.test(password)) {
-      return res.status(400).json({ message: 'Password must be 8–128 characters and include at least one letter and one number.' });
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^\d{6}$/.test(otp)) {
+      return res.status(400).json({ code: 'INVALID_OTP_INPUT', message: 'Enter a valid email and the 6-digit Telegram code.' });
     }
 
+    const now = Date.now();
+    const slotNumber = Math.floor(now / TELEGRAM_OTP_TTL_MS);
     const challenge = await TelegramOtp.findOne({
-      email, purpose: 'password-reset', used: false, expiresAt: { $gt: new Date() },
+      email,
+      purpose: 'password-reset',
+      slotNumber,
+      used: false,
+      verified: false,
+      expiresAt: { $gt: new Date(now) },
     }).sort({ createdAt: -1 });
-    if (!challenge) return res.status(400).json({ code: 'OTP_EXPIRED_OR_INVALID', message: 'This code is expired or invalid. Request a new code.' });
+
+    if (!challenge) {
+      return res.status(400).json({ code: 'OTP_EXPIRED_OR_INVALID', message: 'This code has expired or is invalid. Request a new code.' });
+    }
     if (challenge.attempts >= TELEGRAM_OTP_MAX_ATTEMPTS) {
-      await TelegramOtp.updateOne({ _id: challenge._id }, { $set: { used: true } });
+      await TelegramOtp.updateOne({ _id: challenge._id, used: false }, { $set: { used: true } });
       return res.status(429).json({ code: 'OTP_ATTEMPTS_EXCEEDED', message: 'Too many incorrect attempts. Request a new code.' });
     }
 
     const submittedHash = hashTelegramOtp(otp);
     if (!secureHashEquals(challenge.otpHash, submittedHash)) {
       const updated = await TelegramOtp.findOneAndUpdate(
-        { _id: challenge._id, used: false, attempts: { $lt: TELEGRAM_OTP_MAX_ATTEMPTS }, expiresAt: { $gt: new Date() } },
+        { _id: challenge._id, used: false, verified: false, attempts: { $lt: TELEGRAM_OTP_MAX_ATTEMPTS }, slotNumber, expiresAt: { $gt: new Date() } },
         { $inc: { attempts: 1 } },
         { new: true }
       );
-      const remaining = Math.max(0, TELEGRAM_OTP_MAX_ATTEMPTS - (updated?.attempts || TELEGRAM_OTP_MAX_ATTEMPTS));
-      if (!updated || remaining === 0) await TelegramOtp.updateOne({ _id: challenge._id }, { $set: { used: true } });
-      return res.status(400).json({ code: remaining ? 'OTP_INCORRECT' : 'OTP_ATTEMPTS_EXCEEDED', message: remaining ? 'Incorrect code. ' + remaining + ' attempts remaining.' : 'Too many incorrect attempts. Request a new code.', attemptsRemaining: remaining });
+      const attemptsRemaining = Math.max(0, TELEGRAM_OTP_MAX_ATTEMPTS - (updated?.attempts || TELEGRAM_OTP_MAX_ATTEMPTS));
+      if (!updated || attemptsRemaining === 0) await TelegramOtp.updateOne({ _id: challenge._id }, { $set: { used: true } });
+      return res.status(400).json({
+        code: attemptsRemaining ? 'OTP_INCORRECT' : 'OTP_ATTEMPTS_EXCEEDED',
+        message: attemptsRemaining ? 'Incorrect code. ' + attemptsRemaining + ' attempts remaining.' : 'Too many incorrect attempts. Request a new code.',
+        attemptsRemaining,
+      });
     }
 
     const claimed = await TelegramOtp.findOneAndUpdate(
-      { _id: challenge._id, otpHash: submittedHash, used: false, attempts: { $lt: TELEGRAM_OTP_MAX_ATTEMPTS }, expiresAt: { $gt: new Date() } },
-      { $set: { used: true } },
+      { _id: challenge._id, email, otpHash: submittedHash, used: false, verified: false, slotNumber, expiresAt: { $gt: new Date() } },
+      { $set: { verified: true, verifiedAt: new Date() } },
       { new: true }
     );
     if (!claimed) return res.status(400).json({ code: 'OTP_EXPIRED_OR_USED', message: 'This code has expired or has already been used. Request a new code.' });
 
-    const user = await User.findById(challenge.userId).select('+password');
-    if (!user || user.email !== email) return res.status(400).json({ message: 'Unable to reset this account password.' });
+    return res.json({
+      verified: true,
+      message: 'Telegram code verified. Set your new password before this 2-minute window ends.',
+      expiresAt: claimed.expiresAt.toISOString(),
+    });
+  } catch (error) {
+    console.error('[telegram otp] Verification failed:', { name: error.name, code: error.code, message: error.message });
+    return res.status(500).json({ code: 'OTP_VERIFICATION_FAILED', message: 'Could not verify the Telegram code. Please try again.' });
+  }
+};
+
+exports.resetPasswordWithTelegramOtp = async (req, res) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const password = String(req.body.password || '');
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ code: 'INVALID_EMAIL', message: 'Enter the email used to request the Telegram code.' });
+    }
+    if (password.length < 8 || password.length > 128 || !/^(?=.*[A-Za-z])(?=.*\d)/.test(password)) {
+      return res.status(400).json({ message: 'Password must be 8–128 characters and include at least one letter and one number.' });
+    }
+
+    const now = Date.now();
+    const slotNumber = Math.floor(now / TELEGRAM_OTP_TTL_MS);
+    const challenge = await TelegramOtp.findOne({
+      email,
+      purpose: 'password-reset',
+      slotNumber,
+      used: false,
+      verified: true,
+      verifiedAt: { $ne: null },
+      expiresAt: { $gt: new Date(now) },
+    }).sort({ createdAt: -1 });
+    if (!challenge) {
+      return res.status(400).json({ code: 'OTP_VERIFICATION_REQUIRED', message: 'Verify a current Telegram code before saving your new password.' });
+    }
+
+    const user = await User.findOne({ _id: challenge.userId, email }).select('+password');
+    if (!user) return res.status(400).json({ message: 'Unable to reset this account password.' });
+
+    const consumed = await TelegramOtp.findOneAndUpdate(
+      { _id: challenge._id, userId: user._id, email, slotNumber, used: false, verified: true, expiresAt: { $gt: new Date() } },
+      { $set: { used: true } },
+      { new: true }
+    );
+    if (!consumed) return res.status(400).json({ code: 'OTP_EXPIRED_OR_USED', message: 'Your verified code expired. Request and verify a new code.' });
+
     user.password = await bcrypt.hash(password, 12);
     await user.save();
     await TelegramOtp.deleteMany({ userId: user._id, purpose: 'password-reset' });
     await PasswordReset.deleteMany({ email });
     return res.json({ message: 'Password reset successfully. You can now sign in.' });
   } catch (error) {
-    console.error('[telegram otp] Password reset failed:', error.message);
+    console.error('[telegram otp] Password reset failed:', { name: error.name, code: error.code, message: error.message });
     return res.status(500).json({ message: 'Could not reset your password. Please try again.' });
   }
 };
-
 
 const signToken = (userId, role) =>
   jwt.sign({ id: userId, role }, getJwtSecret(), {
