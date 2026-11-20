@@ -141,7 +141,8 @@ exports.assignReferrer = async (req, res) => {
 
 exports.recordPayout = async (req, res) => {
   const { userId } = req.params;
-  const amountETB = Number(Number(req.body.amountETB).toFixed(2));
+  const rawAmount = Number(req.body.amountETB);
+  const amountETB = Number.isFinite(rawAmount) ? Number(rawAmount.toFixed(2)) : NaN;
   const transactionReference = String(req.body.transactionReference || '').trim().toUpperCase().slice(0, 80);
   const note = String(req.body.note || '').trim().slice(0, 240);
   if (!mongoose.isValidObjectId(userId)) return res.status(400).json({ message: 'Invalid learner account.' });
@@ -149,37 +150,49 @@ exports.recordPayout = async (req, res) => {
     return res.status(400).json({ message: 'Enter a positive payout amount and the bank or wallet transfer reference.' });
   }
 
-  let balanceReserved = false;
+  const session = await mongoose.startSession();
+  let payout;
   try {
-    const beneficiary = await User.findOne({ _id: userId, role: { $ne: 'admin' } }).select('_id');
-    if (!beneficiary) return res.status(404).json({ message: 'Learner account not found.' });
-    const earnedRows = await ReferralCommission.aggregate([
-      { $match: { beneficiary: beneficiary._id } },
-      { $group: { _id: null, totalETB: { $sum: '$commissionETB' } } },
-    ]);
-    const earnedETB = Number((earnedRows[0]?.totalETB || 0).toFixed(2));
-    const reservation = await User.updateOne(
-      { _id: beneficiary._id, $expr: { $lte: [{ $add: [{ $ifNull: ['$referralPaidOutETB', 0] }, amountETB] }, earnedETB] } },
-      { $inc: { referralPaidOutETB: amountETB } }
-    );
-    if (!reservation.modifiedCount) {
-      return res.status(409).json({ message: 'Payout exceeds the learner’s remaining verified commission balance. Refresh the records and try again.' });
-    }
-    balanceReserved = true;
-    const payout = await ReferralPayout.create({
-      beneficiary: beneficiary._id,
-      amountETB,
-      transactionReference,
-      note,
-      sentBy: req.user._id,
-      paidAt: new Date(),
+    await session.withTransaction(async () => {
+      const beneficiary = await User.findOne({ _id: userId, role: { $ne: 'admin' } }).select('_id').session(session);
+      if (!beneficiary) {
+        const error = new Error('Learner account not found.');
+        error.statusCode = 404;
+        throw error;
+      }
+      const earnedRows = await ReferralCommission.aggregate([
+        { $match: { beneficiary: beneficiary._id } },
+        { $group: { _id: null, totalETB: { $sum: '$commissionETB' } } },
+      ]).session(session);
+      const earnedETB = Number((earnedRows[0]?.totalETB || 0).toFixed(2));
+      const reservation = await User.updateOne(
+        { _id: beneficiary._id, $expr: { $lte: [{ $add: [{ $ifNull: ['$referralPaidOutETB', 0] }, amountETB] }, earnedETB] } },
+        { $inc: { referralPaidOutETB: amountETB } },
+        { session }
+      );
+      if (!reservation.modifiedCount) {
+        const error = new Error('Payout exceeds the learner’s remaining verified commission balance. Refresh the records and try again.');
+        error.statusCode = 409;
+        throw error;
+      }
+      const records = await ReferralPayout.create([{
+        beneficiary: beneficiary._id,
+        amountETB,
+        transactionReference,
+        note,
+        sentBy: req.user._id,
+        paidAt: new Date(),
+      }], { session });
+      payout = records[0];
     });
     return res.status(201).json({ message: 'Payout recorded successfully.', payout: { amountETB: payout.amountETB, transactionReference: payout.transactionReference, paidAt: payout.paidAt } });
   } catch (error) {
-    if (balanceReserved) await User.updateOne({ _id: userId }, { $inc: { referralPaidOutETB: -amountETB } }).catch(() => undefined);
     if (error.code === 11000) return res.status(409).json({ message: 'This payout transaction reference has already been recorded.' });
+    if (error.statusCode) return res.status(error.statusCode).json({ message: error.message });
     console.error('Record referral payout error:', error);
     return res.status(500).json({ message: 'Unable to record this referral payout.' });
+  } finally {
+    await session.endSession();
   }
 };
 
