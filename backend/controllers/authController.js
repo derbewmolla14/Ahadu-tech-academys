@@ -5,7 +5,7 @@ const { validationResult, body } = require('express-validator');
 const User = require('../models/User');
 const PasswordReset = require('../models/PasswordReset');
 const { serializeUserDoc } = require('../utils/serializeUser');
-const { sendPasswordResetEmail, verifyEmailService } = require('../utils/sendEmail');
+const { sendPasswordResetEmail } = require('../utils/sendEmail');
 const { getJwtSecret } = require('../config/env');
 
 const TelegramOtp = require('../models/TelegramOtp');
@@ -360,24 +360,11 @@ exports.forgotPassword = async (req, res) => {
       return res.status(503).json({ message: 'Password reset email is temporarily unavailable. Please try again later.' });
     }
 
-    // Check mail readiness before looking up the account so SMTP outages/configuration
-    // errors produce the same response for known and unknown addresses.
-    try {
-      await verifyEmailService();
-    } catch (mailConfigError) {
-      console.error('[password reset] SMTP readiness check failed:', {
-        code: mailConfigError.code,
-        message: mailConfigError.message,
-      });
-      return res.status(503).json({ message: 'Password reset email is temporarily unavailable. Please try again later.' });
-    }
-
     const user = await User.findOne({ email: rawEmail });
     if (!user) {
       return res.status(200).json(generic);
     }
 
-    await PasswordReset.deleteMany({ email: rawEmail });
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = hashResetToken(rawToken);
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
@@ -393,10 +380,16 @@ exports.forgotPassword = async (req, res) => {
       'This link expires in one hour and can only be used once.\n' +
       'If you did not request this, you can ignore this email.';
 
+    // Persist the token before dispatch so a quickly opened email link is
+    // already valid. Keep previous links until the new message is accepted.
+    const resetRecord = await PasswordReset.create({ email: rawEmail, tokenHash, expiresAt });
     try {
       await sendPasswordResetEmail(rawEmail, 'Reset your Ahadu Tech Academy password', { html, text });
-      await PasswordReset.create({ email: rawEmail, tokenHash, expiresAt });
+      await PasswordReset.deleteMany({ email: rawEmail, _id: { $ne: resetRecord._id } });
     } catch (mailError) {
+      await PasswordReset.deleteOne({ _id: resetRecord._id }).catch((cleanupError) => {
+        console.error('[password reset] Failed to remove undelivered token:', cleanupError.message);
+      });
       console.error('[password reset] Email dispatch failed:', { name: mailError.name, code: mailError.code, responseCode: mailError.responseCode, message: mailError.message });
       return res.status(503).json({ message: 'We could not send the password reset email right now. Please try again later.' });
     }
