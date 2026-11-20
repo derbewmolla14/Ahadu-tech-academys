@@ -52,6 +52,16 @@ export default function ReferralDashboard() {
         <Stat icon={TrendingUp} label="Commission records" value={data.commissions?.length || 0}/>
       </section>
       <section className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-card)] p-5">
+        <h2 className="text-lg font-bold">Payout history</h2>
+        <p className="mt-1 text-sm text-[var(--app-muted)]">Transfers recorded by an administrator, including their unique bank or wallet references.</p>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[480px] text-left text-sm"><thead><tr className="border-b border-[var(--app-border)] text-[var(--app-muted)]"><th className="p-3">Transfer reference</th><th className="p-3">Amount sent</th><th className="p-3">Date</th></tr></thead>
+            <tbody>{(data.payouts || []).map((item, index) => <tr key={item.transactionReference + index} className="border-b border-[var(--app-border)]"><td className="p-3">{item.transactionReference}</td><td className="p-3 font-semibold">{money(item.amountETB)}</td><td className="p-3">{new Date(item.paidAt).toLocaleDateString()}</td></tr>)}
+              {!data.payouts?.length && <tr><td colSpan="3" className="p-6 text-center text-[var(--app-muted)]">No payouts have been recorded yet.</td></tr>}</tbody>
+          </table>
+        </div>
+      </section>
+      <section className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-card)] p-5">
         <h2 className="text-lg font-bold">Commission history</h2>
         <p className="mt-1 text-sm text-[var(--app-muted)]">Commissions appear only after an administrator verifies a payment receipt and approves premium access.</p>
         <div className="mt-4 overflow-x-auto">
