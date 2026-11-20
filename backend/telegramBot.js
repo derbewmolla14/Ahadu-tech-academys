@@ -27,15 +27,15 @@ async function sendEntryIdentification(message) {
   const keyboard = user?.role === 'admin' ? ADMIN_ACTION_MENU_KEYBOARD : BOT_MENU_KEYBOARD;
   let text;
   if (!user) {
-    text = 'AHADU TECH ACADEMY · IDENTIFICATION / መታወቂያ\\n\\nTelegram status: Not linked to an academy account. / የቴሌግራም ሁኔታ፦ ከአካዳሚ መለያ ጋር አልተገናኘም።\\n\\nTo link: sign in to the academy → Settings → Account & Profile → Link Telegram, then open the secure link and press Start. / ለማገናኘት ወደ አካዳሚው ይግቡ → Settings → Account & Profile → Link Telegram ከዚያ የደህንነት ሊንኩን ከፍተው Start ይጫኑ።';
+    text = 'AHADU TECH ACADEMY · IDENTIFICATION / መታወቂያ\n\nTelegram status: Not linked to an academy account. / የቴሌግራም ሁኔታ፦ ከአካዳሚ መለያ ጋር አልተገናኘም።\n\nTo link: sign in to the academy → Settings → Account & Profile → Link Telegram, then open the secure link and press Start. / ለማገናኘት ወደ አካዳሚው ይግቡ → Settings → Account & Profile → Link Telegram ከዚያ የደህንነት ሊንኩን ከፍተው Start ይጫኑ።';
   } else {
     const roleLabel = user.role === 'admin' ? 'ADMIN / አስተዳዳሪ' : 'REGISTERED MEMBER / የተመዘገበ አባል';
-    text = 'AHADU TECH ACADEMY · IDENTIFICATION / መታወቂያ\\n\\n' + roleLabel +
-      '\\nName: ' + (user.fullName || 'Not provided') +
-      '\\nRegistered email: ' + user.email +
-      '\\nAccount ID: ' + String(user._id) +
-      '\\nTelegram: Securely linked' +
-      (user.role === 'admin' ? '\\n\\nAdmin actions are enabled for this linked admin account. / ለዚህ የተገናኘ የአስተዳዳሪ መለያ የአስተዳዳሪ አማራጮች ነቅተዋል።' : '');
+    text = 'AHADU TECH ACADEMY · IDENTIFICATION / መታወቂያ\n\n' + roleLabel +
+      '\nName: ' + (user.fullName || 'Not provided') +
+      '\nRegistered email: ' + user.email +
+      '\nAccount ID: ' + String(user._id) +
+      '\nTelegram: Securely linked' +
+      (user.role === 'admin' ? '\n\nAdmin actions are enabled for this linked admin account. / ለዚህ የተገናኘ የአስተዳዳሪ መለያ የአስተዳዳሪ አማራጮች ነቅተዋል።' : '');
   }
   await clearActiveView(chatId, 'menu');
   await sendViewMessage(chatId, { text, reply_markup: keyboard });
@@ -48,7 +48,7 @@ async function sendTotalUsers(chatId, page = 1) {
     return;
   }
   await clearActiveView(chatId, 'users');
-  const filter = { email: { $type: 'string', $regex: /\\S/ }, password: { $exists: true, $ne: '' } };
+  const filter = { email: { $type: 'string', $regex: /\S/ }, password: { $exists: true, $ne: '' } };
   const pageSize = 8;
   const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
   const [total, users] = await Promise.all([
@@ -56,7 +56,7 @@ async function sendTotalUsers(chatId, page = 1) {
     User.find(filter).select('_id fullName email role createdAt').sort({ createdAt: -1 }).skip((safePage - 1) * pageSize).limit(pageSize).lean(),
   ]);
   if (!users.length) {
-    await sendViewMessage(chatId, { text: 'TOTAL REGISTERED USERS / ጠቅላላ የተመዘገቡ ተጠቃሚዎች\\n\\nNo registered user records were found. / የተመዘገበ ተጠቃሚ አልተገኘም።', reply_markup: ADMIN_ACTION_MENU_KEYBOARD });
+    await sendViewMessage(chatId, { text: 'TOTAL REGISTERED USERS / ጠቅላላ የተመዘገቡ ተጠቃሚዎች\n\nNo registered user records were found. / የተመዘገበ ተጠቃሚ አልተገኘም።', reply_markup: ADMIN_ACTION_MENU_KEYBOARD });
     return;
   }
   const lines = ['TOTAL REGISTERED USERS / ጠቅላላ የተመዘገቡ ተጠቃሚዎች', 'Total: ' + total, 'Page ' + safePage + ' · showing ' + users.length + ' records', ''];
@@ -65,7 +65,7 @@ async function sendTotalUsers(chatId, page = 1) {
   }
   if (safePage * pageSize < total) lines.push('', 'Next page: /users ' + (safePage + 1));
   if (safePage > 1) lines.push('First page: /users 1');
-  await sendViewMessage(chatId, { text: lines.join('\\n').slice(0, 3900), reply_markup: ADMIN_ACTION_MENU_KEYBOARD });
+  await sendViewMessage(chatId, { text: lines.join('\n').slice(0, 3900), reply_markup: ADMIN_ACTION_MENU_KEYBOARD });
 }
 
 async function clearActiveView(chatId, mode = 'idle') {
@@ -151,7 +151,7 @@ async function sendInformation(chatId, page = 1) {
     const emptyText = total
       ? 'No more information on this page. / በዚህ ገጽ ላይ ተጨማሪ መረጃ የለም။\nUse /info 1 to view the latest announcements. / አዳዲስ ማስታወቂያዎችን ለማየት /info 1 ይጠቀሙ።'
       : 'INFORMATION / መረጃ\n\nThere are no official announcements yet. Please check again later. Official notices and identification/reference records (መታወቂያዎች) will appear here when published by the academy admin.\n\nእስካሁን ይፋዊ ማስታወቂያ የለም። እባክዎ በኋላ ይመለሱ። በአካዳሚው አስተዳዳሪ የሚታተሙ ማስታወቂያዎችና የመታወቂያ መዝገቦች እዚህ ይታያሉ።';
-    await sendViewMessage(chatId, { text: (admin ? 'Admin: publish an official notice with /announce followed by its text.\\n\\n' : '') + emptyText, reply_markup: ACTION_MENU_KEYBOARD });
+    await sendViewMessage(chatId, { text: (admin ? 'Admin: publish an official notice with /announce followed by its text.\n\n' : '') + emptyText, reply_markup: ACTION_MENU_KEYBOARD });
     return;
   }
 
@@ -232,7 +232,7 @@ async function saveAndForwardReceipt(message) {
   });
   const admins = await getTelegramAdmins();
   if (!admins.length) console.warn('[telegram bot] Receipt saved but no admin Telegram chats are configured. Link a Telegram chat to an admin account or set TELEGRAM_ADMIN_CHAT_IDS.');
-  const header = 'New Send Receipt submission #' + record._id + '\\nFrom: ' + (user?.email || message.from?.username || chatId) + '\\n' + (text || message.caption || '[Attachment]');
+  const header = 'New Send Receipt submission #' + record._id + '\nFrom: ' + (user?.email || message.from?.username || chatId) + '\n' + (text || message.caption || '[Attachment]');
   for (const adminChatId of admins) {
     await telegramRequest('sendMessage', { chat_id: adminChatId, text: header.slice(0, 3900) });
     try {
@@ -264,7 +264,7 @@ async function publishInformation(message, text) {
   if (!recipients.length) console.warn('[telegram bot] Official information saved; no linked Telegram recipients were found.');
   for (const chatId of recipients) {
     try {
-      await telegramRequest('sendMessage', { chat_id: chatId, text: 'OFFICIAL INFORMATION / ይፋዊ መረጃ\\n\\n' + (text || message.caption || 'Official record').slice(0, 3900) });
+      await telegramRequest('sendMessage', { chat_id: chatId, text: 'OFFICIAL INFORMATION / ይፋዊ መረጃ\n\n' + (text || message.caption || 'Official record').slice(0, 3900) });
       if (attachment?.fileId) await telegramRequest('copyMessage', { chat_id: chatId, from_chat_id: message.chat.id, message_id: message.message_id });
     } catch (error) { console.error('[telegram bot] Information broadcast failed; record remains saved:', error.message); }
   }
@@ -365,7 +365,7 @@ async function handleUpdate(update) {
   if (match) { await handleStart(message, match[1] || ''); return; }
 
   if (/^(?:menu|menu \/ ሜኑ|ሜኑ|\/menu)$/i.test(text)) { await sendMenu(chatId, true); return; }
-  const totalUsersMatch = text.match(/^(?:total users(?: \/ ጠቅላላ ተጠቃሚዎች)?|ጠቅላላ ተጠቃሚዎች|\/users(?:@\\w+)?(?:\\s+(\\d+))?)$/i);
+  const totalUsersMatch = text.match(/^(?:total users(?: \/ ጠቅላላ ተጠቃሚዎች)?|ጠቅላላ ተጠቃሚዎች|\/users(?:@\w+)?(?:\\s+(\\d+))?)$/i);
   if (totalUsersMatch) { await sendTotalUsers(chatId, totalUsersMatch[1] || 1); return; }
   if (/^otp code$/i.test(text) || /^የotp ኮድ$/i.test(text)) { await sendOtpCodeForChat(chatId); return; }
   if (/^login$/i.test(text) || /^መግቢያ$/i.test(text)) {
