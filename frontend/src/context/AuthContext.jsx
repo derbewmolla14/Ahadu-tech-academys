@@ -97,7 +97,7 @@ export const AuthProvider = ({ children }) => {
       if (savedLanguage) localStorage.setItem('language', savedLanguage);
       return { ...response.data, user: updatedUser };
     } catch (error) {
-      if (['en', 'am', 'both'].includes(requestedLanguage)) {
+      if (['en', 'am', 'english', 'amharic', 'both'].includes(requestedLanguage)) {
         localStorage.setItem('language', previousLanguage);
         setUser((current) => current ? {
           ...current,
