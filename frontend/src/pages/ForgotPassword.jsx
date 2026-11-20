@@ -112,7 +112,13 @@ export default function ForgotPassword() {
         setOtpExpiry(Date.now() + Number(data.expiresInSeconds) * 1000);
         setOtpSent(true);
       }
-      setError(getRequestFailureMessage(err, 'request a Telegram code'));
+      if (data?.code === 'TELEGRAM_NOT_LINKED') {
+        setError(data.message || 'Link your Telegram account in Settings → Account & Profile before requesting a Telegram code, or use Reset via Email.');
+      } else if (data?.code === 'INVALID_EMAIL') {
+        setError(data.message || 'Enter a valid registered email address.');
+      } else {
+        setError(getRequestFailureMessage(err, 'request a Telegram code'));
+      }
     } finally {
       setLoading(false);
       setRetryStatus('');
