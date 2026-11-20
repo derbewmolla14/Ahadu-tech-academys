@@ -89,6 +89,15 @@ export default function ForgotPassword() {
 
   const countdown = String(Math.floor(remaining / 60)).padStart(2, '0') + ':' + String(remaining % 60).padStart(2, '0');
 
+  useEffect(() => {
+    if (!otpSent || method !== 'telegram' || !otpExpiry) return undefined;
+    const delay = Math.max(0, otpExpiry - Date.now());
+    const timer = window.setTimeout(() => {
+      if (method === 'telegram') sendTelegramOtp();
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [otpSent, method, otpExpiry]);
+
   async function sendEmailLink(event) {
     event.preventDefault();
     setError('');
