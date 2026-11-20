@@ -54,12 +54,9 @@ export default function Navbar() {
                 {label}
               </Link>
             ))}
-            <span className={`${linkDesktop} flex cursor-default items-center gap-1 font-medium`}>
+            <Link to="/about" className={linkDesktop}>
               About Us
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </span>
+            </Link>
             {user ? (
               <Link
                 to="/dashboard"
@@ -107,7 +104,9 @@ export default function Navbar() {
                 {label}
               </Link>
             ))}
-            <span className={`${linkMobile} cursor-default opacity-95`}>About Us</span>
+            <Link to="/about" className={linkMobile} onClick={closeMobile}>
+              About Us
+            </Link>
             {user ? (
               <Link to="/dashboard" className={`${linkMobile} !border-orange-400/40`} onClick={closeMobile}>
                 Dashboard

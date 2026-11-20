@@ -23,6 +23,7 @@ import ResetPassword from "./pages/ResetPassword";
 
 // Main pages
 import Home from "./pages/Home";
+import AboutUs from "./pages/AboutUs";
 import DashboardHome from "./pages/dashboard/DashboardHome";
 import Settings from "./pages/dashboard/Settings";
 
@@ -145,6 +146,9 @@ function AppRoutes() {
           index
           element={<Home />}
         />
+
+        {/* About Us */}
+        <Route path="about" element={<AboutUs />} />
 
         {/* Authentication */}
         <Route path="login" element={<Login />} />
