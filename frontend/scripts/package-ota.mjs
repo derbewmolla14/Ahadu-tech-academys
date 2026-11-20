@@ -2,7 +2,10 @@ import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { deflateRawSync } from "node:zlib";
-import packageJson from "../package.json" with { type: "json" };
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const packageJson = require("../package.json");
 
 const distDir = path.resolve("dist");
 const zipPath = path.join(distDir, "ota-bundle.zip");
