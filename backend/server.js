@@ -155,17 +155,45 @@ app.get('/api/health', (req, res) => {
   res.status(200).json(healthJson());
 });
 
-// Fail fast for password recovery when MongoDB is not connected instead of
-// allowing Mongoose buffering to leave the request hanging until the proxy times out.
-app.use(['/api/auth/forgot-password', '/api/auth/telegram/otp/request'], (req, res, next) => {
-  if (mongoose.connection.readyState !== 1) {
+// Give MongoDB a short opportunity to finish connecting/reconnecting before
+// returning a controlled retryable response for password recovery requests.
+function waitForMongoReady(timeoutMs = 4000) {
+  if (mongoose.connection.readyState === 1) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (ready) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      mongoose.connection.removeListener('connected', onReady);
+      mongoose.connection.removeListener('reconnected', onReady);
+      mongoose.connection.removeListener('open', onReady);
+      resolve(ready || mongoose.connection.readyState === 1);
+    };
+    const onReady = () => finish(true);
+    const timer = setTimeout(() => finish(false), timeoutMs);
+    mongoose.connection.once('connected', onReady);
+    mongoose.connection.once('reconnected', onReady);
+    mongoose.connection.once('open', onReady);
+  });
+}
+
+app.use(['/api/auth/forgot-password', '/api/auth/telegram/otp/request'], async (req, res, next) => {
+  try {
+    if (await waitForMongoReady()) return next();
     res.set('Retry-After', '3');
     return res.status(503).json({
-      message: 'The account service is starting or reconnecting. Please retry shortly.',
       code: 'AUTH_DATABASE_UNAVAILABLE',
+      message: 'The account service is starting or reconnecting. Please retry shortly.',
+    });
+  } catch (error) {
+    console.error('[auth recovery] Database readiness check failed:', error.message);
+    res.set('Retry-After', '3');
+    return res.status(503).json({
+      code: 'AUTH_DATABASE_UNAVAILABLE',
+      message: 'The account service is temporarily unavailable. Please retry shortly.',
     });
   }
-  return next();
 });
 
 app.use('/api/auth', authRoutes);
