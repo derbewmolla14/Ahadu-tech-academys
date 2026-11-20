@@ -1,4 +1,8 @@
 const CourseContent = require('../models/CourseContent');
+const PaymentPricing = require('../models/PaymentPricing');
+const PaymentTransaction = require('../models/PaymentTransaction');
+const ReferralCommission = require('../models/ReferralCommission');
+const AppSetting = require('../models/AppSetting');
 const Department = require('../models/Department');
 const multer = require('multer');
 const path = require('path');
@@ -554,6 +558,7 @@ const updateCourse = async (req, res) => {
 
 // Admin grants access to one premium course for one student.
 const unlockCourseForStudent = async (req, res) => {
+  let payment = null;
   try {
     const { userId } = req.body;
     if (!userId) return res.status(400).json({ success: false, message: 'Student is required.' });
@@ -564,16 +569,88 @@ const unlockCourseForStudent = async (req, res) => {
     if (!course) return res.status(404).json({ success: false, message: 'Course not found.' });
 
     const student = await User.findById(userId);
-    if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
-    if (student.role === 'admin') return res.status(400).json({ success: false, message: 'Choose a student account.' });
+    if (!student || student.role === 'admin') return res.status(404).json({ success: false, message: 'Student account not found.' });
+
+    let commissionRecords = [];
+    let transactionReference = '';
+    let amountETB = 0;
+    if (course.isPremium) {
+      transactionReference = String(req.body.transactionReference || '').trim().toUpperCase();
+      if (transactionReference.length < 5 || transactionReference.length > 80 || !/^[A-Z0-9][A-Z0-9._/-]*$/.test(transactionReference)) {
+        return res.status(400).json({ success: false, message: 'Enter the verified bank/Telebirr transaction reference (5–80 letters, numbers, or . _ / -).' });
+      }
+      const duplicate = await PaymentTransaction.findOne({ transactionReference }).select('_id');
+      if (duplicate) return res.status(409).json({ success: false, message: 'This transaction reference has already been used.' });
+
+      const tier = String(course.faculty || '').toLowerCase() === 'phd'
+        ? 'phd'
+        : ['elementary', 'highschool'].includes(String(course.level || '').toLowerCase())
+          ? String(course.level).toLowerCase()
+          : String(course.level || '').toLowerCase() === 'coding' ? 'general' : 'university';
+      const pricing = await PaymentPricing.findOne({ key: 'default' }).lean();
+      amountETB = Number(pricing?.tiers?.find((item) => item.tier === tier)?.amountETB);
+      if (!Number.isFinite(amountETB) || amountETB <= 0) {
+        return res.status(400).json({ success: false, message: 'A valid paid course price must be configured before confirming this premium-course payment.' });
+      }
+
+      payment = await PaymentTransaction.create({
+        transactionReference,
+        payer: student._id,
+        course: course._id,
+        amountETB,
+        verifiedBy: req.user._id,
+        verifiedAt: new Date(),
+      });
+
+      const ratesSetting = await AppSetting.findOne({ key: 'referralCommissionRates' }).select('value').lean();
+      const rates = ratesSetting?.value || { direct: 10, indirect: 5 };
+      const referrer = student.referrer ? await User.findById(student.referrer).select('_id referrer role') : null;
+      const indirectReferrer = referrer?.referrer ? await User.findById(referrer.referrer).select('_id role') : null;
+      const commissionCandidates = [
+        { beneficiary: referrer, level: 1, percent: Number(rates.direct ?? 10) },
+        { beneficiary: indirectReferrer, level: 2, percent: Number(rates.indirect ?? 5) },
+      ];
+      commissionRecords = commissionCandidates
+        .filter((item) => item.beneficiary && item.beneficiary.role !== 'admin' && Number.isFinite(item.percent) && item.percent > 0)
+        .map((item) => ({
+          payment: payment._id,
+          transactionReference,
+          payer: student._id,
+          beneficiary: item.beneficiary._id,
+          level: item.level,
+          paidAmountETB: amountETB,
+          commissionPercent: item.percent,
+          commissionETB: Number((amountETB * item.percent / 100).toFixed(2)),
+        }));
+      if (commissionRecords.length) await ReferralCommission.insertMany(commissionRecords);
+    }
+
     student.downloadApprovals = (student.downloadApprovals || []).filter((entry) => !(entry.resourceModel === 'CourseContent' && String(entry.resourceId) === String(course._id)));
-    student.downloadApprovals.push({ resourceModel: 'CourseContent', resourceId: course._id, status: 'approved', approvedBy: req.user._id, approvedAt: new Date() });
+    student.downloadApprovals.push({
+      resourceModel: 'CourseContent',
+      resourceId: course._id,
+      status: 'approved',
+      approvedBy: req.user._id,
+      approvedAt: new Date(),
+      ...(payment ? { paymentTransaction: payment._id, transactionReference, amountETB } : {}),
+    });
     student.unlockedCourseContents = (student.unlockedCourseContents || []).filter((id) => String(id) !== String(course._id));
     await student.save();
-    return res.json({ success: true, message: 'Premium course approved for this student.' });
+    return res.json({
+      success: true,
+      message: course.isPremium
+        ? 'Payment verified and premium course access approved. Eligible referral commissions were recorded.'
+        : 'Free course access approved. No referral commission was generated.',
+      payment: payment ? { transactionReference, amountETB } : null,
+    });
   } catch (error) {
-    console.error('Unlock premium course error:', error);
-    return res.status(500).json({ success: false, message: 'Unable to approve this course.' });
+    if (payment?._id) {
+      await ReferralCommission.deleteMany({ payment: payment._id }).catch(() => undefined);
+      await PaymentTransaction.deleteOne({ _id: payment._id }).catch(() => undefined);
+    }
+    if (error.code === 11000) return res.status(409).json({ success: false, message: 'This transaction reference has already been used.' });
+    console.error('Verify payment and unlock premium course error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to verify payment and approve course access.' });
   }
 };
 
