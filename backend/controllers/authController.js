@@ -77,8 +77,9 @@ exports.requestTelegramLink = async (req, res) => {
     // Creating a signed one-time deep link needs a username and a database
     // challenge. The bot token is only needed by the worker processing /start.
     const savedBotSetting = await AppSetting.findOne({ key: 'telegramBotLink' }).select('value');
-    const configuredLink = savedBotSetting?.value || process.env.TELEGRAM_BOT_USERNAME || 'HorizonHydroOstechbot';
-    const username = resolveTelegramBotUsername(configuredLink);
+    const username = resolveTelegramBotUsername(savedBotSetting?.value)
+      || resolveTelegramBotUsername(process.env.TELEGRAM_BOT_USERNAME)
+      || 'HorizonHydroOstechbot';
     if (!username) return res.status(503).json({ message: 'Telegram bot username is not configured. Ask an administrator to set it in Settings.' });
 
     const rawToken = crypto.randomBytes(32).toString('hex');
