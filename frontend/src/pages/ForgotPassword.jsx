@@ -202,8 +202,10 @@ export default function ForgotPassword() {
         ? 'ይህ ኮድ ጊዜው አልፎበታል ወይም ተጠቅመዋል። አዲስ ኮድ ይጠይቁ።'
         : data.code === 'TELEGRAM_LINK_CHANGED'
           ? 'የተገናኘው ቴሌግራም መለያ ተቀይሯል። በSettings እንደገና ያገናኙና አዲስ ኮድ ይጠይቁ።'
-          : data.code === 'OTP_ATTEMPTS_EXCEEDED'
-            ? 'የተሳሳተ ሙከራ ብዛት አልፏል። አዲስ ኮድ ይጠይቁ።'
+          : data.code === 'OTP_INCORRECT'
+            ? data.message || 'ኮዱ ትክክል አይደለም። እባክዎ ያረጋግጡና እንደገና ይሞክሩ።'
+            : data.code === 'OTP_ATTEMPTS_EXCEEDED'
+              ? 'የተሳሳተ ሙከራ ብዛት አልፏል። አዲስ ኮድ ይጠይቁ።'
             : 'የይለፍ ቃሉን መቀየር አልተቻለም። እባክዎ እንደገና ይሞክሩ።';
       setError(tr(languageMode, en, am));
     } finally {
