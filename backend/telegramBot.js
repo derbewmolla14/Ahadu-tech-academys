@@ -104,6 +104,7 @@ async function saveAndForwardReceipt(message) {
     telegramMessageId: message.message_id,
   });
   const admins = await getTelegramAdmins();
+  if (!admins.length) console.warn('[telegram bot] Receipt saved but no admin Telegram chats are configured. Link a Telegram chat to an admin account or set TELEGRAM_ADMIN_CHAT_IDS.');
   const header = 'New Send Receipt submission #' + record._id + '\\nFrom: ' + (user?.email || message.from?.username || chatId) + '\\n' + (text || message.caption || '[Attachment]');
   for (const adminChatId of admins) {
     await telegramRequest('sendMessage', { chat_id: adminChatId, text: header.slice(0, 3900) });
@@ -132,6 +133,7 @@ async function publishInformation(message, text) {
   });
   const users = await User.find({ telegramChatId: { $type: 'string', $ne: '' } }).select('telegramChatId').lean();
   const recipients = [...new Set(users.map((entry) => String(entry.telegramChatId)))];
+  if (!recipients.length) console.warn('[telegram bot] Official information saved; no linked Telegram recipients were found.');
   for (const chatId of recipients) {
     try {
       await telegramRequest('sendMessage', { chat_id: chatId, text: 'OFFICIAL INFORMATION / ይፋዊ መረጃ\\n\\n' + (text || message.caption || 'Official record').slice(0, 3900) });
@@ -229,7 +231,7 @@ async function handleStart(message, payload) {
 async function handleUpdate(update) {
   const message = update.message;
   if (!message?.chat?.id || message.chat.type !== 'private') return;
-  const text = String(message.text || '').trim();
+  const text = String(message.text || message.caption || '').trim();
   const chatId = String(message.chat.id);
   const match = text.match(/^\/start(?:\s+([A-Za-z0-9_-]{20,128}))?$/);
   if (match) { await handleStart(message, match[1] || ''); return; }
