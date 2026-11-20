@@ -71,8 +71,7 @@ async function ensureLiveUpdateReady() {
 }
 
 export async function getCurrentOtaBundleId() {
-  const liveUpdate = await getLiveUpdate();
-  if (!liveUpdate) return null;
+  const liveUpdate = await ensureLiveUpdateReady();
   const current = await liveUpdate.getCurrentBundle();
   return current?.bundleId || null;
 }
@@ -98,18 +97,11 @@ export async function applyOtaBundle(metadata) {
     });
     await liveUpdate.setNextBundle({ bundleId: metadata.bundleId });
 
-    // Some Android WebViews take longer to release resources while reloading.
-    // Never leave the Settings action spinning forever: the downloaded bundle
-    // remains selected and will be applied on the next app launch if reload stalls.
-    let reloadTimer;
-    const reloadStatus = await Promise.race([
-      liveUpdate.reload().then(() => "reloaded").catch(() => "pending"),
-      new Promise((resolve) => {
-        reloadTimer = window.setTimeout(() => resolve("pending"), 12000);
-      }),
-    ]);
-    if (reloadTimer) window.clearTimeout(reloadTimer);
-    return { alreadyCurrent: false, reloadPending: reloadStatus !== "reloaded" };
+    // This app keeps offline study content in IndexedDB. Reloading a WebView
+    // while a database connection is held can hang the web layer even though
+    // the new bundle was downloaded successfully. Stage the verified bundle
+    // and apply it on the next cold app launch instead of risking that hang.
+    return { alreadyCurrent: false, restartRequired: true };
   })();
 
   try {
