@@ -418,10 +418,19 @@ async function handleUpdate(update) {
   }
   if (/^(?:email|email \/ ኢሜይል|ኢሜይል)$/i.test(text)) { await sendAccountEmail(chatId); return; }
   if (/^(?:send receipt|send receipt \/ ሴንድ ሪሲፕት|ሴንድ ሪሲፕት)$/i.test(text)) { await beginReceiptSubmission(chatId); return; }
-  if (/^\/announce(?:@\w+)?(?:\s+|$)/i.test(text) && (text.replace(/^\/announce(?:@\w+)?/i, '').trim() || extractReceiptAttachment(message))) {
+  if (/^\/announce(?:@\w+)?(?:\s+|$)/i.test(text)) {
     const admin = await getLinkedAccount(chatId);
-    if (!admin || !isDesignatedAdminEmail(admin.email)) { await telegramRequest('sendMessage', { chat_id: chatId, text: 'Only the account linked to the configured website administrator email can publish official information.' }); return; }
-    await publishInformation(message, text.replace(/^\/announce(?:@\w+)?\s*/i, '').trim() || message.caption || ''); return;
+    if (!admin || !isDesignatedAdminEmail(admin.email)) {
+      await telegramRequest('sendMessage', { chat_id: chatId, text: 'Information is read-only for regular users. Only the designated website administrator can publish official information.' });
+      return;
+    }
+    const announcementText = text.replace(/^\/announce(?:@\w+)?\s*/i, '').trim() || message.caption || '';
+    if (!announcementText && !extractReceiptAttachment(message)) {
+      await telegramRequest('sendMessage', { chat_id: chatId, text: 'Admin publishing: send /announce followed by the notice text, or attach a document/photo with the /announce caption.' });
+      return;
+    }
+    await publishInformation(message, announcementText || 'Official record');
+    return;
   }
   if (/^\/done$/i.test(text)) {
     await clearActiveView(chatId, 'menu');
