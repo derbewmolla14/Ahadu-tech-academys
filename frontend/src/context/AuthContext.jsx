@@ -73,7 +73,7 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = useCallback(async (profileData) => {
     const previousLanguage = localStorage.getItem('language') || 'en';
     const requestedLanguage = profileData?.language;
-    if (['en', 'am', 'both'].includes(requestedLanguage)) {
+    if (['en', 'am', 'english', 'amharic', 'both'].includes(requestedLanguage)) {
       localStorage.setItem('language', requestedLanguage);
       setUser((current) => current ? {
         ...current,
