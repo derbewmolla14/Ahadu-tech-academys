@@ -11,7 +11,7 @@ const serializeUserDoc = (userDoc, baseUrlOverride) => {
 
   u.profilePhotoUrl = null;
   if (u.profilePhoto) {
-    if (/^https?:\/\//i.test(u.profilePhoto)) {
+    if (/^(https?:\/\/|data:image\/)/i.test(u.profilePhoto)) {
       u.profilePhotoUrl = u.profilePhoto;
     } else {
       const path = `${u.profilePhoto.startsWith('/') ? '' : '/'}${u.profilePhoto}`;
