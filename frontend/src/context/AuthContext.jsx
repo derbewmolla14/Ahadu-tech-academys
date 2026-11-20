@@ -73,7 +73,7 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = useCallback(async (profileData) => {
     const previousLanguage = localStorage.getItem('language') || 'en';
     const requestedLanguage = profileData?.language;
-    if (requestedLanguage === 'en' || requestedLanguage === 'am') {
+    if (['en', 'am', 'both'].includes(requestedLanguage)) {
       localStorage.setItem('language', requestedLanguage);
       setUser((current) => current ? {
         ...current,
@@ -97,7 +97,7 @@ export const AuthProvider = ({ children }) => {
       if (savedLanguage) localStorage.setItem('language', savedLanguage);
       return { ...response.data, user: updatedUser };
     } catch (error) {
-      if (requestedLanguage === 'en' || requestedLanguage === 'am') {
+      if (['en', 'am', 'both'].includes(requestedLanguage)) {
         localStorage.setItem('language', previousLanguage);
         setUser((current) => current ? {
           ...current,
