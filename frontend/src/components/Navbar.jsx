@@ -60,6 +60,13 @@ export default function Navbar() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
               </svg>
             </span>
+            <a
+              href="https://github.com/derbewmolla14/Ahadu-tech-academys/releases/download/v1.0.3-mobile-ui/Ahadu-Tech-Academy.apk"
+              className="whitespace-nowrap rounded-full bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-label="Download Ahadu Tech Academy for Android"
+            >
+              Download APK
+            </a>
             {user ? (
               <Link
                 to="/dashboard"
@@ -108,6 +115,13 @@ export default function Navbar() {
               </Link>
             ))}
             <span className={`${linkMobile} cursor-default opacity-95`}>About Us</span>
+            <a
+              href="https://github.com/derbewmolla14/Ahadu-tech-academys/releases/download/v1.0.3-mobile-ui/Ahadu-Tech-Academy.apk"
+              className="mx-4 mt-3 block rounded-full bg-blue-600 px-4 py-3 text-center text-sm font-bold text-white shadow-lg transition-colors duration-200 hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f1b3d]"
+              aria-label="Download Ahadu Tech Academy for Android"
+            >
+              Download APK
+            </a>
             {user ? (
               <Link to="/dashboard" className={`${linkMobile} !border-orange-400/40`} onClick={closeMobile}>
                 Dashboard
