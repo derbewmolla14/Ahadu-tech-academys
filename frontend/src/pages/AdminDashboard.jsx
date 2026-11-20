@@ -119,6 +119,7 @@ export default function AdminDashboard() {
           >
             💳 Access Pricing & Payment
           </Link>
+          <Link to="/admin/referrals" className="bg-fuchsia-700 hover:bg-fuchsia-600 text-white px-6 py-3 rounded-lg font-medium transition-colors">🤝 Referral Management</Link>
           <Link
             to="/admin/premium-course-access"
             className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
