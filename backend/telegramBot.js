@@ -95,7 +95,7 @@ async function sendInformation(chatId, page = 1) {
     const emptyText = total
       ? 'No more information on this page. / በዚህ ገጽ ላይ ተጨማሪ መረጃ የለም။\nUse /info 1 to view the latest announcements. / አዳዲስ ማስታወቂያዎችን ለማየት /info 1 ይጠቀሙ።'
       : 'INFORMATION / መረጃ\n\nThere are no official announcements yet. Please check again later. Official notices and identification/reference records (መታወቂያዎች) will appear here when published by the academy admin.\n\nእስካሁን ይፋዊ ማስታወቂያ የለም። እባክዎ በኋላ ይመለሱ። በአካዳሚው አስተዳዳሪ የሚታተሙ ማስታወቂያዎችና የመታወቂያ መዝገቦች እዚህ ይታያሉ።';
-    await sendViewMessage(chatId, { text: emptyText, reply_markup: ACTION_MENU_KEYBOARD });
+    await sendViewMessage(chatId, { text: (admin ? 'Admin: publish an official notice with /announce followed by its text.\\n\\n' : '') + emptyText, reply_markup: ACTION_MENU_KEYBOARD });
     return;
   }
 
@@ -212,7 +212,8 @@ async function publishInformation(message, text) {
       if (attachment?.fileId) await telegramRequest('copyMessage', { chat_id: chatId, from_chat_id: message.chat.id, message_id: message.message_id });
     } catch (error) { console.error('[telegram bot] Information broadcast failed; record remains saved:', error.message); }
   }
-  await telegramRequest('sendMessage', { chat_id: message.chat.id, text: 'Information saved permanently. Record: ' + record._id + '. Sent to ' + recipients.length + ' linked users.' });
+  await clearActiveView(message.chat.id, 'information');
+  await sendViewMessage(message.chat.id, { text: 'Information saved permanently. Record: ' + record._id + '. Sent to ' + recipients.length + ' linked users.', reply_markup: ACTION_MENU_KEYBOARD });
 }
 
 async function telegramRequest(method, payload = {}) {
