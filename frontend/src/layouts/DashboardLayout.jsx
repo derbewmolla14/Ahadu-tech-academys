@@ -305,7 +305,7 @@ export default function DashboardLayout() {
   // MAIN LAYOUT
   // ========================================
   return (
-    <div className="min-h-screen bg-[#080f1f] text-slate-100">
+    <div className="min-h-screen bg-[#080f1f] text-slate-100 md:h-screen md:min-h-0 md:overflow-hidden">
 
       {/* MOBILE HEADER */}
       <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b border-slate-800 bg-[#080f1f]/95 px-4 backdrop-blur md:hidden">
@@ -363,7 +363,7 @@ export default function DashboardLayout() {
       </aside>
 
       {/* PAGE CONTENT */}
-      <main className="min-h-screen md:ml-[250px]">
+      <main className="min-h-screen md:ml-[250px] md:h-screen md:min-h-0 md:overflow-y-auto md:overscroll-contain">
 
         <div className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <Outlet />
