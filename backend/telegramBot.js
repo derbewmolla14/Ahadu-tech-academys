@@ -401,7 +401,8 @@ async function handleUpdate(update) {
   if (/^(?:menu|menu \/ ሜኑ|ሜኑ|\/menu)$/i.test(text)) { await sendMenu(chatId, true); return; }
   const totalUsersMatch = text.match(/^(?:total users(?: \/ ጠቅላላ ተጠቃሚዎች)?|ጠቅላላ ተጠቃሚዎች|\/users(?:@\w+)?(?:\s+(\d+))?)$/i);
   if (totalUsersMatch) { await sendTotalUsers(chatId, totalUsersMatch[1] || 1); return; }
-  const receiptPageMatch = text.match(/^\\/receipts(?:@\\w+)?(?:\\s+(\\d+))?$/i);\n  if (/^(?:receipt inbox(?: \/ የደረሰኝ ሳጥን)?|የደረሰኝ ሳጥን)$/i.test(text) || receiptPageMatch) { await sendReceiptInbox(chatId, receiptPageMatch?.[1] || 1); return; }\n  if (/^otp code$/i.test(text) || /^የotp ኮድ$/i.test(text)) { await sendOtpCodeForChat(chatId); return; }
+  const receiptPageMatch = text.match(/^\/receipts(?:@\w+)?(?:\s+(\d+))?$/i);
+  if (/^(?:receipt inbox(?: \/ የደረሰኝ ሳጥን)?|የደረሰኝ ሳጥን)$/i.test(text) || receiptPageMatch) { await sendReceiptInbox(chatId, receiptPageMatch?.[1] || 1); return; }
   if (/^login$/i.test(text) || /^መግቢያ$/i.test(text)) {
     await clearActiveView(chatId, 'login');
     await sendViewMessage(chatId, { text: 'LOGIN / መግቢያ\nSign in to Ahadu Tech Academy: ' + academyUrl('/login'), reply_markup: ACTION_MENU_KEYBOARD }); return;
