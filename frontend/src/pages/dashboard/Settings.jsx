@@ -3,6 +3,7 @@ import {
   Camera, Check, ChevronRight, Eye, EyeOff, Globe2, LockKeyhole,
   Monitor, Moon, Palette, Save, ShieldCheck, Sun, UserRound,
   RefreshCw, Download, Smartphone, Globe, CheckCircle2, AlertTriangle, ExternalLink,
+  Mail, Users, BookOpen, GraduationCap, DownloadCloud,
 } from "lucide-react";
 import { AuthContext } from "../../context/AuthContext";
 import api from "../../api/api";
@@ -52,6 +53,8 @@ export default function SettingsPage() {
   const [editingTelegramLink, setEditingTelegramLink] = useState(false);
   const isAdmin = user?.role === "admin";
   const [notice, setNotice] = useState({ type: "", text: "" });
+  const [profileReferralCount, setProfileReferralCount] = useState(null);
+  const [loadingProfileReferrals, setLoadingProfileReferrals] = useState(false);
   const [latestVersion, setLatestVersion] = useState(null);
   const [checkingUpdates, setCheckingUpdates] = useState(false);
   const [applyingUpdate, setApplyingUpdate] = useState(false);
@@ -85,6 +88,25 @@ export default function SettingsPage() {
     if (user?.preferences?.theme) setTheme(user.preferences.theme);
     if (user?.preferences?.language) setLanguage(({ en: "english", am: "amharic", english: "english", amharic: "amharic", both: "both" }[user.preferences.language] || "english"));
   }, [user]);
+
+  useEffect(() => {
+    if (activeTab !== "profile") return undefined;
+    let active = true;
+    setLoadingProfileReferrals(true);
+    api.get("/referrals/mine")
+      .then((response) => {
+        if (!active) return;
+        const directCount = response.data?.counts?.direct;
+        setProfileReferralCount(Number.isFinite(Number(directCount)) ? Number(directCount) : 0);
+      })
+      .catch(() => {
+        if (active) setProfileReferralCount(null);
+      })
+      .finally(() => {
+        if (active) setLoadingProfileReferrals(false);
+      });
+    return () => { active = false; };
+  }, [activeTab, user?._id]);
 
   useEffect(() => () => {
     if (photoPreview) URL.revokeObjectURL(photoPreview);
@@ -372,7 +394,89 @@ export default function SettingsPage() {
 
         <div className="min-w-0 space-y-6">
           {activeTab === "profile" && (
-              <section className={cardClass}>
+              <section className="space-y-5">
+                <div className="overflow-hidden rounded-3xl border border-[var(--app-border)] bg-[var(--app-card)] shadow-sm">
+                  <div className="bg-gradient-to-br from-sky-600/15 via-[var(--app-card)] to-cyan-500/10 p-5 sm:p-7">
+                    <div className="flex flex-wrap items-center gap-4 sm:gap-5">
+                      <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[var(--app-border)] bg-[var(--app-bg)] text-2xl font-bold text-sky-600 shadow-sm sm:h-24 sm:w-24">
+                        {photoUrl && !photoLoadFailed ? (
+                          <img src={photoUrl} alt={user?.fullName || "Profile"} className="h-full w-full object-cover" onError={() => setPhotoLoadFailed(true)} />
+                        ) : getProfileInitials(user?.fullName || fullName)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-sky-600">Ahadu Tech Academy · Profile</p>
+                        <h2 className="mt-1 break-words text-xl font-extrabold tracking-tight text-[var(--app-text)] sm:text-2xl">{user?.fullName || fullName || "Student"}</h2>
+                        <p className="mt-1 text-sm text-[var(--app-muted)]">{user?.username ? "@" + user.username : "Username not set"}</p>
+                      </div>
+                      <span className="rounded-full border border-sky-500/25 bg-sky-500/10 px-3 py-1.5 text-xs font-bold capitalize text-sky-600">{user?.role === "admin" ? "Administrator" : "Academy member"}</span>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-6">
+                    <div className="flex min-w-0 items-start gap-3 rounded-2xl border border-[var(--app-border)] bg-[var(--app-bg)] p-4">
+                      <span className="rounded-xl bg-sky-500/10 p-2.5 text-sky-600"><UserRound size={18} /></span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-[var(--app-muted)]">Name / Username</p>
+                        <p className="mt-1 break-words text-sm font-bold text-[var(--app-text)]">{user?.fullName || fullName || "Not provided"}</p>
+                        <p className="mt-0.5 break-all text-xs text-[var(--app-muted)]">{user?.username ? "@" + user.username : "Username not set"}</p>
+                      </div>
+                    </div>
+                    <div className="flex min-w-0 items-start gap-3 rounded-2xl border border-[var(--app-border)] bg-[var(--app-bg)] p-4">
+                      <span className="rounded-xl bg-sky-500/10 p-2.5 text-sky-600"><Mail size={18} /></span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-[var(--app-muted)]">Registered email</p>
+                        <p className="mt-1 break-all text-sm font-bold text-[var(--app-text)]">{user?.email || "Not available"}</p>
+                        <p className="mt-0.5 text-xs text-[var(--app-muted)]">Private account information</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="px-4 pb-4 sm:px-6 sm:pb-6">
+                    <div className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-bg)] p-4 sm:p-5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <h3 className="text-sm font-bold text-[var(--app-text)]">Used Services</h3>
+                          <p className="mt-1 text-xs text-[var(--app-muted)]">Services and learning access currently recorded on your account.</p>
+                        </div>
+                        <span className="rounded-full bg-sky-500/10 px-2.5 py-1 text-[11px] font-semibold text-sky-600">Account activity</span>
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {[
+                          { label: "Course access", count: user?.unlockedCourses?.length || 0, Icon: BookOpen },
+                          { label: "Learning materials", count: user?.unlockedCourseContents?.length || 0, Icon: GraduationCap },
+                          { label: "University resources", count: user?.unlockedUniversityResources?.length || 0, Icon: BookOpen },
+                          { label: "Approved downloads", count: (user?.downloadApprovals || []).filter((item) => item?.status === "approved").length, Icon: DownloadCloud },
+                        ].filter((service) => service.count > 0).map((service) => (
+                          <span key={service.label} className="inline-flex items-center gap-2 rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-xs font-semibold text-sky-700 dark:text-sky-300">
+                            <service.Icon size={14} />
+                            {service.label}
+                            <span className="rounded-full bg-[var(--app-card)] px-2 py-0.5 tabular-nums">{service.count}</span>
+                          </span>
+                        ))}
+                        {!user?.unlockedCourses?.length && !user?.unlockedCourseContents?.length && !user?.unlockedUniversityResources?.length && !(user?.downloadApprovals || []).some((item) => item?.status === "approved") && (
+                          <p className="text-sm text-[var(--app-muted)]">No learning services have been used yet.</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-sky-500/20 bg-sky-500/5 p-4 sm:p-5">
+                      <div className="flex items-center gap-3">
+                        <span className="rounded-xl bg-sky-500/10 p-2.5 text-sky-600"><Users size={19} /></span>
+                        <div>
+                          <h3 className="text-sm font-bold text-[var(--app-text)]">Referred Users</h3>
+                          <p className="mt-1 text-xs text-[var(--app-muted)]">People who registered directly through your referral link.</p>
+                        </div>
+                      </div>
+                      <div className="min-w-16 text-right">
+                        <p className="text-2xl font-extrabold tabular-nums text-sky-600">{loadingProfileReferrals ? "…" : profileReferralCount === null ? "—" : profileReferralCount}</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--app-muted)]">Direct referrals</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <section className={cardClass}>
+
                 <div className="mb-6">
                   <h2 className="text-lg font-bold">Profile information</h2>
                   <p className="mt-1 text-sm text-[var(--app-muted)]">Update the name and photo shown across Ahadu Tech Academy.</p>
@@ -464,6 +568,7 @@ export default function SettingsPage() {
                     )}
                   </div>
                 )}
+                </section>
               </section>
           )}
 
