@@ -10,7 +10,7 @@ export default function ElementaryGradePage() {
   const { id } = useParams();
   const { user, language } = useContext(AuthContext);
   const selectedLanguage = String(language || user?.preferences?.language || 'en').trim().toLowerCase();
-  const isAmharic = ['am', 'amharic', 'አማርኛ'].includes(selectedLanguage);
+  const languageMode = ['am', 'amharic', 'አማርኛ'].includes(selectedLanguage) ? 'amharic' : ['both'].includes(selectedLanguage) ? 'both' : 'english';
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -29,7 +29,7 @@ export default function ElementaryGradePage() {
         setLoading(true);
         setError('');
         const params = new URLSearchParams({ level: 'elementary', grade: String(id) });
-        if (isAmharic) params.set('language', 'am');
+        params.set('language', languageMode);
         const response = await apiFetch(`content?${params.toString()}`);
         const result = await response.json();
         if (!response.ok || !result.success) {
@@ -44,7 +44,7 @@ export default function ElementaryGradePage() {
     };
     loadCourses();
     return () => { active = false; };
-  }, [id, isAmharic]);
+  }, [id, languageMode]);
 
   const requestDownload = (resource) => downloadApprovedResource(resource, setDownloadResource);
 
