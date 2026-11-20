@@ -226,6 +226,7 @@ app.use((err, req, res, _next) => {
 });
 
 async function gracefulShutdown(signal) {
+  shuttingDown = true;
   console.log(`[Server] ${signal} received — closing HTTP listener…`);
 
   await new Promise((resolve) => {
@@ -241,13 +242,29 @@ async function gracefulShutdown(signal) {
 }
 
 let serverRef;
+let shuttingDown = false;
+
+async function keepDatabaseConnectionAvailable() {
+  while (!shuttingDown) {
+    try {
+      const connected = await connectMongoose();
+      if (connected) {
+        startTelegramBot();
+        return;
+      }
+    } catch (error) {
+      console.error('[MongoDB] Connection startup failed:', error.message);
+    }
+    if (shuttingDown) return;
+    console.warn('[MongoDB] Initial connection unavailable; retrying in 5 seconds.');
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+  }
+}
 
 serverRef = app.listen(PORT, HOST, () => {
   console.log(`[Server] Listening on http://${HOST}:${PORT} (PORT from env: ${process.env.PORT ?? '(unset, fallback)'})`);
   console.log(`[Server] NODE_ENV=${process.env.NODE_ENV || '(unset)'}`);
-  void connectMongoose().then((connected) => {
-    if (connected) startTelegramBot();
-  });
+  void keepDatabaseConnectionAvailable();
 });
 
 process.on('SIGTERM', () => void gracefulShutdown('SIGTERM'));
