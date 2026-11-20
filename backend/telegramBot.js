@@ -10,7 +10,63 @@ let offset = 0;
 
 const BOT_MENU_KEYBOARD = { keyboard: [[{ text: 'Menu / ሜኑ' }]], resize_keyboard: true, is_persistent: true };
 const ACTION_MENU_KEYBOARD = { keyboard: [[{ text: 'Login' }, { text: 'Register' }], [{ text: 'OTP Code' }], [{ text: 'Information / ኢንፎርሜሽን' }, { text: 'Email / ኢሜይል' }], [{ text: 'Send Receipt / ሴንድ ሪሲፕት' }], [{ text: 'Menu / ሜኑ' }]], resize_keyboard: true, is_persistent: true };
+const ADMIN_ACTION_MENU_KEYBOARD = { keyboard: [[{ text: 'Login' }, { text: 'Register' }], [{ text: 'OTP Code' }], [{ text: 'Information / ኢንፎርሜሽን' }, { text: 'Email / ኢሜይል' }], [{ text: 'Send Receipt / ሴንድ ሪሲፕት' }], [{ text: 'Total Users / ጠቅላላ ተጠቃሚዎች' }], [{ text: 'Menu / ሜኑ' }]], resize_keyboard: true, is_persistent: true };
 function academyUrl(path) { const base = String(process.env.FRONTEND_URL || 'https://ahadu-tech-academys.vercel.app').replace(/\/$/, ''); return base + path; }
+async function getLinkedAccount(chatId) {
+  return User.findOne({ telegramChatId: String(chatId) })
+    .select('_id fullName email role telegramChatId telegramUsername telegramLinkedAt')
+    .lean();
+}
+async function getActionMenuKeyboard(chatId) {
+  const user = await getLinkedAccount(chatId);
+  return user?.role === 'admin' ? ADMIN_ACTION_MENU_KEYBOARD : ACTION_MENU_KEYBOARD;
+}
+async function sendEntryIdentification(message) {
+  const chatId = String(message.chat.id);
+  const user = await getLinkedAccount(chatId);
+  const keyboard = user?.role === 'admin' ? ADMIN_ACTION_MENU_KEYBOARD : BOT_MENU_KEYBOARD;
+  let text;
+  if (!user) {
+    text = 'AHADU TECH ACADEMY · IDENTIFICATION / መታወቂያ\\n\\nTelegram status: Not linked to an academy account. / የቴሌግራም ሁኔታ፦ ከአካዳሚ መለያ ጋር አልተገናኘም።\\n\\nTo link: sign in to the academy → Settings → Account & Profile → Link Telegram, then open the secure link and press Start. / ለማገናኘት ወደ አካዳሚው ይግቡ → Settings → Account & Profile → Link Telegram ከዚያ የደህንነት ሊንኩን ከፍተው Start ይጫኑ።';
+  } else {
+    const roleLabel = user.role === 'admin' ? 'ADMIN / አስተዳዳሪ' : 'REGISTERED MEMBER / የተመዘገበ አባል';
+    text = 'AHADU TECH ACADEMY · IDENTIFICATION / መታወቂያ\\n\\n' + roleLabel +
+      '\\nName: ' + (user.fullName || 'Not provided') +
+      '\\nRegistered email: ' + user.email +
+      '\\nAccount ID: ' + String(user._id) +
+      '\\nTelegram: Securely linked' +
+      (user.role === 'admin' ? '\\n\\nAdmin actions are enabled for this linked admin account. / ለዚህ የተገናኘ የአስተዳዳሪ መለያ የአስተዳዳሪ አማራጮች ነቅተዋል።' : '');
+  }
+  await clearActiveView(chatId, 'menu');
+  await sendViewMessage(chatId, { text, reply_markup: keyboard });
+}
+async function sendTotalUsers(chatId, page = 1) {
+  const admin = await getLinkedAccount(chatId);
+  if (!admin || admin.role !== 'admin') {
+    await clearActiveView(chatId, 'menu');
+    await sendViewMessage(chatId, { text: 'This action is available only to a Telegram chat securely linked to an administrator account. / ይህ አገልግሎት ከአስተዳዳሪ መለያ ጋር ለተገናኘ ቴሌግራም ብቻ ነው።', reply_markup: ACTION_MENU_KEYBOARD });
+    return;
+  }
+  await clearActiveView(chatId, 'users');
+  const filter = { email: { $type: 'string', $regex: /\\S/ }, password: { $exists: true, $ne: '' } };
+  const pageSize = 8;
+  const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+  const [total, users] = await Promise.all([
+    User.countDocuments(filter),
+    User.find(filter).select('_id fullName email role createdAt').sort({ createdAt: -1 }).skip((safePage - 1) * pageSize).limit(pageSize).lean(),
+  ]);
+  if (!users.length) {
+    await sendViewMessage(chatId, { text: 'TOTAL REGISTERED USERS / ጠቅላላ የተመዘገቡ ተጠቃሚዎች\\n\\nNo registered user records were found. / የተመዘገበ ተጠቃሚ አልተገኘም።', reply_markup: ADMIN_ACTION_MENU_KEYBOARD });
+    return;
+  }
+  const lines = ['TOTAL REGISTERED USERS / ጠቅላላ የተመዘገቡ ተጠቃሚዎች', 'Total: ' + total, 'Page ' + safePage + ' · showing ' + users.length + ' records', ''];
+  for (const user of users) {
+    lines.push('━━━━━━━━━━━━━━━━', user.fullName || 'Name not provided', 'Email: ' + user.email, 'ID: ' + String(user._id), 'Role: ' + user.role, 'Registered: ' + new Date(user.createdAt).toLocaleDateString('en-GB', { timeZone: 'Africa/Addis_Ababa' }));
+  }
+  if (safePage * pageSize < total) lines.push('', 'Next page: /users ' + (safePage + 1));
+  if (safePage > 1) lines.push('First page: /users 1');
+  await sendViewMessage(chatId, { text: lines.join('\\n').slice(0, 3900), reply_markup: ADMIN_ACTION_MENU_KEYBOARD });
+}
 
 async function clearActiveView(chatId, mode = 'idle') {
   const key = String(chatId);
@@ -59,7 +115,7 @@ async function sendMenu(chatId, showActions = false) {
     text: showActions
       ? 'Choose an option below. / ከታች ያለውን አማራጭ ይምረጡ።'
       : 'Tap Menu to see options. / አማራጮቹን ለማየት ሜኑን ይጫኑ።',
-    reply_markup: showActions ? ACTION_MENU_KEYBOARD : BOT_MENU_KEYBOARD,
+    reply_markup: showActions ? await getActionMenuKeyboard(chatId) : BOT_MENU_KEYBOARD,
   });
 }
 async function sendOtpCodeForChat(chatId) {
@@ -234,11 +290,7 @@ async function handleStart(message, payload) {
   const chatId = String(message.chat.id);
   if (message.chat.type !== 'private') return;
   if (!payload) {
-    await telegramRequest('sendMessage', {
-      chat_id: chatId,
-      text: 'Welcome to Ahadu Tech Academy. To link your account, sign in to the academy, open Settings → Account & Profile → Link Telegram, then open the generated link and press Start. / መለያዎን ለማገናኘት ወደ አካዳሚው ይግቡና Settings → Account & Profile → Link Telegram ይጠቀሙ።',
-      reply_markup: BOT_MENU_KEYBOARD,
-    });
+    await sendEntryIdentification(message);
     return;
   }
 
@@ -257,9 +309,11 @@ async function handleStart(message, payload) {
       expiresAt: { $gt: new Date() },
     });
     if (resetChallenge && String(resetChallenge.chatId) === chatId) {
+      await sendEntryIdentification(message);
       await telegramRequest('sendMessage', {
         chat_id: chatId,
         text: 'Your Ahadu Tech Academy password-reset flow is open. Enter the 6-digit code already sent to this Telegram chat on the academy website before the 2-minute countdown expires.',
+        reply_markup: await getActionMenuKeyboard(chatId),
       });
       return;
     }
@@ -299,6 +353,7 @@ async function handleStart(message, payload) {
     text: 'Your Telegram account is now securely linked to Ahadu Tech Academy. You can use Telegram OTP for password recovery',
     reply_markup: BOT_MENU_KEYBOARD,
   });
+  await sendEntryIdentification(message);
 }
 
 async function handleUpdate(update) {
@@ -310,6 +365,8 @@ async function handleUpdate(update) {
   if (match) { await handleStart(message, match[1] || ''); return; }
 
   if (/^(?:menu|menu \/ ሜኑ|ሜኑ|\/menu)$/i.test(text)) { await sendMenu(chatId, true); return; }
+  const totalUsersMatch = text.match(/^(?:total users(?: \/ ጠቅላላ ተጠቃሚዎች)?|ጠቅላላ ተጠቃሚዎች|\/users(?:@\\w+)?(?:\\s+(\\d+))?)$/i);
+  if (totalUsersMatch) { await sendTotalUsers(chatId, totalUsersMatch[1] || 1); return; }
   if (/^otp code$/i.test(text) || /^የotp ኮድ$/i.test(text)) { await sendOtpCodeForChat(chatId); return; }
   if (/^login$/i.test(text) || /^መግቢያ$/i.test(text)) {
     await clearActiveView(chatId, 'login');
