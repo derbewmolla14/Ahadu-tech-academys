@@ -56,10 +56,6 @@ async function handleStart(message, payload) {
     return;
   }
   const challenge = linkChallenge;
-  if (!challenge) {
-    await telegramRequest('sendMessage', { chat_id: chatId, text: 'This account-link request is invalid or expired. Sign in to Ahadu Tech Academy and generate a new Telegram link.' });
-    return;
-  }
 
   const user = await User.findById(challenge.userId);
   if (!user || user.email !== challenge.email) {
