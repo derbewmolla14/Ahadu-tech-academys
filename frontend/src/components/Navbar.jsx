@@ -27,14 +27,22 @@ export default function Navbar() {
 
   return (
     <header className="site-header m-0 w-full p-0 shadow-md font-sans">
-      {/* TOP BAR */}
-      <div className="site-header-topbar hidden px-0 py-1 sm:flex justify-end items-center gap-4 text-[11px]">
-        <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1">
-          <span className="text-orange-500">📞</span>
-          <span className="text-orange-400 font-medium whitespace-nowrap">call us now</span>
-          <span className="hover:text-gray-300 transition whitespace-nowrap">+2519-24-12-28-93</span>
-          <span className="hover:text-gray-300 transition whitespace-nowrap">+251-937-10-05-47</span>
+      {/* TOP PHONE + ANNOUNCEMENT STRIP */}
+      <div className="site-header-topbar flex min-h-7 items-center gap-2 px-2 py-1 sm:gap-4 sm:px-3 text-[9px] sm:text-[11px]">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <span aria-hidden="true">☎</span>
+          <span className="hidden font-medium sm:inline">Call us</span>
+          <a className="whitespace-nowrap font-semibold text-white hover:text-gray-200" href="tel:+251924122893">+251 924 12 28 93</a>
+          <a className="hidden whitespace-nowrap font-semibold text-white hover:text-gray-200 sm:inline" href="tel:+251937100547">+251 937 10 05 47</a>
         </div>
+        <div className="site-announcement-track" aria-label="Ahadu Tech Academy announcements">
+          <div className="site-announcement-content" aria-hidden="true">
+            <span>Ahadu Tech Academy</span><span>Popular</span><span>Learn • Practice • Grow</span>
+            <span>Ahadu Tech Academy</span><span>Popular</span><span>Learn • Practice • Grow</span>
+          </div>
+          <span className="sr-only">Ahadu Tech Academy. Popular. Learn, Practice, Grow.</span>
+        </div>
+        <a className="hidden shrink-0 whitespace-nowrap font-semibold text-white hover:text-gray-200 sm:inline" href="mailto:derbewmolla14@gmail.com">derbewmolla14@gmail.com</a>
       </div>
 
       {/* LOGO ROW + NAV */}
