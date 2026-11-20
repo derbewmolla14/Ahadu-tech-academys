@@ -120,12 +120,14 @@ exports.requestTelegramOtp = async (req, res) => {
     );
 
     const otp = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    const rawFlowToken = crypto.randomBytes(32).toString('hex');
     const challenge = await TelegramOtp.create({
       purpose: 'password-reset',
       userId: user._id,
       email: user.email,
       chatId: user.telegramChatId,
       otpHash: hashTelegramOtp(otp),
+      flowTokenHash: hashTelegramValue(rawFlowToken),
       slotNumber,
       verified: false,
       verifiedAt: null,
@@ -147,10 +149,11 @@ exports.requestTelegramOtp = async (req, res) => {
     const configuredLink = String(savedBotSetting?.value || process.env.TELEGRAM_BOT_USERNAME || '').trim();
     const match = configuredLink.match(/(?:https?:\/\/(?:www\.)?(?:t\.me|telegram\.me)\/)?@?([A-Za-z0-9_]{5,32})\/?$/i);
     const telegramBotLink = match?.[1] ? 'https://t.me/' + match[1] : '';
+    const telegramDeepLink = telegramBotLink ? telegramBotLink + '?start=' + encodeURIComponent(rawFlowToken) : '';
     return res.status(200).json({
       message: 'A 6-digit code was sent to your linked Telegram account.',
       telegramBotLink,
-      telegramDeepLink: telegramBotLink,
+      telegramDeepLink,
       expiresInSeconds: Math.max(1, Math.ceil((expiresAt.getTime() - Date.now()) / 1000)),
       expiresAt: expiresAt.toISOString(),
       slotNumber,
