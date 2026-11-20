@@ -4,10 +4,10 @@ const EMAIL_TIMEOUT_MS = 12000;
 
 function normalizeEmailSender(value) {
   const raw = String(value || '').trim().replace(/^["']|["']$/g, '').trim();
-  const match = raw.match(/^(?:(.*?)\\s*)?<([^<>]+)>$/);
+  const match = raw.match(/^(?:(.*?)\s*)?<([^<>]+)>$/);
   const address = (match ? match[2] : raw).trim();
   const displayName = match?.[1]?.trim();
-  const validAddress = /^[^\\s<>@]+@[^\\s<>@]+\\.[^\\s<>@]+$/.test(address);
+  const validAddress = /^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(address);
 
   if (!validAddress) {
     const error = new Error('Email sender must be a valid address or a display name followed by an address, for example Ahadu Tech Academy <support@example.com>.');
