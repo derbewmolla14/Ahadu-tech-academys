@@ -27,7 +27,7 @@ exports.getMine = async (req, res) => {
     if (!user) return res.status(404).json({ message: 'Account not found.' });
     const code = await ensureReferralCode(user);
     const directIds = await User.find({ referrer: user._id }).distinct('_id');
-    const seen = new Set(directIds.map((id) => String(id)));
+    const seen = new Set([String(user._id), ...directIds.map((id) => String(id))]);
     let frontier = directIds;
     let indirect = 0;
     // Count every descendant from level 2 onward, not only the immediate second level.
@@ -86,7 +86,7 @@ exports.updatePayout = async (req, res) => {
 
 exports.getAdminOverview = async (_req, res) => {
   try {
-    const users = await User.find({ role: { $ne: 'admin' } }).select('fullName email referralCode referrer createdAt').populate('referrer', 'fullName email referralCode').sort({ createdAt: -1 }).lean();
+    const users = await User.find({ role: { $ne: 'admin' } }).select('fullName email referralCode referrer payoutAccount createdAt').populate('referrer', 'fullName email referralCode').sort({ createdAt: -1 }).lean();
     const settings = await AppSetting.findOne({ key: 'referralCommissionRates' }).select('value').lean();
     const [commissions, earnedByUser, paidByUser] = await Promise.all([
       ReferralCommission.aggregate([{ $group: { _id: null, totalETB: { $sum: '$commissionETB' }, count: { $sum: 1 } } }]),
