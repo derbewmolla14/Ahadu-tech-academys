@@ -49,9 +49,11 @@ export default function Navbar() {
       <div className="site-header-surface relative border-b">
         <div className="flex min-h-14 items-center justify-between gap-2 px-2 py-1 sm:px-3 md:px-4">
           <Link to="/" className="flex min-w-0 items-center gap-2" onClick={closeMobile}>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#0f1b3d] bg-gradient-to-br from-blue-50 to-blue-100 p-1 sm:h-9 sm:w-9">
-              <span className="text-lg sm:text-xl">🎓</span>
-            </div>
+            <img
+              src="/icon.svg"
+              alt="Ahadu Tech Academy"
+              className="h-8 w-8 shrink-0 rounded-full object-contain sm:h-9 sm:w-9"
+            />
             <div className="min-w-0 leading-none"><span className="block truncate text-[13px] font-extrabold tracking-tight text-[var(--app-text)] sm:text-sm md:text-lg lg:text-xl">AHADU TECH ACADEMY</span></div>
           </Link>
 
