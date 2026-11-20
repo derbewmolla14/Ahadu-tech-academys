@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const AppSetting = require('../models/AppSetting');
 const ReferralCommission = require('../models/ReferralCommission');
+const ReferralPayout = require('../models/ReferralPayout');
 
 async function ensureReferralCode(user) {
   if (user.referralCode) return user.referralCode;
@@ -26,22 +27,41 @@ exports.getMine = async (req, res) => {
     if (!user) return res.status(404).json({ message: 'Account not found.' });
     const code = await ensureReferralCode(user);
     const directIds = await User.find({ referrer: user._id }).distinct('_id');
-    const [direct, indirect, commissions, commissionTotals] = await Promise.all([
-      User.countDocuments({ referrer: user._id }),
-      directIds.length ? User.countDocuments({ referrer: { $in: directIds } }) : Promise.resolve(0),
+    const seen = new Set(directIds.map((id) => String(id)));
+    let frontier = directIds;
+    let indirect = 0;
+    // Count every descendant from level 2 onward, not only the immediate second level.
+    for (let depth = 0; frontier.length && depth < 100; depth += 1) {
+      const children = await User.find({ referrer: { $in: frontier } }).distinct('_id');
+      const nextFrontier = children.filter((id) => !seen.has(String(id)));
+      nextFrontier.forEach((id) => seen.add(String(id)));
+      indirect += nextFrontier.length;
+      frontier = nextFrontier;
+    }
+    const [commissions, commissionTotals, payoutHistory, payoutTotals] = await Promise.all([
       ReferralCommission.find({ beneficiary: user._id }).sort({ createdAt: -1 }).limit(100).lean(),
       ReferralCommission.aggregate([
         { $match: { beneficiary: user._id } },
         { $group: { _id: null, totalETB: { $sum: '$commissionETB' } } },
       ]),
+      ReferralPayout.find({ beneficiary: user._id }).sort({ paidAt: -1 }).limit(50).lean(),
+      ReferralPayout.aggregate([
+        { $match: { beneficiary: user._id } },
+        { $group: { _id: null, totalETB: { $sum: '$amountETB' } } },
+      ]),
     ]);
-    const totals = commissionTotals[0]?.totalETB || 0;
+    const totals = Number(commissionTotals[0]?.totalETB || 0);
+    const paidOut = Number(payoutTotals[0]?.totalETB || 0);
+    const remaining = Math.max(0, totals - paidOut);
     return res.json({
       referralCode: code,
       referralLink: (process.env.FRONTEND_URL || 'https://ahadu-tech-academys.vercel.app').trim().replace(/\/$/, '') + '/register?ref=' + encodeURIComponent(code),
-      counts: { direct, indirect },
+      counts: { direct: directIds.length, indirect },
       earningsETB: Number(totals.toFixed(2)),
+      paidOutETB: Number(paidOut.toFixed(2)),
+      remainingBalanceETB: Number(remaining.toFixed(2)),
       commissions: commissions.map(({ transactionReference, level, paidAmountETB, commissionPercent, commissionETB, createdAt }) => ({ transactionReference, level, paidAmountETB, commissionPercent, commissionETB, createdAt })),
+      payouts: payoutHistory.map(({ amountETB, transactionReference, note, paidAt }) => ({ amountETB, transactionReference, note, paidAt })),
       payoutAccount: user.payoutAccount || {},
     });
   } catch (error) {
@@ -68,8 +88,19 @@ exports.getAdminOverview = async (_req, res) => {
   try {
     const users = await User.find({ role: { $ne: 'admin' } }).select('fullName email referralCode referrer createdAt').populate('referrer', 'fullName email referralCode').sort({ createdAt: -1 }).lean();
     const settings = await AppSetting.findOne({ key: 'referralCommissionRates' }).select('value').lean();
-    const commissions = await ReferralCommission.aggregate([{ $group: { _id: null, totalETB: { $sum: '$commissionETB' }, count: { $sum: 1 } } }]);
-    return res.json({ users, rates: settings?.value || { direct: 10, indirect: 5 }, totals: commissions[0] || { totalETB: 0, count: 0 } });
+    const [commissions, earnedByUser, paidByUser] = await Promise.all([
+      ReferralCommission.aggregate([{ $group: { _id: null, totalETB: { $sum: '$commissionETB' }, count: { $sum: 1 } } }]),
+      ReferralCommission.aggregate([{ $group: { _id: '$beneficiary', totalETB: { $sum: '$commissionETB' } } }]),
+      ReferralPayout.aggregate([{ $group: { _id: '$beneficiary', totalETB: { $sum: '$amountETB' } } }]),
+    ]);
+    const earnedMap = new Map(earnedByUser.map((item) => [String(item._id), Number(item.totalETB || 0)]));
+    const paidMap = new Map(paidByUser.map((item) => [String(item._id), Number(item.totalETB || 0)]));
+    const financials = Object.fromEntries(users.map((item) => {
+      const earned = earnedMap.get(String(item._id)) || 0;
+      const paidOut = paidMap.get(String(item._id)) || 0;
+      return [String(item._id), { earnedETB: Number(earned.toFixed(2)), paidOutETB: Number(paidOut.toFixed(2)), remainingETB: Number(Math.max(0, earned - paidOut).toFixed(2)) }];
+    }));
+    return res.json({ users, financials, rates: settings?.value || { direct: 10, indirect: 5 }, totals: commissions[0] || { totalETB: 0, count: 0 } });
   } catch (error) {
     console.error('Admin referral overview error:', error);
     return res.status(500).json({ message: 'Unable to load referral administration.' });
@@ -104,6 +135,51 @@ exports.assignReferrer = async (req, res) => {
   } catch (error) {
     console.error('Assign referrer error:', error);
     return res.status(500).json({ message: 'Unable to update referral attribution.' });
+  }
+};
+
+
+exports.recordPayout = async (req, res) => {
+  const { userId } = req.params;
+  const amountETB = Number(Number(req.body.amountETB).toFixed(2));
+  const transactionReference = String(req.body.transactionReference || '').trim().toUpperCase().slice(0, 80);
+  const note = String(req.body.note || '').trim().slice(0, 240);
+  if (!mongoose.isValidObjectId(userId)) return res.status(400).json({ message: 'Invalid learner account.' });
+  if (!Number.isFinite(amountETB) || amountETB <= 0 || !transactionReference) {
+    return res.status(400).json({ message: 'Enter a positive payout amount and the bank or wallet transfer reference.' });
+  }
+
+  let balanceReserved = false;
+  try {
+    const beneficiary = await User.findOne({ _id: userId, role: { $ne: 'admin' } }).select('_id');
+    if (!beneficiary) return res.status(404).json({ message: 'Learner account not found.' });
+    const earnedRows = await ReferralCommission.aggregate([
+      { $match: { beneficiary: beneficiary._id } },
+      { $group: { _id: null, totalETB: { $sum: '$commissionETB' } } },
+    ]);
+    const earnedETB = Number((earnedRows[0]?.totalETB || 0).toFixed(2));
+    const reservation = await User.updateOne(
+      { _id: beneficiary._id, $expr: { $lte: [{ $add: [{ $ifNull: ['$referralPaidOutETB', 0] }, amountETB] }, earnedETB] } },
+      { $inc: { referralPaidOutETB: amountETB } }
+    );
+    if (!reservation.modifiedCount) {
+      return res.status(409).json({ message: 'Payout exceeds the learner’s remaining verified commission balance. Refresh the records and try again.' });
+    }
+    balanceReserved = true;
+    const payout = await ReferralPayout.create({
+      beneficiary: beneficiary._id,
+      amountETB,
+      transactionReference,
+      note,
+      sentBy: req.user._id,
+      paidAt: new Date(),
+    });
+    return res.status(201).json({ message: 'Payout recorded successfully.', payout: { amountETB: payout.amountETB, transactionReference: payout.transactionReference, paidAt: payout.paidAt } });
+  } catch (error) {
+    if (balanceReserved) await User.updateOne({ _id: userId }, { $inc: { referralPaidOutETB: -amountETB } }).catch(() => undefined);
+    if (error.code === 11000) return res.status(409).json({ message: 'This payout transaction reference has already been recorded.' });
+    console.error('Record referral payout error:', error);
+    return res.status(500).json({ message: 'Unable to record this referral payout.' });
   }
 };
 
