@@ -9,8 +9,11 @@
   --app-brightness: 1;
   --app-bg: #0b1220;
   --app-sidebar: #101b2d;
-  --app-card: #142238;
-  --app-border: #263951;
+  --app-card: #17263b;
+  --app-header: #14243a;
+  --app-header-topbar: #0b1729;
+  --app-header-menu: #101d31;
+  --app-border: #30445f;
   --app-text: #f3f7fc;
   --app-muted: #9aacc2;
   --app-accent: #4f8df7;
@@ -31,7 +34,10 @@
   --app-bg: #f4f7fb;
   --app-sidebar: #ffffff;
   --app-card: #ffffff;
-  --app-border: #e1e8f1;
+  --app-header: #ffffff;
+  --app-header-topbar: #0f1b3d;
+  --app-header-menu: #f8fafc;
+  --app-border: #dbe4ef;
   --app-text: #17263b;
   --app-muted: #64758b;
   --app-accent: #2868d7;
@@ -250,3 +256,64 @@ html[data-theme="light"] textarea::placeholder { color: var(--app-muted); }
 .about-page .border-amber-200 { border-color: #fcd34d; }
 .about-page .text-amber-950 { color: #451a03; }
 .about-page .text-amber-900 { color: #78350f; }
+
+
+/* Explicit dark palette: elevated surfaces stay distinct instead of collapsing
+   into one near-black layer. These tokens are changed by the existing theme
+   preference; they do not affect component state or layout. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --app-bg: #0b1220;
+  --app-sidebar: #111d30;
+  --app-card: #17263b;
+  --app-header: #14243a;
+  --app-header-topbar: #0b1729;
+  --app-header-menu: #101d31;
+  --app-border: #30445f;
+  --app-text: #f3f7fc;
+  --app-muted: #a8b8cc;
+  --app-accent: #70a5ff;
+  --app-accent-strong: #3b82f6;
+  --app-accent-soft: rgba(112, 165, 255, .16);
+  --app-shadow: 0 14px 34px rgba(0, 0, 0, .28);
+}
+
+/* Solid theme-aware marketing header surfaces. Keep the existing sticky
+   positioning, dimensions, alignment, and responsive breakpoints unchanged. */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  isolation: isolate;
+  background: var(--app-header);
+  color: var(--app-text);
+  box-shadow: 0 4px 18px rgba(2, 8, 23, .14);
+  transition: background-color .22s ease, color .22s ease, box-shadow .22s ease;
+}
+.site-header-topbar {
+  background: var(--app-header-topbar);
+  color: #f8fafc;
+}
+.site-header-surface {
+  background: var(--app-header);
+  color: var(--app-text);
+  border-color: var(--app-border);
+}
+.site-header-mobile-menu {
+  background: var(--app-header-menu);
+  color: var(--app-text);
+  border-color: var(--app-border);
+  box-shadow: inset 0 1px 0 var(--app-border);
+}
+.site-header-mobile-menu a {
+  color: var(--app-text);
+  border-color: var(--app-border);
+}
+.site-header-mobile-menu a:hover {
+  background: var(--app-accent-soft);
+  color: var(--app-text);
+}
+.site-header a,
+.site-header button {
+  transition: color .18s ease, background-color .18s ease, border-color .18s ease;
+}
