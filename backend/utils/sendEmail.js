@@ -25,7 +25,7 @@ async function verifyEmailService() {
 async function sendPasswordResetEmail(to, subject, { html, text }) {
   const config = getSmtpConfig();
   const secure = process.env.SMTP_SECURE === undefined ? config.port === 465 : String(process.env.SMTP_SECURE).toLowerCase() === 'true';
-  const transporter = nodemailer.createTransport({ host: config.host, port: config.port, secure, auth: { user: config.user, pass: config.pass }, connectionTimeout: 15000, greetingTimeout: 15000, socketTimeout: 20000 });
+  const transporter = nodemailer.createTransport({ host: config.host, port: config.port, secure, auth: { user: config.user, pass: config.pass }, connectionTimeout: 8000, greetingTimeout: 8000, socketTimeout: 12000 });
   try {
     await transporter.verify();
     const info = await transporter.sendMail({ from: config.from, to, subject, html, text });
