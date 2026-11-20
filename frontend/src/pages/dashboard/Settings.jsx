@@ -32,6 +32,7 @@ export default function SettingsPage() {
   const [fullName, setFullName] = useState(user?.fullName || "");
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState("");
+  const [photoLoadFailed, setPhotoLoadFailed] = useState(false);
   const [theme, setTheme] = useState(user?.preferences?.theme || getSavedTheme());
   const [language, setLanguage] = useState(user?.preferences?.language || localStorage.getItem("language") || "en");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -90,6 +91,10 @@ export default function SettingsPage() {
 
   const photoUrl = useMemo(() => photoPreview || getProfileImageUrl(user), [photoPreview, user]);
 
+  useEffect(() => {
+    setPhotoLoadFailed(false);
+  }, [photoUrl]);
+
   function showNotice(type, text) {
     setNotice({ type, text });
   }
@@ -109,6 +114,7 @@ export default function SettingsPage() {
     }
     if (photoPreview) URL.revokeObjectURL(photoPreview);
     setPhotoFile(file);
+    setPhotoLoadFailed(false);
     setPhotoPreview(URL.createObjectURL(file));
     showNotice("", "");
   }
@@ -128,10 +134,19 @@ export default function SettingsPage() {
       form.append("language", language);
       if (photoFile) form.append("profilePhoto", photoFile);
       const result = await updateProfile(form);
-      // AuthContext caches the updated serialized profile, including profilePhotoUrl.
-      if (result?.user) setPhotoPreview("");
+      // Keep the selected preview visible until the server-returned persistent URL
+      // is available, then switch the avatar to that saved URL immediately.
+      if (photoFile) {
+        const savedPhotoUrl = getProfileImageUrl(result?.user);
+        if (!savedPhotoUrl) {
+          throw new Error("The server saved the profile update but did not return a profile photo URL. Please try again.");
+        }
+        setPhotoPreview(savedPhotoUrl);
+        setPhotoLoadFailed(false);
+      } else {
+        setPhotoPreview("");
+      }
       setPhotoFile(null);
-      setPhotoPreview("");
       showNotice("success", "Your profile has been updated.");
     } catch (error) {
       showNotice("error", error.response?.data?.message || "Unable to save your profile. Please try again.");
@@ -363,7 +378,14 @@ export default function SettingsPage() {
                   <div className="flex flex-wrap items-center gap-5">
                     <div className="relative">
                       <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-[var(--app-border)] bg-[var(--app-bg)] text-2xl font-bold text-sky-600">
-                        {photoUrl ? <img src={photoUrl} alt="Your profile" className="h-full w-full object-cover" /> : getProfileInitials(fullName)}
+                        {photoUrl && !photoLoadFailed ? (
+                          <img
+                            src={photoUrl}
+                            alt="Your profile"
+                            className="h-full w-full object-cover"
+                            onError={() => setPhotoLoadFailed(true)}
+                          />
+                        ) : getProfileInitials(fullName)}
                       </div>
                       <button type="button" onClick={() => fileRef.current?.click()} aria-label="Upload profile photo" className="absolute -bottom-2 -right-2 rounded-xl border-2 border-[var(--app-card)] bg-sky-600 p-2 text-white shadow transition hover:bg-sky-500">
                         <Camera size={16} />
