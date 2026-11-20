@@ -336,10 +336,13 @@ exports.login = async (req, res) => {
 };
 
 exports.forgotPassword = async (req, res) => {
+  let processingStage = 'validate_request';
   try {
-    const rawEmail = (req.body.email || '').trim().toLowerCase();
-    if (!rawEmail) {
-      return res.status(400).json({ message: 'Email is required' });
+    const rawEmail = typeof req.body?.email === 'string'
+      ? req.body.email.trim().toLowerCase()
+      : '';
+    if (!rawEmail || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(rawEmail)) {
+      return res.status(400).json({ code: 'INVALID_EMAIL', message: 'Enter a valid email address.' });
     }
 
     const generic = {
@@ -368,6 +371,7 @@ exports.forgotPassword = async (req, res) => {
       });
     }
 
+    processingStage = 'find_user';
     const user = await User.findOne({ email: rawEmail });
     if (!user) {
       return res.status(200).json(generic);
@@ -432,13 +436,19 @@ exports.forgotPassword = async (req, res) => {
     return res.status(200).json(generic);
   } catch (e) {
     console.error('[password reset] Request processing failed:', {
+      stage: processingStage,
       name: e.name,
       code: e.code,
       message: e.message,
+      stack: e.stack,
       mongoReadyState: mongoose.connection.readyState,
       hint: mongoose.connection.readyState !== 1
         ? 'Check the Render MongoDB connection and Atlas network access list.'
-        : undefined,
+        : processingStage === 'send_reset_email'
+          ? 'Inspect the email provider diagnostics above; verify the Resend API key and sender domain/address.'
+          : processingStage === 'create_reset_token'
+            ? 'Check MongoDB write permissions and PasswordReset collection/index state.'
+            : undefined,
     });
     const databaseUnavailable = mongoose.connection.readyState !== 1 ||
       ['MongoServerSelectionError', 'MongooseServerSelectionError', 'MongoNetworkError'].includes(e.name);
@@ -449,7 +459,10 @@ exports.forgotPassword = async (req, res) => {
         message: 'The account service is reconnecting. Please retry shortly.',
       });
     }
-    return res.status(500).json({ message: 'Could not process reset request' });
+    return res.status(500).json({
+      code: 'PASSWORD_RESET_PROCESSING_FAILED',
+      message: 'We could not complete the password reset request. Please try again later or contact support.',
+    });
   }
 };
 
