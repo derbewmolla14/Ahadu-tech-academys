@@ -9,6 +9,7 @@ const { sendPasswordResetEmail, verifyEmailService } = require('../utils/sendEma
 const { getJwtSecret } = require('../config/env');
 
 const TelegramOtp = require('../models/TelegramOtp');
+const AppSetting = require('../models/AppSetting');
 
 const TELEGRAM_OTP_TTL_MS = 60 * 1000;
 const TELEGRAM_OTP_MAX_ATTEMPTS = 5;
@@ -54,9 +55,14 @@ exports.requestTelegramLink = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'Account not found.' });
-    if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_BOT_USERNAME) {
+    if (!process.env.TELEGRAM_BOT_TOKEN) {
       return res.status(503).json({ message: 'Telegram account linking is not configured yet.' });
     }
+    const savedBotSetting = await AppSetting.findOne({ key: 'telegramBotLink' }).select('value');
+    const configuredLink = String(savedBotSetting?.value || process.env.TELEGRAM_BOT_USERNAME || '').trim();
+    const usernameMatch = configuredLink.match(/(?:https?:\/\/(?:www\.)?(?:t\.me|telegram\.me)\/)?@?([A-Za-z0-9_]{5,32})\/?$/i);
+    const username = usernameMatch?.[1];
+    if (!username) return res.status(503).json({ message: 'Telegram bot username is not configured yet.' });
 
     const rawToken = crypto.randomBytes(32).toString('hex');
     const challenge = await TelegramOtp.create({
@@ -67,7 +73,6 @@ exports.requestTelegramLink = async (req, res) => {
       expiresAt: new Date(Date.now() + 10 * 60 * 1000),
     });
     await TelegramOtp.deleteMany({ userId: user._id, purpose: 'link', _id: { $ne: challenge._id } });
-    const username = process.env.TELEGRAM_BOT_USERNAME.replace(/^@/, '');
     const deepLink = 'https://t.me/' + username + '?start=' + encodeURIComponent(rawToken);
     return res.json({
       message: 'Open the Telegram bot link and press Start to securely link this account.',
@@ -255,7 +260,7 @@ async function finalizeRegister(req, res) {
     const hash = await bcrypt.hash(req.body.password, 12);
     let profilePhoto = '';
     if (req.file) {
-      profilePhoto = `/uploads/profiles/${req.file.filename}`;
+      profilePhoto = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
     }
 
     const user = await User.create({
@@ -467,7 +472,7 @@ exports.updateProfile = async (req, res) => {
       user.phone = req.body.phone.trim().slice(0, 48);
     }
     if (req.file) {
-      user.profilePhoto = `/uploads/profiles/${req.file.filename}`;
+      user.profilePhoto = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
     }
     if (typeof req.body.theme === 'string') {
       if (!['light', 'dark', 'system'].includes(req.body.theme)) {

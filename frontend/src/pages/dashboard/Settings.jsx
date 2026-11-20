@@ -32,6 +32,7 @@ export default function SettingsPage() {
   const [fullName, setFullName] = useState(user?.fullName || "");
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState("");
+  const [photoLoadFailed, setPhotoLoadFailed] = useState(false);
   const [theme, setTheme] = useState(user?.preferences?.theme || getSavedTheme());
   const [language, setLanguage] = useState(user?.preferences?.language || localStorage.getItem("language") || "en");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -43,6 +44,12 @@ export default function SettingsPage() {
   const [savingPassword, setSavingPassword] = useState(false);
   const [telegramLink, setTelegramLink] = useState("");
   const [creatingTelegramLink, setCreatingTelegramLink] = useState(false);
+  const [configuredTelegramLink, setConfiguredTelegramLink] = useState("");
+  const [telegramLinkDraft, setTelegramLinkDraft] = useState("");
+  const [loadingTelegramSettings, setLoadingTelegramSettings] = useState(false);
+  const [savingTelegramSettings, setSavingTelegramSettings] = useState(false);
+  const [editingTelegramLink, setEditingTelegramLink] = useState(false);
+  const isAdmin = user?.role === "admin";
   const [notice, setNotice] = useState({ type: "", text: "" });
   const [latestVersion, setLatestVersion] = useState(null);
   const [checkingUpdates, setCheckingUpdates] = useState(false);
@@ -58,6 +65,21 @@ export default function SettingsPage() {
   const nativeDownloadUrl = platform === "ios" ? latestVersion?.iosUpdateUrl : latestVersion?.androidUpdateUrl;
 
   useEffect(() => {
+    let active = true;
+    setLoadingTelegramSettings(true);
+    api.get("/settings/telegram-link")
+      .then((response) => {
+        if (!active) return;
+        const link = response.data?.telegramLink || "";
+        setConfiguredTelegramLink(link);
+        setTelegramLinkDraft(link);
+      })
+      .catch(() => undefined)
+      .finally(() => { if (active) setLoadingTelegramSettings(false); });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
     setFullName(user?.fullName || "");
     if (user?.preferences?.theme) setTheme(user.preferences.theme);
     if (user?.preferences?.language) setLanguage(user.preferences.language);
@@ -68,6 +90,10 @@ export default function SettingsPage() {
   }, [photoPreview]);
 
   const photoUrl = useMemo(() => photoPreview || getProfileImageUrl(user), [photoPreview, user]);
+
+  useEffect(() => {
+    setPhotoLoadFailed(false);
+  }, [photoUrl]);
 
   function showNotice(type, text) {
     setNotice({ type, text });
@@ -88,6 +114,7 @@ export default function SettingsPage() {
     }
     if (photoPreview) URL.revokeObjectURL(photoPreview);
     setPhotoFile(file);
+    setPhotoLoadFailed(false);
     setPhotoPreview(URL.createObjectURL(file));
     showNotice("", "");
   }
@@ -106,9 +133,20 @@ export default function SettingsPage() {
       form.append("theme", theme);
       form.append("language", language);
       if (photoFile) form.append("profilePhoto", photoFile);
-      await updateProfile(form);
+      const result = await updateProfile(form);
+      // Keep the selected preview visible until the server-returned persistent URL
+      // is available, then switch the avatar to that saved URL immediately.
+      if (photoFile) {
+        const savedPhotoUrl = getProfileImageUrl(result?.user);
+        if (!savedPhotoUrl) {
+          throw new Error("The server saved the profile update but did not return a profile photo URL. Please try again.");
+        }
+        setPhotoPreview(savedPhotoUrl);
+        setPhotoLoadFailed(false);
+      } else {
+        setPhotoPreview("");
+      }
       setPhotoFile(null);
-      setPhotoPreview("");
       showNotice("success", "Your profile has been updated.");
     } catch (error) {
       showNotice("error", error.response?.data?.message || "Unable to save your profile. Please try again.");
@@ -144,6 +182,24 @@ export default function SettingsPage() {
     setLanguage(value);
     localStorage.setItem("language", value);
     savePreferences({ language: value });
+  }
+
+  async function saveTelegramBotLink(event) {
+    event.preventDefault();
+    setSavingTelegramSettings(true);
+    showNotice("", "");
+    try {
+      const response = await api.put("/settings/telegram-link", { telegramLink: telegramLinkDraft });
+      const saved = response.data?.telegramLink || telegramLinkDraft;
+      setConfiguredTelegramLink(saved);
+      setTelegramLinkDraft(saved);
+      setEditingTelegramLink(false);
+      showNotice("success", "Telegram bot link saved for all users.");
+    } catch (error) {
+      showNotice("error", error.response?.data?.message || "Unable to save the Telegram bot link.");
+    } finally {
+      setSavingTelegramSettings(false);
+    }
   }
 
   async function createTelegramLink() {
@@ -322,7 +378,14 @@ export default function SettingsPage() {
                   <div className="flex flex-wrap items-center gap-5">
                     <div className="relative">
                       <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-[var(--app-border)] bg-[var(--app-bg)] text-2xl font-bold text-sky-600">
-                        {photoUrl ? <img src={photoUrl} alt="Your profile" className="h-full w-full object-cover" /> : getProfileInitials(fullName)}
+                        {photoUrl && !photoLoadFailed ? (
+                          <img
+                            src={photoUrl}
+                            alt="Your profile"
+                            className="h-full w-full object-cover"
+                            onError={() => setPhotoLoadFailed(true)}
+                          />
+                        ) : getProfileInitials(fullName)}
                       </div>
                       <button type="button" onClick={() => fileRef.current?.click()} aria-label="Upload profile photo" className="absolute -bottom-2 -right-2 rounded-xl border-2 border-[var(--app-card)] bg-sky-600 p-2 text-white shadow transition hover:bg-sky-500">
                         <Camera size={16} />
@@ -357,12 +420,42 @@ export default function SettingsPage() {
                   <button type="button" onClick={createTelegramLink} disabled={creatingTelegramLink} className={buttonClass + " mt-4"}>
                     {creatingTelegramLink ? "Preparing Telegram link…" : "Link Telegram account"}
                   </button>
+                  {configuredTelegramLink && (
+                    <a href={configuredTelegramLink} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex rounded-xl border border-sky-500/40 px-4 py-3 text-sm font-semibold text-sky-600 hover:bg-sky-500/10">
+                      Open Ahadu Tech Academy Telegram bot
+                    </a>
+                  )}
                   {telegramLink && (
                     <a href={telegramLink} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex rounded-xl border border-sky-500/40 px-4 py-3 text-sm font-semibold text-sky-600 hover:bg-sky-500/10">
                       Open Telegram bot to finish linking
                     </a>
                   )}
                 </div>
+                {isAdmin && (
+                  <div className="mt-6 border-t border-[var(--app-border)] pt-5">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-sm font-bold">Change the Telegram Bot Links</h3>
+                        <p className="mt-1 text-sm text-[var(--app-muted)]">Manage the public Telegram bot link used by users across the app.</p>
+                      </div>
+                      <button type="button" onClick={() => { setTelegramLinkDraft(configuredTelegramLink); setEditingTelegramLink((value) => !value); }} className="inline-flex items-center gap-2 rounded-xl border border-sky-500/40 px-4 py-2 text-sm font-semibold text-sky-600 hover:bg-sky-500/10">
+                        {editingTelegramLink ? "Cancel" : "Edit"}
+                      </button>
+                    </div>
+                    {editingTelegramLink && (
+                      <form onSubmit={saveTelegramBotLink} className="mt-4">
+                        <label htmlFor="settings-telegram-bot-link" className="block text-sm font-semibold">Telegram bot username or link</label>
+                        <input id="settings-telegram-bot-link" className={fieldClass} value={telegramLinkDraft} onChange={(event) => setTelegramLinkDraft(event.target.value)} placeholder="@YourAcademyBot or https://t.me/YourAcademyBot" autoComplete="url" />
+                        <div className="mt-3 flex flex-wrap items-center gap-3">
+                          <button type="submit" disabled={savingTelegramSettings || loadingTelegramSettings || !telegramLinkDraft.trim()} className={buttonClass}>
+                            <Save size={16} /> {savingTelegramSettings ? "Saving…" : "Save Telegram link"}
+                          </button>
+                          {configuredTelegramLink && <a href={configuredTelegramLink} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-sky-600 hover:underline">Test saved link</a>}
+                        </div>
+                      </form>
+                    )}
+                  </div>
+                )}
               </section>
 
               <section className={cardClass}>

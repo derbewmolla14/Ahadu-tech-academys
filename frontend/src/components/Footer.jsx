@@ -18,10 +18,74 @@ function useBrowserLocation() {
     if (typeof navigator === "undefined" || !navigator.geolocation) return undefined;
 
     let active = true;
+    let reverseGeocodeController;
+    let reverseGeocodeTimeout;
+
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
         if (!active) return;
-        setLocation(`GPS: ${coords.latitude.toFixed(3)}, ${coords.longitude.toFixed(3)}`);
+
+        const latitude = coords.latitude;
+        const longitude = coords.longitude;
+        const coordinateFallback = `GPS: ${latitude.toFixed(3)}, ${longitude.toFixed(3)}`;
+        setLocation(coordinateFallback);
+
+        reverseGeocodeController = new AbortController();
+        reverseGeocodeTimeout = window.setTimeout(
+          () => reverseGeocodeController.abort(),
+          7000
+        );
+
+        const params = new URLSearchParams({
+          format: "jsonv2",
+          lat: String(latitude),
+          lon: String(longitude),
+          zoom: "10",
+          addressdetails: "1",
+        });
+
+        fetch(`https://nominatim.openstreetmap.org/reverse?${params.toString()}`, {
+          headers: {
+            Accept: "application/json",
+            "Accept-Language": navigator.language || "en",
+          },
+          referrerPolicy: "strict-origin-when-cross-origin",
+          signal: reverseGeocodeController.signal,
+        })
+          .then((response) => {
+            if (!response.ok) throw new Error("Location lookup failed");
+            return response.json();
+          })
+          .then((data) => {
+            if (!active) return;
+
+            const address = data?.address || {};
+            const locality =
+              address.city ||
+              address.town ||
+              address.village ||
+              address.municipality ||
+              address.hamlet ||
+              address.suburb ||
+              address.county;
+
+            if (locality) {
+              const placeParts = [
+                locality,
+                address.state,
+                address.country,
+              ].filter((part, index, all) => part && all.indexOf(part) === index);
+              setLocation(placeParts.join(", "));
+            } else if (address.state || address.country) {
+              setLocation([address.state, address.country].filter(Boolean).join(", "));
+            }
+          })
+          .catch(() => {
+            // Keep the coordinates as a useful fallback when lookup is offline or unavailable.
+          })
+          .finally(() => {
+            window.clearTimeout(reverseGeocodeTimeout);
+          });
       },
       () => {
         if (active) setLocation("Location not shared");
@@ -29,7 +93,11 @@ function useBrowserLocation() {
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
     );
 
-    return () => { active = false; };
+    return () => {
+      active = false;
+      if (reverseGeocodeTimeout) window.clearTimeout(reverseGeocodeTimeout);
+      if (reverseGeocodeController) reverseGeocodeController.abort();
+    };
   }, []);
 
   return location;

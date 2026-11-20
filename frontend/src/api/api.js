@@ -48,6 +48,18 @@ api.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
+  // Let Axios/browser generate the multipart boundary for profile-photo uploads.
+  // The instance-wide JSON default otherwise prevents Multer from parsing FormData.
+  if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+    config.headers = config.headers || {};
+    if (typeof config.headers.delete === 'function') {
+      config.headers.delete('Content-Type');
+    } else {
+      delete config.headers['Content-Type'];
+      delete config.headers['content-type'];
+    }
+  }
+
   // Keep every relative API request beneath the single configured /api prefix.
   if (typeof config.url === 'string' && !/^https?:\/\//i.test(config.url)) {
     config.url = `/${normalizeApiPath(config.url)}`;

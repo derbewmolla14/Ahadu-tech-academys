@@ -1,17 +1,6 @@
 const multer = require('multer');
-const path = require('path');
-const crypto = require('crypto');
 
-const storage = multer.diskStorage({
-  destination: (_, __, cb) => {
-    cb(null, path.join(__dirname, '../uploads/profiles'));
-  },
-  filename: (_, file, cb) => {
-    const ext = path.extname(file.originalname || '').toLowerCase();
-    const safeExt = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext) ? ext : '.jpg';
-    cb(null, `${crypto.randomBytes(16).toString('hex')}${safeExt}`);
-  },
-});
+const storage = multer.memoryStorage();
 
 module.exports = multer({
   storage,
