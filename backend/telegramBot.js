@@ -365,7 +365,7 @@ async function handleUpdate(update) {
   if (match) { await handleStart(message, match[1] || ''); return; }
 
   if (/^(?:menu|menu \/ ሜኑ|ሜኑ|\/menu)$/i.test(text)) { await sendMenu(chatId, true); return; }
-  const totalUsersMatch = text.match(/^(?:total users(?: \/ ጠቅላላ ተጠቃሚዎች)?|ጠቅላላ ተጠቃሚዎች|\/users(?:@\w+)?(?:\\s+(\\d+))?)$/i);
+  const totalUsersMatch = text.match(/^(?:total users(?: \/ ጠቅላላ ተጠቃሚዎች)?|ጠቅላላ ተጠቃሚዎች|\/users(?:@\w+)?(?:\s+(\d+))?)$/i);
   if (totalUsersMatch) { await sendTotalUsers(chatId, totalUsersMatch[1] || 1); return; }
   if (/^otp code$/i.test(text) || /^የotp ኮድ$/i.test(text)) { await sendOtpCodeForChat(chatId); return; }
   if (/^login$/i.test(text) || /^መግቢያ$/i.test(text)) {
