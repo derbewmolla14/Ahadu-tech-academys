@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
 import api from '../api/api';
 
 const inputClass = 'mt-2 w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none transition focus:border-sky-500 disabled:opacity-60';
@@ -31,6 +32,15 @@ function getRequestFailureMessage(error, action) {
 
 const RETRY_DELAYS_MS = [1500, 2500];
 
+function languageModeFor(user) {
+  const value = String(user?.preferences?.language || localStorage.getItem('language') || 'en').toLowerCase();
+  return ['am', 'amharic', 'አማርኛ'].includes(value) ? 'am' : value === 'both' ? 'both' : 'en';
+}
+
+function tr(mode, en, am) {
+  return mode === 'am' ? am : mode === 'both' ? en + ' / ' + am : en;
+}
+
 async function postWithShortRetry(path, payload, onRetry) {
   let lastError;
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
@@ -48,6 +58,9 @@ async function postWithShortRetry(path, payload, onRetry) {
 
 
 export default function ForgotPassword() {
+  const { user } = useContext(AuthContext);
+  const languageMode = languageModeFor(user);
+  const [telegramBotLink, setTelegramBotLink] = useState('');
   const [method, setMethod] = useState('email');
   const [email, setEmail] = useState('');
   const [emailSent, setEmailSent] = useState(false);
@@ -113,11 +126,12 @@ export default function ForgotPassword() {
         setOtpSent(true);
       }
       if (data?.code === 'TELEGRAM_NOT_LINKED') {
-        setError(data.message || 'Link your Telegram account in Settings → Account & Profile before requesting a Telegram code, or use Reset via Email.');
+        setTelegramBotLink(data.telegramBotLink || '');
+        setError(tr(languageMode, 'Your account is not linked to Telegram. Sign in, open Settings → Account & Profile → Link Telegram, open the secure link and press Start in the bot. Then return here and request a code. You can also reset by email.', 'መለያዎ ከቴሌግራም ጋር አልተገናኘም። ይግቡ፣ Settings → Account & Profile → Link Telegram ይክፈቱ፣ የደህንነት ሊንኩን በቴሌግራም ከፍተው Start ይጫኑ። ከዚያ ወደዚህ ተመልሰው ኮድ ይጠይቁ። በኢሜይልም መቀየር ይችላሉ።'));
       } else if (data?.code === 'INVALID_EMAIL') {
-        setError(data.message || 'Enter a valid registered email address.');
+        setError(tr(languageMode, data.message || 'Enter a valid registered email address.', 'እባክዎ ትክክለኛ ኢሜይል ያስገቡ።'));
       } else {
-        setError(getRequestFailureMessage(err, 'request a Telegram code'));
+        setError(tr(languageMode, getRequestFailureMessage(err, 'request a Telegram code'), 'የቴሌግራም ኮድ መጠየቅ አልተቻለም። እባክዎ እንደገና ይሞክሩ።'));
       }
     } finally {
       setLoading(false);
@@ -182,7 +196,11 @@ export default function ForgotPassword() {
           </div>
 
           {retryStatus ? <div role="status" aria-live="polite" className="mb-5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-200">{retryStatus}</div> : null}
-          {error ? <div role="alert" className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-200">{error}</div> : null}
+          {error ? <div role="alert" className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-200">
+            {error}
+            {telegramBotLink ? <a href={telegramBotLink} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex rounded-lg border border-sky-400/50 px-3 py-2 font-semibold text-sky-200">{tr(languageMode, 'Open Ahadu Tech Academy bot', 'የአሃዱ ቴክ አካዳሚ ቦትን ክፈት')} ↗</a> : null}
+            {error.includes('not linked') || error.includes('አልተገናኘም') ? <Link to="/login" className="ml-2 mt-3 inline-flex rounded-lg border border-slate-500/50 px-3 py-2 font-semibold text-white">{tr(languageMode, 'Sign in to link account', 'መለያዎን ለማገናኘት ይግቡ')}</Link> : null}
+          </div> : null}
           {message ? <div role="status" className="mb-5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">{message}</div> : null}
 
           <label className="block">
@@ -208,12 +226,12 @@ export default function ForgotPassword() {
               ) : (
                 <>
                   <div className="flex items-center justify-between rounded-xl border border-sky-500/25 bg-sky-500/5 px-4 py-3">
-                    <span className="text-sm text-slate-300">Code expires in</span>
+                    <span className="text-sm text-slate-300">{tr(languageMode, "Code expires in", "ኮዱ የሚያበቃው በ")}</span>
                     <span className="font-mono text-xl font-bold tabular-nums text-sky-300">{countdown}</span>
                   </div>
                   <form onSubmit={resetWithOtp} className="space-y-4">
                     <label className="block">
-                      <span className="text-sm font-medium text-slate-200">6-digit Telegram code</span>
+                      <span className="text-sm font-medium text-slate-200">{tr(languageMode, "6-digit Telegram code", "6 አሃዝ ያለው የቴሌግራም ኮድ")}</span>
                       <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} pattern="[0-9]{6}" required value={otp}
                         onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
                         className={inputClass + ' font-mono tracking-[0.3em]'} placeholder="000000" />
