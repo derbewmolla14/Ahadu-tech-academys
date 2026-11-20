@@ -5,6 +5,13 @@ const userSchema = new mongoose.Schema(
     fullName: { type: String, trim: true, default: '' },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     phone: { type: String, trim: true, default: '' },
+    referralCode: { type: String, trim: true, uppercase: true, unique: true, sparse: true, index: true },
+    referrer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
+    payoutAccount: {
+      provider: { type: String, trim: true, default: '' },
+      accountName: { type: String, trim: true, default: '' },
+      accountNumber: { type: String, trim: true, default: '' },
+    },
     telegramChatId: { type: String, default: null, index: true },
     telegramUsername: { type: String, trim: true, default: '' },
     password: { type: String, required: true, select: false },
