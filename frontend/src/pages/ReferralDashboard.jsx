@@ -43,10 +43,12 @@ export default function ReferralDashboard() {
         </div>
         <p className="mt-2 text-xs text-[var(--app-muted)]">Referral code: {data.referralCode}</p>
       </section>
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Stat icon={Users} label="Direct referrals" value={data.counts?.direct || 0}/>
-        <Stat icon={Users} label="Second-level referrals" value={data.counts?.indirect || 0}/>
-        <Stat icon={Wallet} label="Total commissions" value={money(data.earningsETB)}/>
+        <Stat icon={Users} label="Second-level+ referrals" value={data.counts?.indirect || 0}/>
+        <Stat icon={Wallet} label="Total earned commission" value={money(data.earningsETB)}/>
+        <Stat icon={Wallet} label="Paid out / sent" value={money(data.paidOutETB)}/>
+        <Stat icon={Wallet} label="Remaining balance" value={money(data.remainingBalanceETB)}/>
         <Stat icon={TrendingUp} label="Commission records" value={data.commissions?.length || 0}/>
       </section>
       <section className="rounded-2xl border border-[var(--app-border)] bg-[var(--app-card)] p-5">
