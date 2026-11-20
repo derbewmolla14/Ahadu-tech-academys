@@ -25,15 +25,20 @@ exports.getMine = async (req, res) => {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: 'Account not found.' });
     const code = await ensureReferralCode(user);
-    const [direct, indirect, commissions] = await Promise.all([
+    const directIds = await User.find({ referrer: user._id }).distinct('_id');
+    const [direct, indirect, commissions, commissionTotals] = await Promise.all([
       User.countDocuments({ referrer: user._id }),
-      User.countDocuments({ referrer: { $in: await User.find({ referrer: user._id }).distinct('_id') } }),
+      directIds.length ? User.countDocuments({ referrer: { $in: directIds } }) : Promise.resolve(0),
       ReferralCommission.find({ beneficiary: user._id }).sort({ createdAt: -1 }).limit(100).lean(),
+      ReferralCommission.aggregate([
+        { $match: { beneficiary: user._id } },
+        { $group: { _id: null, totalETB: { $sum: '$commissionETB' } } },
+      ]),
     ]);
-    const totals = commissions.reduce((sum, item) => sum + Number(item.commissionETB || 0), 0);
+    const totals = commissionTotals[0]?.totalETB || 0;
     return res.json({
       referralCode: code,
-      referralLink: (process.env.FRONTEND_URL || '').replace(/\/$/, '') + '/register?ref=' + encodeURIComponent(code),
+      referralLink: (process.env.FRONTEND_URL || 'https://ahadu-tech-academys.vercel.app').trim().replace(/\/$/, '') + '/register?ref=' + encodeURIComponent(code),
       counts: { direct, indirect },
       earningsETB: Number(totals.toFixed(2)),
       commissions: commissions.map(({ transactionReference, level, paidAmountETB, commissionPercent, commissionETB, createdAt }) => ({ transactionReference, level, paidAmountETB, commissionPercent, commissionETB, createdAt })),
