@@ -261,6 +261,8 @@ export default function DashboardLayout() {
 
         <SectionTitle>Learning</SectionTitle>
         <NavigationItem to="/dashboard/offline-library" icon={Download} onClick={closeMenu}>My Offline Library</NavigationItem>
+        <NavigationItem to="/dashboard/referrals" icon={Users} onClick={closeMenu}>My Referrals</NavigationItem>
+        {isAdmin && <NavigationItem to="/admin/referrals" icon={ShieldCheck} onClick={closeMenu}>Referral Management</NavigationItem>}
 
         {/* ACCOUNT */}
         <SectionTitle>
