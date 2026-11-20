@@ -264,7 +264,7 @@ async function finalizeRegister(req, res) {
       profilePhoto = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
     }
 
-    const referralCode = crypto.randomBytes(5).toString('hex').toUpperCase();
+    const referralCode = crypto.randomBytes(8).toString('hex').toUpperCase();
     let referrer = null;
     if (role !== 'admin' && req.body.referralCode) {
       const normalizedCode = String(req.body.referralCode).trim().toUpperCase();
