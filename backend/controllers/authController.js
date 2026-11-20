@@ -99,9 +99,15 @@ exports.requestTelegramOtp = async (req, res) => {
     const user = await User.findOne({ email }).select('_id email telegramChatId');
     if (!user) return res.status(200).json({ message: 'If this account has a linked Telegram chat, an OTP will be sent.' });
     if (!user.telegramChatId) {
+      const savedBotSetting = await AppSetting.findOne({ key: 'telegramBotLink' }).select('value');
+      const configuredLink = String(savedBotSetting?.value || process.env.TELEGRAM_BOT_USERNAME || '').trim();
+      const match = configuredLink.match(/(?:https?:\/\/(?:www\.)?(?:t\.me|telegram\.me)\/)?@?([A-Za-z0-9_]{5,32})\/?$/i);
+      const telegramBotLink = match?.[1] ? 'https://t.me/' + match[1] : '';
       return res.status(409).json({
         code: 'TELEGRAM_NOT_LINKED',
-        message: 'No Telegram account is linked to this account. Sign in, open Settings → Account & Profile → Link Telegram, then press Start in the bot. You can also use Reset via Email.',
+        message: 'No Telegram account is linked to this account. Sign in, open Settings → Account & Profile → Link Telegram, open the generated secure link, and press Start in the bot. You can also use Reset via Email.',
+        telegramBotLink,
+        nextStep: 'SIGN_IN_AND_CREATE_SECURE_LINK',
       });
     }
 
@@ -110,7 +116,7 @@ exports.requestTelegramOtp = async (req, res) => {
     }).select('_id expiresAt');
     if (active) {
       const remaining = Math.max(1, Math.ceil((active.expiresAt.getTime() - Date.now()) / 1000));
-      return res.status(429).json({ code: 'OTP_ACTIVE', message: 'A code is already active. Wait for it to expire before requesting another.', expiresInSeconds: remaining });
+      return res.status(429).json({ code: 'OTP_ACTIVE', message: 'A Telegram code is already active. Enter the code you received, or wait for its countdown to finish before requesting another.', expiresInSeconds: remaining });
     }
 
     const otp = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
@@ -131,7 +137,7 @@ exports.requestTelegramOtp = async (req, res) => {
     } catch (deliveryError) {
       await TelegramOtp.deleteOne({ _id: challenge._id });
       console.error('[telegram otp] Delivery failed:', { code: deliveryError.code, message: deliveryError.message });
-      return res.status(503).json({ message: 'Telegram could not deliver your code. Please try again later.' });
+      return res.status(503).json({ code: 'TELEGRAM_DELIVERY_FAILED', message: 'Telegram could not deliver your code. Please check the bot is available and try again.' });
     }
 
     return res.status(200).json({
@@ -158,10 +164,10 @@ exports.resetPasswordWithTelegramOtp = async (req, res) => {
     const challenge = await TelegramOtp.findOne({
       email, purpose: 'password-reset', used: false, expiresAt: { $gt: new Date() },
     }).sort({ createdAt: -1 });
-    if (!challenge) return res.status(400).json({ message: 'This code is expired or invalid. Request a new code.' });
+    if (!challenge) return res.status(400).json({ code: 'OTP_EXPIRED_OR_INVALID', message: 'This code is expired or invalid. Request a new code.' });
     if (challenge.attempts >= TELEGRAM_OTP_MAX_ATTEMPTS) {
       await TelegramOtp.updateOne({ _id: challenge._id }, { $set: { used: true } });
-      return res.status(429).json({ message: 'Too many incorrect attempts. Request a new code.' });
+      return res.status(429).json({ code: 'OTP_ATTEMPTS_EXCEEDED', message: 'Too many incorrect attempts. Request a new code.' });
     }
 
     const submittedHash = hashTelegramOtp(otp);
@@ -173,7 +179,7 @@ exports.resetPasswordWithTelegramOtp = async (req, res) => {
       );
       const remaining = Math.max(0, TELEGRAM_OTP_MAX_ATTEMPTS - (updated?.attempts || TELEGRAM_OTP_MAX_ATTEMPTS));
       if (!updated || remaining === 0) await TelegramOtp.updateOne({ _id: challenge._id }, { $set: { used: true } });
-      return res.status(400).json({ message: remaining ? 'Incorrect code. ' + remaining + ' attempts remaining.' : 'Too many incorrect attempts. Request a new code.' });
+      return res.status(400).json({ code: remaining ? 'OTP_INCORRECT' : 'OTP_ATTEMPTS_EXCEEDED', message: remaining ? 'Incorrect code. ' + remaining + ' attempts remaining.' : 'Too many incorrect attempts. Request a new code.', attemptsRemaining: remaining });
     }
 
     const claimed = await TelegramOtp.findOneAndUpdate(
@@ -181,7 +187,7 @@ exports.resetPasswordWithTelegramOtp = async (req, res) => {
       { $set: { used: true } },
       { new: true }
     );
-    if (!claimed) return res.status(400).json({ message: 'This code has expired or has already been used. Request a new code.' });
+    if (!claimed) return res.status(400).json({ code: 'OTP_EXPIRED_OR_USED', message: 'This code has expired or has already been used. Request a new code.' });
 
     const user = await User.findById(challenge.userId).select('+password');
     if (!user || user.email !== email) return res.status(400).json({ message: 'Unable to reset this account password.' });
