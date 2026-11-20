@@ -45,7 +45,7 @@ async function sendEntryIdentification(message) {
 }
 async function sendTotalUsers(chatId, page = 1) {
   const admin = await getLinkedAccount(chatId);
-  if (!admin || admin.role !== 'admin') {
+  if (!admin || !isDesignatedAdminEmail(admin.email)) {
     await clearActiveView(chatId, 'menu');
     await sendViewMessage(chatId, { text: 'This action is available only to a Telegram chat securely linked to an administrator account. / ይህ አገልግሎት ከአስተዳዳሪ መለያ ጋር ለተገናኘ ቴሌግራም ብቻ ነው።', reply_markup: ACTION_MENU_KEYBOARD });
     return;
@@ -143,7 +143,7 @@ async function sendOtpCodeForChat(chatId) {
 
 async function sendInformation(chatId, page = 1) {
   await clearActiveView(chatId, 'information');
-  const admin = await User.findOne({ telegramChatId: String(chatId), role: 'admin' }).select('_id');
+  const admin = await getLinkedAccount(chatId);
   const pageSize = 10;
   const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
   const total = await TelegramBotRecord.countDocuments({ type: 'information' });
@@ -154,12 +154,12 @@ async function sendInformation(chatId, page = 1) {
     const emptyText = total
       ? 'No more information on this page. / በዚህ ገጽ ላይ ተጨማሪ መረጃ የለም။\nUse /info 1 to view the latest announcements. / አዳዲስ ማስታወቂያዎችን ለማየት /info 1 ይጠቀሙ።'
       : 'INFORMATION / መረጃ\n\nThere are no official announcements yet. Please check again later. Official notices and identification/reference records (መታወቂያዎች) will appear here when published by the academy admin.\n\nእስካሁን ይፋዊ ማስታወቂያ የለም። እባክዎ በኋላ ይመለሱ። በአካዳሚው አስተዳዳሪ የሚታተሙ ማስታወቂያዎችና የመታወቂያ መዝገቦች እዚህ ይታያሉ።';
-    await sendViewMessage(chatId, { text: (admin ? 'Admin: publish an official notice with /announce followed by its text.\n\n' : '') + emptyText, reply_markup: ACTION_MENU_KEYBOARD });
+    await sendViewMessage(chatId, { text: (admin && isDesignatedAdminEmail(admin.email) ? 'Admin: publish an official notice with /announce followed by its text.\n\n' : '') + emptyText, reply_markup: ACTION_MENU_KEYBOARD });
     return;
   }
 
   const lines = ['INFORMATION & OFFICIAL ANNOUNCEMENTS / መረጃዎች እና ይፋዊ ማስታወቂያዎች', 'Page ' + safePage + ' · ' + total + ' saved record(s)', ''];
-  if (admin) lines.push('Admin: publish an official notice with /announce followed by its text.');
+  if (admin && isDesignatedAdminEmail(admin.email)) lines.push('Admin: publish an official notice with /announce followed by its text.');
   for (const record of [...records].reverse()) {
     const stamp = new Date(record.createdAt).toLocaleString('en-GB', { timeZone: 'Africa/Addis_Ababa' });
     lines.push('━━━━━━━━━━━━━━━━', stamp, record.text || record.caption || 'Official record / ይፋዊ መዝገብ');
@@ -191,9 +191,10 @@ async function sendAccountEmail(chatId) {
   });
 }
 async function getTelegramAdmins() {
-  const admins = await User.find({ role: 'admin', telegramChatId: { $type: 'string', $ne: '' } }).select('telegramChatId').lean();
-  const configured = String(process.env.TELEGRAM_ADMIN_CHAT_IDS || '').split(',').map((value) => value.trim()).filter(Boolean);
-  return [...new Set([...admins.map((admin) => String(admin.telegramChatId)), ...configured])];
+  const configuredEmail = String(process.env.SUPER_ADMIN_EMAIL || '').trim().toLowerCase();
+  if (!configuredEmail) return [];
+  const admin = await User.findOne({ email: configuredEmail }).select('email telegramChatId').lean();
+  return admin?.telegramChatId ? [String(admin.telegramChatId)] : [];
 }
 
 async function beginReceiptSubmission(chatId) {
@@ -250,7 +251,8 @@ async function saveAndForwardReceipt(message) {
 }
 
 async function publishInformation(message, text) {
-  const user = await User.findOne({ telegramChatId: String(message.chat.id), role: 'admin' }).select('_id');
+  const user = await getLinkedAccount(message.chat.id);
+  if (!user || !isDesignatedAdminEmail(user.email)) return false;
   const attachment = extractReceiptAttachment(message);
   const record = await TelegramBotRecord.create({
     type: 'information',
@@ -386,8 +388,8 @@ async function handleUpdate(update) {
   if (/^(?:email|email \/ ኢሜይል|ኢሜይል)$/i.test(text)) { await sendAccountEmail(chatId); return; }
   if (/^(?:send receipt|send receipt \/ ሴንድ ሪሲፕት|ሴንድ ሪሲፕት)$/i.test(text)) { await beginReceiptSubmission(chatId); return; }
   if (/^\/announce(?:@\w+)?(?:\s+|$)/i.test(text) && (text.replace(/^\/announce(?:@\w+)?/i, '').trim() || extractReceiptAttachment(message))) {
-    const admin = await User.findOne({ telegramChatId: chatId, role: 'admin' }).select('_id');
-    if (!admin) { await telegramRequest('sendMessage', { chat_id: chatId, text: 'Only linked academy administrators can publish official information.' }); return; }
+    const admin = await getLinkedAccount(chatId);
+    if (!admin || !isDesignatedAdminEmail(admin.email)) { await telegramRequest('sendMessage', { chat_id: chatId, text: 'Only the account linked to the configured website administrator email can publish official information.' }); return; }
     await publishInformation(message, text.replace(/^\/announce(?:@\w+)?\s*/i, '').trim() || message.caption || ''); return;
   }
   if (/^\/done$/i.test(text)) {
