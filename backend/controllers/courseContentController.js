@@ -12,6 +12,7 @@ const uploadsDirectory = path.join(__dirname, '../uploads');
 const exactDepartmentRegex = (value) => new RegExp('^' + String(value || '').trim().replace(/[.*+?^()|[\]\\$]/g, (character) => '\\' + character) + '$', 'i');
 fs.mkdirSync(uploadsDirectory, { recursive: true });
 const isCourseAdmin = (user) => user?.role === 'admin';
+const normalizeLanguageMode = (value) => ({ en: 'en', english: 'en', am: 'am', amharic: 'am', both: 'both' }[String(value || '').trim().toLowerCase()] || 'both');
 const hasApprovedCourseAccess = (user, courseId) => (user?.downloadApprovals || []).some((entry) =>
   entry.resourceModel === 'CourseContent'
   && String(entry.resourceId) === String(courseId)
@@ -236,7 +237,8 @@ const getContent = async (req, res) => {
 
     // Build a tolerant query for legacy uploads while keeping inactive content hidden.
     const query = { isActive: { $ne: false } };
-    if (String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic') query.language = 'am';
+    const languageMode = normalizeLanguageMode(language);
+    if (languageMode === 'am' || languageMode === 'en') query.language = languageMode;
     const addAnd = (condition) => { query.$and = [...(query.$and || []), condition]; };
     if (level) query.level = { $regex: exactDepartmentRegex(level) };
     if (university) query.university = { $regex: exactDepartmentRegex(university) };
@@ -322,7 +324,8 @@ const getContentById = async (req, res) => {
 
     const content = await CourseContent.findById(id);
 
-    if (!content || !content.isActive || (req.user?.preferences?.language === 'am' && content.language !== 'am')) {
+    const languageMode = normalizeLanguageMode(req.user?.preferences?.language);
+    if (!content || !content.isActive || ((languageMode === 'am' || languageMode === 'en') && content.language !== languageMode)) {
       return res.status(404).json({
         success: false,
         message: 'Course content not found'
