@@ -24,8 +24,19 @@ function normalizeTelegramLink(input) {
 router.get('/telegram-link', async (_req, res) => {
   try {
     const setting = await AppSetting.findOne({ key: KEY }).select('value');
-    const fallbackUsername = String(process.env.TELEGRAM_BOT_USERNAME || '').replace(/^@/, '');
-    const link = setting?.value || (fallbackUsername ? 'https://t.me/' + fallbackUsername : '');
+    const configured = setting?.value || process.env.TELEGRAM_BOT_USERNAME || 'HorizonHydroOstechbot';
+    const raw = String(configured).trim();
+    const username = /^@?[A-Za-z0-9_]{5,32}$/.test(raw)
+      ? raw.replace(/^@/, '')
+      : (() => {
+          try {
+            const parsed = new URL(/^https?:\/\//i.test(raw) ? raw : 'https://' + raw);
+            const parts = parsed.pathname.split('/').filter(Boolean);
+            return ['t.me', 'www.t.me', 'telegram.me', 'www.telegram.me'].includes(parsed.hostname.toLowerCase())
+              && parts.length === 1 && /^[A-Za-z0-9_]{5,32}$/.test(parts[0]) ? parts[0] : '';
+          } catch { return ''; }
+        })();
+    const link = username ? 'https://t.me/' + username : '';
     res.json({ telegramLink: link });
   } catch {
     res.status(500).json({ message: 'Unable to load Telegram contact settings.' });
