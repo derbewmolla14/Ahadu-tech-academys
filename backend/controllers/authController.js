@@ -493,7 +493,7 @@ exports.updateProfile = async (req, res) => {
       user.preferences.theme = req.body.theme;
     }
     if (typeof req.body.language === 'string') {
-      if (!['en', 'am', 'both'].includes(req.body.language)) {
+      if (!['en', 'am', 'english', 'amharic', 'both'].includes(req.body.language)) {
         return res.status(400).json({ message: 'Language must be English, Amharic, or Both.' });
       }
       user.preferences.language = req.body.language;
