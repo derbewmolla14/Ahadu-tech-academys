@@ -36,7 +36,7 @@ export default function PremiumCourseAccessAdmin() {
 
   useEffect(() => { load(); }, []);
 
-  const hasAccess = (student, courseId) => (student.unlockedCourseContents || []).some(item => String(item?._id || item) === String(courseId));
+  const hasAccess = (student, courseId) => (student.unlockedCourseContents || []).some(item => String(item?._id || item) === String(courseId)) || (student.downloadApprovals || []).some(entry => entry.resourceModel === 'CourseContent' && entry.status === 'approved' && String(entry.resourceId?._id || entry.resourceId) === String(courseId));
 
   const toggleCoursePremium = async (course) => {
     setError(''); setMessage('');
