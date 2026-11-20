@@ -123,7 +123,7 @@ export default function Footer() {
 
         <div className="text-center md:border-x md:border-[var(--app-border)] md:px-6">
           <Link to="/" className="inline-flex items-center justify-center gap-3 text-xl font-extrabold tracking-wide text-[var(--app-text)]">
-            <span className="text-3xl" aria-hidden="true">🎓</span>
+            <img src="/icon.svg" alt="" className="h-10 w-10 shrink-0 rounded-xl object-contain" />
             <span>AHADU <span className="block">TECH ACADEMY</span></span>
           </Link>
           <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-[var(--app-muted)]">
