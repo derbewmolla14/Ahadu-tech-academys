@@ -6,14 +6,23 @@ const inputClass = 'mt-2 w-full rounded-2xl border border-slate-700 bg-slate-900
 const buttonClass = 'w-full rounded-2xl bg-sky-500 px-5 py-3.5 font-bold text-slate-950 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60';
 function isTransientRequestFailure(error) {
   const status = error?.response?.status;
+  const responseCode = String(error?.response?.data?.code || '');
   const code = String(error?.code || '');
   const message = String(error?.message || '');
+  if (['EMAIL_NOT_CONFIGURED', 'EMAIL_INVALID_CONFIG'].includes(responseCode)) return false;
+  if (status === 503 && responseCode) {
+    return ['AUTH_DATABASE_UNAVAILABLE', 'EMAIL_TEMPORARILY_UNAVAILABLE'].includes(responseCode);
+  }
   return [502, 503, 504].includes(status) ||
     ['ERR_NETWORK', 'ECONNABORTED', 'ETIMEDOUT', 'ECONNRESET', 'ERR_HTTP2_PROTOCOL_ERROR'].includes(code) ||
     /network error|failed to fetch|http2|connection (?:reset|closed)|temporarily unavailable/i.test(message);
 }
 
 function getRequestFailureMessage(error, action) {
+  const responseCode = String(error?.response?.data?.code || '');
+  if (['EMAIL_NOT_CONFIGURED', 'EMAIL_INVALID_CONFIG'].includes(responseCode)) {
+    return 'Password reset email is not configured on the server. Please contact support; retrying will not fix this configuration issue.';
+  }
   if (isTransientRequestFailure(error)) {
     return `The service is temporarily unavailable. Your request was not confirmed. Please wait a moment and try ${action} again.`;
   }
