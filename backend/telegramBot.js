@@ -37,7 +37,7 @@ async function sendEntryIdentification(message) {
       '\nName: ' + (user.fullName || 'Not provided') +
       '\nRegistered email: ' + user.email +
       '\nAccount ID: ' + String(user._id) +
-      '\nTelegram: Securely linked' +
+      '\nTelegram: ' + (user.telegramUsername || 'Securely linked') + ' (linked)' +
       (designatedAdmin ? '\n\nAdmin actions are enabled for this designated admin account. / ለተመደበው የአስተዳዳሪ መለያ አማራጮች ነቅተዋል።' : '');
   }
   await clearActiveView(chatId, 'menu');
@@ -379,7 +379,8 @@ async function handleStart(message, payload) {
   );
   user.telegramChatId = chatId;
   user.telegramLinkedAt = new Date();
-  user.telegramUsername = message.from?.username ? '@' + message.from.username : '';
+  const linkedTelegramUsername = String(message.from?.username || '').trim().replace(/^@+/, '');
+  user.telegramUsername = /^[A-Za-z0-9_]{5,32}$/.test(linkedTelegramUsername) ? '@' + linkedTelegramUsername : '';
   await user.save();
   await TelegramOtp.deleteMany({ userId: user._id, purpose: 'link' });
   await telegramRequest('sendMessage', {
