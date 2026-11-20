@@ -264,7 +264,7 @@ async function saveAndForwardReceipt(message) {
     telegramMessageId: message.message_id,
   });
   const admins = await getTelegramAdmins();
-  if (!admins.length) console.warn('[telegram bot] Receipt saved but no admin Telegram chats are configured. Link a Telegram chat to an admin account or set TELEGRAM_ADMIN_CHAT_IDS.');
+  if (!admins.length) console.warn('[telegram bot] Receipt saved but no admin Telegram chats are configured. Ensure the configured SUPER_ADMIN_EMAIL account has linked its Telegram chat.');
   const header = 'New Send Receipt submission #' + record._id + '\nFrom: ' + (user?.email || message.from?.username || chatId) + '\n' + (text || message.caption || '[Attachment]');
   for (const adminChatId of admins) {
     await telegramRequest('sendMessage', { chat_id: adminChatId, text: header.slice(0, 3900) });
