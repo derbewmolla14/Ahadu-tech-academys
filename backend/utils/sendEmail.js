@@ -2,16 +2,33 @@ const nodemailer = require('nodemailer');
 
 const EMAIL_TIMEOUT_MS = 12000;
 
+function normalizeEmailSender(value) {
+  const raw = String(value || '').trim().replace(/^["']|["']$/g, '').trim();
+  const match = raw.match(/^(?:(.*?)\\s*)?<([^<>]+)>$/);
+  const address = (match ? match[2] : raw).trim();
+  const displayName = match?.[1]?.trim();
+  const validAddress = /^[^\\s<>@]+@[^\\s<>@]+\\.[^\\s<>@]+$/.test(address);
+
+  if (!validAddress) {
+    const error = new Error('Email sender must be a valid address or a display name followed by an address, for example Ahadu Tech Academy <support@example.com>.');
+    error.code = 'EMAIL_INVALID_CONFIG';
+    error.configField = 'RESEND_FROM / SMTP_FROM / EMAIL_FROM';
+    throw error;
+  }
+
+  return displayName ? displayName + ' <' + address + '>' : address;
+}
+
 function getEmailSender() {
-  const from = process.env.RESEND_FROM?.trim() ||
+  const configuredFrom = process.env.RESEND_FROM?.trim() ||
     process.env.SMTP_FROM?.trim() ||
     process.env.EMAIL_FROM?.trim();
-  if (!from) {
+  if (!configuredFrom) {
     const error = new Error('Email service is not configured. Set RESEND_FROM, SMTP_FROM, or EMAIL_FROM.');
     error.code = 'EMAIL_NOT_CONFIGURED';
     throw error;
   }
-  return from;
+  return normalizeEmailSender(configuredFrom);
 }
 
 function getSmtpConfig() {
@@ -58,6 +75,7 @@ async function sendWithResend(to, subject, { html, text }) {
     error.provider = 'resend';
     error.causeCode = cause?.code;
     error.causeName = cause?.name;
+    error.causeMessage = cause?.message;
     error.cause = cause;
     throw error;
   }
@@ -73,6 +91,7 @@ async function sendWithResend(to, subject, { html, text }) {
     error.provider = 'resend';
     error.providerStatus = response.status;
     error.providerCode = typeof data.name === 'string' ? data.name : undefined;
+    error.providerRequestId = response.headers.get('x-request-id') || response.headers.get('request-id') || undefined;
     error.code = response.status === 401 || response.status === 403
       ? 'EMAIL_INVALID_CONFIG'
       : response.status >= 500 || response.status === 429
