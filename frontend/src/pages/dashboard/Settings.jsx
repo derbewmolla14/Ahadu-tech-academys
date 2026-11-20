@@ -418,19 +418,24 @@ export default function SettingsPage() {
                   </button>
                 </form>
                 <div className="mt-6 border-t border-[var(--app-border)] pt-5">
-                  <h3 className="text-sm font-bold">Telegram account</h3>
-                  <p className="mt-1 text-sm text-[var(--app-muted)]">Link your Telegram account securely so you can receive one-minute password reset codes.</p>
+                  <h3 className="text-sm font-bold">{language === "amharic" ? "የቴሌግራም መለያ" : language === "both" ? "Telegram account / የቴሌግራም መለያ" : "Telegram account"}</h3>
+                  <p className="mt-1 text-sm text-[var(--app-muted)]">{language === "amharic" ? "የይለፍ ቃል መቀየሪያ ኮድ ለመቀበል ቴሌግራምን ከመለያዎ ጋር ያገናኙ።" : language === "both" ? "Link Telegram to your account to receive password reset codes. / የይለፍ ቃል መቀየሪያ ኮድ ለመቀበል ቴሌግራምን ከመለያዎ ጋር ያገናኙ።" : "Link your Telegram account securely so you can receive one-minute password reset codes."}</p>
+                  <ol className="mt-3 list-decimal space-y-1 pl-5 text-xs leading-5 text-[var(--app-muted)]">
+                    <li>{language === "amharic" ? "የቴሌግራም መለያ አገናኝን ይጫኑ።" : language === "both" ? "Select Link Telegram account. / የቴሌግራም መለያ አገናኝን ይጫኑ።" : "Select Link Telegram account."}</li>
+                    <li>{language === "amharic" ? "የሚፈጠረውን የደህንነት ሊንክ በቴሌግራም ይክፈቱ።" : language === "both" ? "Open the secure link in Telegram. / የደህንነት ሊንኩን በቴሌግራም ይክፈቱ።" : "Open the generated secure link in Telegram."}</li>
+                    <li>{language === "amharic" ? "በቦቱ ላይ Start ይጫኑ።" : language === "both" ? "Press Start in the bot. / በቦቱ ላይ Start ይጫኑ።" : "Press Start in the bot."}</li>
+                  </ol>
                   <button type="button" onClick={createTelegramLink} disabled={creatingTelegramLink} className={buttonClass + " mt-4"}>
-                    {creatingTelegramLink ? "Preparing Telegram link…" : "Link Telegram account"}
+                    {creatingTelegramLink ? (language === "amharic" ? "ሊንክ በመፍጠር ላይ…" : language === "both" ? "Preparing Telegram link… / ሊንክ በመፍጠር ላይ…" : "Preparing Telegram link…") : (language === "amharic" ? "የቴሌግራም መለያ አገናኝ" : language === "both" ? "Link Telegram account / የቴሌግራም መለያ አገናኝ" : "Link Telegram account")}
                   </button>
                   {configuredTelegramLink && (
                     <a href={configuredTelegramLink} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex rounded-xl border border-sky-500/40 px-4 py-3 text-sm font-semibold text-sky-600 hover:bg-sky-500/10">
-                      Open Ahadu Tech Academy Telegram bot
+                      {language === "amharic" ? "የአሃዱ ቴክ አካዳሚ ቴሌግራም ቦትን ክፈት" : language === "both" ? "Open Ahadu Tech Academy Telegram bot / የአሃዱ ቴክ አካዳሚ ቴሌግራም ቦትን ክፈት" : "Open Ahadu Tech Academy Telegram bot"}
                     </a>
                   )}
                   {telegramLink && (
                     <a href={telegramLink} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex rounded-xl border border-sky-500/40 px-4 py-3 text-sm font-semibold text-sky-600 hover:bg-sky-500/10">
-                      Open Telegram bot to finish linking
+                      {language === "amharic" ? "ማገናኘቱን ለመጨረስ ቴሌግራምን ክፈት" : language === "both" ? "Open Telegram bot to finish linking / ማገናኘቱን ለመጨረስ ቴሌግራምን ክፈት" : "Open Telegram bot to finish linking"}
                     </a>
                   )}
                 </div>
