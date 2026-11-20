@@ -460,6 +460,15 @@ export default function SettingsPage() {
         )}
 
         <div className="mt-6 border-t border-[var(--app-border)] pt-5">
+          <h3 className="text-base font-bold">Recent payouts</h3>
+          <p className="mt-1 text-sm text-[var(--app-muted)]">Administrator-recorded transfers reduce your remaining balance.</p>
+          <div className="mt-3 space-y-2">
+            {(referralData?.payouts || []).slice(0, 5).map((item, index) => <div key={item.transactionReference + index} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--app-border)] bg-[var(--app-bg)] px-3 py-2 text-sm"><span className="font-medium">{item.transactionReference}</span><span className="font-semibold">{new Intl.NumberFormat("en-ET", { style: "currency", currency: "ETB", maximumFractionDigits: 2 }).format(Number(item.amountETB || 0))}</span><span className="text-xs text-[var(--app-muted)]">{new Date(item.paidAt).toLocaleDateString()}</span></div>)}
+            {!referralData?.payouts?.length && <p className="text-sm text-[var(--app-muted)]">No payouts recorded yet.</p>}
+          </div>
+        </div>
+
+        <div className="mt-6 border-t border-[var(--app-border)] pt-5">
           <h3 className="text-base font-bold">Payout account</h3>
           <p className="mt-1 text-sm text-[var(--app-muted)]">Add the bank or mobile-wallet details where your eligible referral commissions can be paid.</p>
           <form onSubmit={savePayoutAccount} className="mt-4 grid gap-4 sm:grid-cols-2">
