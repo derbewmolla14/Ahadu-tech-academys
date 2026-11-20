@@ -285,64 +285,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* FULL WIDTH FOOTER */}
-      <div className="w-screen relative left-1/2 right-1/2 -mx-[50vw] bg-[#0f1b3d] text-white px-8 py-10">
-
-        <div className="grid md:grid-cols-3 gap-10 items-start">
-
-          {/* LEFT - Useful Links */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Useful Links</h2>
-            <ul className="space-y-2 text-slate-300">
-              <li><a href="#" className="hover:text-white">Contact Us</a></li>
-              <li><a href="#" className="hover:text-white">Frequently Asked Questions</a></li>
-              <li><a href="#" className="hover:text-white">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-white">Terms Of Use</a></li>
-              <li><a href="#" className="hover:text-white">Login</a></li>
-            </ul>
-          </div>
-
-          {/* CENTER - LOGO + SOCIAL */}
-          <div className="text-center border-l border-r border-slate-700 px-6">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <span className="text-3xl">🎓</span>
-              <h1 className="text-2xl font-bold tracking-wide">
-                AHADU <span className="block">ACADEMY</span>
-              </h1>
-            </div>
-
-            <div className="flex justify-center gap-4 mb-4">
-              <a href="https://www.facebook.com/share/1Gno8odoVq/" target="_blank" rel="noopener noreferrer" className="bg-white text-black rounded-full w-10 h-10 flex items-center justify-center hover:bg-slate-200 transition-colors">f</a>
-              <a href="https://www.linkedin.com/in/molla-hydro-os-dev" target="_blank" rel="noopener noreferrer" className="bg-white text-black rounded-full w-10 h-10 flex items-center justify-center hover:bg-slate-200 transition-colors">in</a>
-              <a href="https://youtu.be/6G3CzmEyZPM?si=Stwdn9uBhoeHHn1x" target="_blank" rel="noopener noreferrer" className="bg-white text-black rounded-full w-10 h-10 flex items-center justify-center hover:bg-slate-200 transition-colors">▶</a>
-              <a href="https://whatsapp.com/dl/" target="_blank" rel="noopener noreferrer" className="bg-white text-black rounded-full w-10 h-10 flex items-center justify-center hover:bg-slate-200 transition-colors">📱</a>
-              <a href="https://t.me/alluniversity11fastinfo" target="_blank" rel="noopener noreferrer" className="bg-white text-black rounded-full w-10 h-10 flex items-center justify-center hover:bg-slate-200 transition-colors">✈</a>
-            </div>
-
-            <p className="text-sm text-slate-300">
-              © {new Date().getFullYear()} ahadutechacademy.com
-            </p>
-
-            <p className="text-orange-400 mt-2 text-sm">
-              Powered by Ahadu Tech Academy
-            </p>
-          </div>
-
-          {/* RIGHT - CONTACTS */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Contacts</h2>
-
-            <div className="space-y-3 text-slate-300">
-              <p>📍 Woldia, Ethiopia</p>
-              <p>📞 +251-924-12-28-93</p>
-              <p>📞 +251-937-10-05-47</p>
-              <p>✉ derbewmolla14@g</p>
-            </div>
-          </div>
-
-        </div>
-
-      </div>
 
     </div>
   );
