@@ -47,6 +47,7 @@ export default function SettingsPage() {
   const [telegramLinkDraft, setTelegramLinkDraft] = useState("");
   const [loadingTelegramSettings, setLoadingTelegramSettings] = useState(false);
   const [savingTelegramSettings, setSavingTelegramSettings] = useState(false);
+  const [editingTelegramLink, setEditingTelegramLink] = useState(false);
   const isAdmin = user?.role === "admin";
   const [notice, setNotice] = useState({ type: "", text: "" });
   const [latestVersion, setLatestVersion] = useState(null);
@@ -177,6 +178,7 @@ export default function SettingsPage() {
       const saved = response.data?.telegramLink || telegramLinkDraft;
       setConfiguredTelegramLink(saved);
       setTelegramLinkDraft(saved);
+      setEditingTelegramLink(false);
       showNotice("success", "Telegram bot link saved for all users.");
     } catch (error) {
       showNotice("error", error.response?.data?.message || "Unable to save the Telegram bot link.");
@@ -408,18 +410,29 @@ export default function SettingsPage() {
                   )}
                 </div>
                 {isAdmin && (
-                  <form onSubmit={saveTelegramBotLink} className="mt-6 border-t border-[var(--app-border)] pt-5">
-                    <h3 className="text-sm font-bold">Change the Telegram Bot Links</h3>
-                    <p className="mt-1 text-sm text-[var(--app-muted)]">Set the public bot username or Telegram link used by users across the app.</p>
-                    <label htmlFor="settings-telegram-bot-link" className="mt-4 block text-sm font-semibold">Telegram bot username or link</label>
-                    <input id="settings-telegram-bot-link" className={fieldClass} value={telegramLinkDraft} onChange={(event) => setTelegramLinkDraft(event.target.value)} placeholder="@YourAcademyBot or https://t.me/YourAcademyBot" autoComplete="url" />
-                    <div className="mt-3 flex flex-wrap items-center gap-3">
-                      <button type="submit" disabled={savingTelegramSettings || loadingTelegramSettings || !telegramLinkDraft.trim()} className={buttonClass}>
-                        <Save size={16} /> {savingTelegramSettings ? "Saving…" : "Save Telegram link"}
+                  <div className="mt-6 border-t border-[var(--app-border)] pt-5">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-sm font-bold">Change the Telegram Bot Links</h3>
+                        <p className="mt-1 text-sm text-[var(--app-muted)]">Manage the public Telegram bot link used by users across the app.</p>
+                      </div>
+                      <button type="button" onClick={() => { setTelegramLinkDraft(configuredTelegramLink); setEditingTelegramLink((value) => !value); }} className="inline-flex items-center gap-2 rounded-xl border border-sky-500/40 px-4 py-2 text-sm font-semibold text-sky-600 hover:bg-sky-500/10">
+                        {editingTelegramLink ? "Cancel" : "Edit"}
                       </button>
-                      {configuredTelegramLink && <a href={configuredTelegramLink} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-sky-600 hover:underline">Test saved link</a>}
                     </div>
-                  </form>
+                    {editingTelegramLink && (
+                      <form onSubmit={saveTelegramBotLink} className="mt-4">
+                        <label htmlFor="settings-telegram-bot-link" className="block text-sm font-semibold">Telegram bot username or link</label>
+                        <input id="settings-telegram-bot-link" className={fieldClass} value={telegramLinkDraft} onChange={(event) => setTelegramLinkDraft(event.target.value)} placeholder="@YourAcademyBot or https://t.me/YourAcademyBot" autoComplete="url" />
+                        <div className="mt-3 flex flex-wrap items-center gap-3">
+                          <button type="submit" disabled={savingTelegramSettings || loadingTelegramSettings || !telegramLinkDraft.trim()} className={buttonClass}>
+                            <Save size={16} /> {savingTelegramSettings ? "Saving…" : "Save Telegram link"}
+                          </button>
+                          {configuredTelegramLink && <a href={configuredTelegramLink} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-sky-600 hover:underline">Test saved link</a>}
+                        </div>
+                      </form>
+                    )}
+                  </div>
                 )}
               </section>
 
