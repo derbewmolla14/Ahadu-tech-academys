@@ -19,7 +19,7 @@ const mainCategories = [
 export default function UniversityFlow() {
   const { user, language } = useContext(AuthContext);
   const selectedLanguage = String(language || user?.preferences?.language || 'en').trim().toLowerCase();
-  const isAmharic = ['am', 'amharic', 'አማርኛ'].includes(selectedLanguage);
+  const languageMode = ['am', 'amharic', 'አማርኛ'].includes(selectedLanguage) ? 'amharic' : selectedLanguage === 'both' ? 'both' : 'english';
   const [selection, setSelection] = useState(initial);
   const [history, setHistory] = useState([]);
   const [catalog, setCatalog] = useState({});
@@ -37,7 +37,7 @@ export default function UniversityFlow() {
     if (!next.stream) { setCatalog({}); setLoading(false); return; }
     const params = new URLSearchParams();
     Object.entries(next).forEach(([key, value]) => { if (value) params.set(key, value); });
-    if (isAmharic) params.set('language', 'am');
+    params.set('language', languageMode);
     setCatalog({});
     setLoading(true); setError('');
     try {
@@ -50,7 +50,7 @@ export default function UniversityFlow() {
     } finally {
       if (requestId === catalogRequestId.current) setLoading(false);
     }
-  }, [isAmharic]);
+  }, [languageMode]);
 
   useEffect(() => {
     load(selection);
