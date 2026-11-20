@@ -317,7 +317,8 @@ exports.registerValidators = [
 
 exports.updateProfileValidators = [
   body('fullName').optional({ checkFalsy: true }).trim().isLength({ min: 2, max: 120 }),
-  body('phone').optional().trim().isLength({ max: 48 }).withMessage('Phone too long'),
+  body('phone').optional({ checkFalsy: true }).trim().isLength({ min: 3, max: 24 }).withMessage('Phone must be 3–24 characters'),
+  body('telegramUsername').optional({ checkFalsy: true }).trim().matches(/^@?[A-Za-z0-9_]{5,32}$/).withMessage('Enter a valid Telegram username (5–32 letters, numbers, or underscores).'),
 ];
 
 async function finalizeRegister(req, res) {
@@ -631,7 +632,16 @@ exports.updateProfile = async (req, res) => {
       user.fullName = req.body.fullName.trim();
     }
     if (typeof req.body.phone === 'string') {
-      user.phone = req.body.phone.trim().slice(0, 48);
+      const phone = req.body.phone.trim();
+      if (phone.length > 24 || (phone && phone.length < 3)) return res.status(400).json({ message: 'Phone must be 3–24 characters.' });
+      user.phone = phone;
+    }
+    if (typeof req.body.telegramUsername === 'string') {
+      const rawTelegramUsername = req.body.telegramUsername.trim().replace(/^@+/, '');
+      if (rawTelegramUsername && !/^[A-Za-z0-9_]{5,32}$/.test(rawTelegramUsername)) {
+        return res.status(400).json({ message: 'Enter a valid Telegram username (5–32 letters, numbers, or underscores).' });
+      }
+      user.telegramUsername = rawTelegramUsername ? '@' + rawTelegramUsername : '';
     }
     if (req.file) {
       user.profilePhoto = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
