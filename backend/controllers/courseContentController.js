@@ -657,7 +657,7 @@ const unlockCourseForStudent = async (req, res) => {
 const getStudentsForPremiumAccess = async (_req, res) => {
   try {
     const User = require('../models/User');
-    const students = await User.find({ role: { $ne: 'admin' } }).select('fullName email role unlockedCourseContents').sort({ fullName: 1 }).lean();
+    const students = await User.find({ role: { $ne: 'admin' } }).select('fullName email role unlockedCourseContents downloadApprovals').sort({ fullName: 1 }).lean();
     return res.json({ success: true, data: students });
   } catch (error) {
     console.error('Get premium access students error:', error);
