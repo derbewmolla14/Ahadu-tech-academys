@@ -54,9 +54,7 @@ export default function Register() {
           <p className="text-sm uppercase tracking-[0.35em] text-sky-400">Ahadu Tech Academy</p>
           <h1 className="mt-4 text-4xl font-semibold text-white">Create your account</h1>
           <p className="mt-3 max-w-xl text-slate-400">
-            Register with verified details. Admin accounts require a server‑configured invitation code (
-            <code className="text-sky-300">ADMIN_INVITE_CODE</code> in backend <code>.env</code>
-            ).
+            Register with verified details. Administrator access is reserved for the account using the designated website administrator email.
           </p>
         </div>
 
