@@ -31,12 +31,31 @@ async function handleStart(message, payload) {
     return;
   }
 
-  const challenge = await TelegramOtp.findOne({
+  const linkChallenge = await TelegramOtp.findOne({
     purpose: 'link',
     otpHash: hashValue(payload),
     used: false,
     expiresAt: { $gt: new Date() },
   });
+  if (!linkChallenge) {
+    const resetChallenge = await TelegramOtp.findOne({
+      purpose: 'password-reset',
+      flowTokenHash: hashValue(payload),
+      email: { $type: 'string' },
+      used: false,
+      expiresAt: { $gt: new Date() },
+    });
+    if (resetChallenge && String(resetChallenge.chatId) === chatId) {
+      await telegramRequest('sendMessage', {
+        chat_id: chatId,
+        text: 'Your Ahadu Tech Academy password-reset flow is open. Enter the 6-digit code already sent to this Telegram chat on the academy website before the 2-minute countdown expires.',
+      });
+      return;
+    }
+    await telegramRequest('sendMessage', { chat_id: chatId, text: 'This account-link or password-reset request is invalid or expired. Return to Ahadu Tech Academy and start a new request.' });
+    return;
+  }
+  const challenge = linkChallenge;
   if (!challenge) {
     await telegramRequest('sendMessage', { chat_id: chatId, text: 'This account-link request is invalid or expired. Sign in to Ahadu Tech Academy and generate a new Telegram link.' });
     return;
