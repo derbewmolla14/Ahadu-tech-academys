@@ -123,6 +123,12 @@ export default function ForgotPassword() {
     setLoading(true);
     try {
       const response = await postWithShortRetry('/auth/telegram/otp/request', { email: email.trim().toLowerCase() }, (retry) => setRetryStatus(`Server is waking up, retrying… (${retry}/2)`));
+      if (!response.data?.expiresAt) {
+        setOtpSent(false);
+        setOtpExpiry(0);
+        setMessage(tr(languageMode, 'If an account exists with a linked Telegram chat, password-reset instructions will be sent there.', 'ከቴሌግራም ጋር የተገናኘ መለያ ካለ የይለፍ ቃል መቀየሪያ መመሪያው ወደዚያ ይላካል።'));
+        return;
+      }
       const seconds = Number(response.data?.expiresInSeconds || 120);
       const expiresAt = response.data?.expiresAt ? new Date(response.data.expiresAt).getTime() : Date.now() + seconds * 1000;
       setOtpExpiry(expiresAt);
