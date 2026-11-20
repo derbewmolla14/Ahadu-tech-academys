@@ -8,6 +8,7 @@ const PasswordReset = require('../models/PasswordReset');
 const { serializeUserDoc } = require('../utils/serializeUser');
 const { sendPasswordResetEmail } = require('../utils/sendEmail');
 const { getJwtSecret } = require('../config/env');
+const { normalizeAdminEmail, isDesignatedAdminEmail, syncUserAdminRole } = require('../utils/adminIdentity');
 
 const TelegramOtp = require('../models/TelegramOtp');
 const AppSetting = require('../models/AppSetting');
@@ -329,18 +330,12 @@ async function finalizeRegister(req, res) {
   }
 
   try {
-    const email = req.body.email;
-    let role = req.body.role === 'admin' ? 'admin' : 'user';
-
-    if (role === 'admin') {
-      const invite = process.env.ADMIN_INVITE_CODE;
-      if (!invite || req.body.inviteCode !== invite) {
-        return res.status(403).json({
-          message:
-            'Admin signup requires a valid invitation code set by your organization.',
-        });
-      }
+    const email = normalizeAdminEmail(req.body.email);
+    const configuredAdminEmail = normalizeAdminEmail(process.env.SUPER_ADMIN_EMAIL);
+    if (!configuredAdminEmail) {
+      return res.status(503).json({ message: 'The designated administrator email is not configured.' });
     }
+    const role = isDesignatedAdminEmail(email) ? 'admin' : 'user';
 
     const existing = await User.findOne({ email }).select('_id');
     if (existing) return res.status(400).json({ message: 'Email already registered' });
@@ -373,7 +368,8 @@ async function finalizeRegister(req, res) {
     });
 
     const fresh = await User.findById(user._id);
-    const token = signToken(user._id, jwtRole(role));
+    await syncUserAdminRole(fresh);
+    const token = signToken(user._id, jwtRole(fresh.role));
     return res.status(201).json({
       message: 'Account created successfully',
       token,
@@ -406,6 +402,7 @@ exports.login = async (req, res) => {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(401).json({ message: 'Invalid credentials' });
 
+    await syncUserAdminRole(user);
     const token = signToken(user._id, jwtRole(user.role));
     const plain = await User.findById(user._id);
 
@@ -609,6 +606,7 @@ exports.resetPassword = async (req, res) => {
 
 exports.me = async (req, res) => {
   const plain = await User.findById(req.user._id);
+  await syncUserAdminRole(plain);
   res.json({ user: serializeUserDoc(plain) });
 };
 
