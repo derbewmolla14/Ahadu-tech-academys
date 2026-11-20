@@ -21,6 +21,12 @@ const canAccessUniversityResource = (user, item) => item.accessType !== 'premium
 
 const STREAM_CATEGORY = { Natural: 'Natural Science', Social: 'Social Science', Health: 'Health Science', Diploma: 'Diploma' };
 const exactDepartmentRegex = (value) => new RegExp('^' + String(value || '').trim().replace(/[.*+?^()|[\]\\$]/g, (character) => '\\' + character) + '$', 'i');
+const languageFilterFor = (value) => {
+  const mode = String(value || '').trim().toLowerCase();
+  if (mode === 'am' || mode === 'amharic') return { language: 'am' };
+  if (mode === 'en' || mode === 'english') return { language: 'en' };
+  return {};
+};
 
 const resolveDepartment = async (stream, departmentName) => {
   const category = STREAM_CATEGORY[stream];
@@ -43,7 +49,7 @@ exports.getCatalog = async (req, res) => {
     if (!selectedLevel) return res.json({ streams: ['Natural', 'Social', 'Health', 'Diploma'], levels: ['Freshman', 'Remedial', 'Senior', 'Diploma'] });
     const base = {
       ...approvedFilter,
-      ...(String(language || '').trim().toLowerCase() === 'am' || String(language || '').trim().toLowerCase() === 'amharic' ? { language: 'am' } : {}),
+      ...languageFilterFor(language),
       stream: { $regex: exactDepartmentRegex(selectedStream) },
       ...(selectedLevel ? { level: { $regex: exactDepartmentRegex(selectedLevel) } } : {}),
     };
