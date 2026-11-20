@@ -89,7 +89,9 @@ exports.requestTelegramLink = async (req, res) => {
 exports.requestTelegramOtp = async (req, res) => {
   try {
     const email = String(req.body.email || '').trim().toLowerCase();
-    if (!email) return res.status(400).json({ message: 'Email is required.' });
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ code: 'INVALID_EMAIL', message: 'Enter a valid registered email address.' });
+    }
     if (!process.env.TELEGRAM_BOT_TOKEN) {
       return res.status(503).json({ message: 'Telegram password reset is not configured yet.' });
     }
@@ -97,7 +99,7 @@ exports.requestTelegramOtp = async (req, res) => {
     const user = await User.findOne({ email }).select('_id email telegramChatId');
     if (!user) return res.status(200).json({ message: 'If this account has a linked Telegram chat, an OTP will be sent.' });
     if (!user.telegramChatId) {
-      return res.status(400).json({
+      return res.status(409).json({
         code: 'TELEGRAM_NOT_LINKED',
         message: 'No Telegram account is linked to this account. Sign in, open Settings → Account & Profile → Link Telegram, then press Start in the bot. You can also use Reset via Email.',
       });
@@ -345,11 +347,10 @@ exports.forgotPassword = async (req, res) => {
         'If an account exists for that email, you will receive password reset instructions shortly.',
     };
 
-    const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5173');
-    if (!frontendUrl) {
-      console.error('[password reset] FRONTEND_URL is required in production.');
-      return res.status(503).json({ message: 'Password reset email is temporarily unavailable. Please try again later.' });
-    }
+    const frontendUrl = process.env.FRONTEND_URL?.trim() ||
+      (process.env.NODE_ENV === 'production'
+        ? 'https://ahadu-tech-academys.vercel.app'
+        : 'http://localhost:5173');
 
     let frontendOrigin;
     try {
@@ -357,8 +358,14 @@ exports.forgotPassword = async (req, res) => {
       if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Unsupported URL protocol');
       frontendOrigin = parsed.toString().replace(/\/$/, '');
     } catch (configError) {
-      console.error('[password reset] Invalid FRONTEND_URL:', configError.message);
-      return res.status(503).json({ message: 'Password reset email is temporarily unavailable. Please try again later.' });
+      console.error('[password reset] Invalid FRONTEND_URL configuration:', {
+        message: configError.message,
+        hint: 'Set FRONTEND_URL to the public HTTPS frontend origin, without a reset-password path.',
+      });
+      return res.status(500).json({
+        code: 'PASSWORD_RESET_URL_MISCONFIGURED',
+        message: 'Password reset links are temporarily unavailable. Please contact support.',
+      });
     }
 
     const user = await User.findOne({ email: rawEmail });
@@ -391,13 +398,34 @@ exports.forgotPassword = async (req, res) => {
       await PasswordReset.deleteOne({ _id: resetRecord._id }).catch((cleanupError) => {
         console.error('[password reset] Failed to remove undelivered token:', cleanupError.message);
       });
-      console.error('[password reset] Email dispatch failed:', { name: mailError.name, code: mailError.code, responseCode: mailError.responseCode, message: mailError.message });
+      console.error('[password reset] Email dispatch failed:', {
+        provider: mailError.provider || (process.env.RESEND_API_KEY?.trim() ? 'resend' : 'smtp'),
+        name: mailError.name,
+        code: mailError.code,
+        providerStatus: mailError.providerStatus || mailError.status,
+        providerCode: mailError.providerCode || mailError.responseCode,
+        causeName: mailError.causeName || mailError.cause?.name,
+        causeCode: mailError.causeCode || mailError.cause?.code,
+        message: mailError.message,
+        hint: mailError.code === 'EMAIL_INVALID_CONFIG'
+          ? 'Check the Resend API key and verify the sender domain/address.'
+          : mailError.code === 'EMAIL_NOT_CONFIGURED'
+            ? 'Set RESEND_API_KEY and RESEND_FROM (or SMTP_FROM / EMAIL_FROM).'
+            : 'Check the email provider status and network connectivity.',
+      });
       const configurationError = ['EMAIL_NOT_CONFIGURED', 'EMAIL_INVALID_CONFIG'].includes(mailError.code);
-      return res.status(503).json({
-        code: configurationError ? mailError.code : 'EMAIL_TEMPORARILY_UNAVAILABLE',
+      const rejectedError = mailError.code === 'EMAIL_PROVIDER_REJECTED';
+      return res.status(configurationError ? 500 : rejectedError ? 502 : 503).json({
+        code: configurationError
+          ? mailError.code
+          : rejectedError
+            ? 'EMAIL_PROVIDER_REJECTED'
+            : 'EMAIL_TEMPORARILY_UNAVAILABLE',
         message: configurationError
           ? 'Password reset email is not configured correctly. Please contact support.'
-          : 'The email service is temporarily unavailable. Please try again shortly.',
+          : rejectedError
+            ? 'The email provider rejected the message. Please contact support if this continues.'
+            : 'The email service is temporarily unavailable. Please try again shortly.',
       });
     }
 
@@ -408,6 +436,9 @@ exports.forgotPassword = async (req, res) => {
       code: e.code,
       message: e.message,
       mongoReadyState: mongoose.connection.readyState,
+      hint: mongoose.connection.readyState !== 1
+        ? 'Check the Render MongoDB connection and Atlas network access list.'
+        : undefined,
     });
     const databaseUnavailable = mongoose.connection.readyState !== 1 ||
       ['MongoServerSelectionError', 'MongooseServerSelectionError', 'MongoNetworkError'].includes(e.name);
