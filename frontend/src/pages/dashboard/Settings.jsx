@@ -229,21 +229,57 @@ export default function SettingsPage() {
     }
   }
 
+  async function openTelegramUrl(url) {
+    const parsed = new URL(String(url || ""));
+    if (parsed.protocol !== "https:" || !["t.me", "www.t.me", "telegram.me", "www.telegram.me"].includes(parsed.hostname.toLowerCase())) {
+      throw new Error("The Telegram link is invalid. Ask an administrator to check the bot username.");
+    }
+    if (isNativeApp) {
+      try {
+        const { Browser } = await import("@capacitor/browser");
+        await Browser.open({ url: parsed.toString() });
+        return;
+      } catch {
+        // Fallback for devices where the Capacitor Browser plugin is unavailable.
+        window.location.assign(parsed.toString());
+        return;
+      }
+    }
+    const opened = window.open(parsed.toString(), "_blank", "noopener,noreferrer");
+    if (!opened) window.location.assign(parsed.toString());
+  }
+
   async function createTelegramLink() {
     setCreatingTelegramLink(true);
     setTelegramLink("");
     showNotice("", "");
     try {
       const response = await api.post("/auth/telegram/link/request");
-      setTelegramLink(response.data?.telegramLink || "");
-      showNotice("success", response.data?.message || "Open Telegram to link your account.");
+      const generatedLink = String(response.data?.telegramLink || "").trim();
+      if (!generatedLink) throw new Error(response.data?.message || "The server did not return a Telegram link. Check the bot username configuration and try again.");
+      setTelegramLink(generatedLink);
+      showNotice("success", response.data?.message || "Your secure Telegram link is ready. Opening Telegram…");
+      try {
+        await openTelegramUrl(generatedLink);
+      } catch {
+        showNotice("error", "Your secure link was created, but Telegram could not be opened automatically. Use the Open Telegram button below.");
+      }
     } catch (error) {
-      showNotice("error", error.response?.data?.message || "Unable to create a Telegram link.");
+      showNotice("error", error.response?.data?.message || error.message || "Unable to create a Telegram link. Check your connection and try again.");
     } finally {
       setCreatingTelegramLink(false);
     }
   }
 
+  async function handleTelegramAnchorClick(event, url) {
+    if (!isNativeApp) return;
+    event.preventDefault();
+    try {
+      await openTelegramUrl(url);
+    } catch {
+      showNotice("error", "Unable to open Telegram. Check that Telegram is installed or try again in your browser.");
+    }
+  }
 
   async function checkForUpdates() {
     setCheckingUpdates(true);
@@ -582,12 +618,12 @@ export default function SettingsPage() {
                     {creatingTelegramLink ? (language === "amharic" ? "ሊንክ በመፍጠር ላይ…" : language === "both" ? "Preparing Telegram link… / ሊንክ በመፍጠር ላይ…" : "Preparing Telegram link…") : (language === "amharic" ? "የቴሌግራም መለያ አገናኝ" : language === "both" ? "Link Telegram account / የቴሌግራም መለያ አገናኝ" : "Link Telegram account")}
                   </button>
                   {configuredTelegramLink && (
-                    <a href={configuredTelegramLink} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex rounded-xl border border-sky-500/40 px-4 py-3 text-sm font-semibold text-sky-600 hover:bg-sky-500/10">
+                    <a href={configuredTelegramLink} onClick={(event) => handleTelegramAnchorClick(event, configuredTelegramLink)} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex rounded-xl border border-sky-500/40 px-4 py-3 text-sm font-semibold text-sky-600 hover:bg-sky-500/10">
                       {language === "amharic" ? "የአሃዱ ቴክ አካዳሚ ቴሌግራም ቦትን ክፈት" : language === "both" ? "Open Ahadu Tech Academy Telegram bot / የአሃዱ ቴክ አካዳሚ ቴሌግራም ቦትን ክፈት" : "Open Ahadu Tech Academy Telegram bot"}
                     </a>
                   )}
                   {telegramLink && (
-                    <a href={telegramLink} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex rounded-xl border border-sky-500/40 px-4 py-3 text-sm font-semibold text-sky-600 hover:bg-sky-500/10">
+                    <a href={telegramLink} onClick={(event) => handleTelegramAnchorClick(event, telegramLink)} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex rounded-xl border border-sky-500/40 px-4 py-3 text-sm font-semibold text-sky-600 hover:bg-sky-500/10">
                       {language === "amharic" ? "ማገናኘቱን ለመጨረስ ቴሌግራምን ክፈት" : language === "both" ? "Open Telegram bot to finish linking / ማገናኘቱን ለመጨረስ ቴሌግራምን ክፈት" : "Open Telegram bot to finish linking"}
                     </a>
                   )}
