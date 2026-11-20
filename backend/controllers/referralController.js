@@ -7,7 +7,7 @@ const ReferralCommission = require('../models/ReferralCommission');
 async function ensureReferralCode(user) {
   if (user.referralCode) return user.referralCode;
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    const code = crypto.randomBytes(5).toString('hex').toUpperCase();
+    const code = crypto.randomBytes(8).toString('hex').toUpperCase();
     try {
       user.referralCode = code;
       await user.save();
