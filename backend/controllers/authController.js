@@ -53,18 +53,33 @@ async function telegramApi(method, payload) {
   return data.result;
 }
 
+function resolveTelegramBotUsername(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (/^@?[A-Za-z0-9_]{5,32}$/.test(raw)) return raw.replace(/^@/, '');
+  try {
+    const candidate = /^https?:\/\//i.test(raw) ? raw : 'https://' + raw.replace(/^\/+/, '');
+    const parsed = new URL(candidate);
+    if (!['t.me', 'www.t.me', 'telegram.me', 'www.telegram.me'].includes(parsed.hostname.toLowerCase())) return '';
+    const segments = parsed.pathname.split('/').filter(Boolean);
+    if (segments.length !== 1 || !/^[A-Za-z0-9_]{5,32}$/.test(segments[0])) return '';
+    return segments[0];
+  } catch {
+    return '';
+  }
+}
+
 exports.requestTelegramLink = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'Account not found.' });
-    if (!process.env.TELEGRAM_BOT_TOKEN) {
-      return res.status(503).json({ message: 'Telegram account linking is not configured yet.' });
-    }
+
+    // Creating a signed one-time deep link needs a username and a database
+    // challenge. The bot token is only needed by the worker processing /start.
     const savedBotSetting = await AppSetting.findOne({ key: 'telegramBotLink' }).select('value');
-    const configuredLink = String(savedBotSetting?.value || process.env.TELEGRAM_BOT_USERNAME || '').trim();
-    const usernameMatch = configuredLink.match(/(?:https?:\/\/(?:www\.)?(?:t\.me|telegram\.me)\/)?@?([A-Za-z0-9_]{5,32})\/?$/i);
-    const username = usernameMatch?.[1];
-    if (!username) return res.status(503).json({ message: 'Telegram bot username is not configured yet.' });
+    const configuredLink = savedBotSetting?.value || process.env.TELEGRAM_BOT_USERNAME || 'HorizonHydroOstechbot';
+    const username = resolveTelegramBotUsername(configuredLink);
+    if (!username) return res.status(503).json({ message: 'Telegram bot username is not configured. Ask an administrator to set it in Settings.' });
 
     const rawToken = crypto.randomBytes(32).toString('hex');
     const challenge = await TelegramOtp.create({
